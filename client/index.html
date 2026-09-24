@@ -1,4 +1,3 @@
-placeholder
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -26,69 +25,44 @@ placeholder
     --candy-blue: #7ed3ff;
   }
   * { box-sizing: border-box; }
-  body {
+  html, body {
     margin: 0;
+    height: 100%;
+    overflow: hidden; /* plein écran : jamais de scroll/rebond, y compris le "pull to refresh" mobile */
+    overscroll-behavior: none;
+  }
+  body {
     background:
       radial-gradient(ellipse 900px 500px at 15% -10%, #ffd6ec 0%, transparent 60%),
       radial-gradient(ellipse 900px 500px at 90% 0%, #c9e7ff 0%, transparent 55%),
       linear-gradient(160deg, var(--bg) 0%, var(--bg-2) 100%);
     color: var(--text);
     font-family: "Work Sans", sans-serif;
-    min-height: 100vh;
   }
-  header {
-    max-width: 1080px;
-    margin: 0 auto;
-    padding: 28px 20px 0;
-  }
-  header h1 {
-    font-family: "Baloo 2", sans-serif;
-    font-weight: 800;
-    font-size: 32px;
-    margin: 0 0 4px;
-    color: #fff;
-    text-shadow: 0 2px 0 #c9782f, 0 4px 10px rgba(0,0,0,0.25);
-    letter-spacing: 0.3px;
-  }
-  header p {
-    margin: 0;
-    color: #d8cdf5;
-    font-size: 14px;
-    max-width: 60ch;
-    line-height: 1.5;
-  }
-  .layout {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 24px;
-    max-width: 1500px;
-    margin: 0 auto;
-    padding: 20px 20px 60px;
-  }
-  .stage {
-    flex: 3 1 880px;
-  }
-  /* --- Mise à l'échelle responsive -----------------------------------------
+  /* --- Plein écran / préparation mobile -------------------------------------
      Le jeu (canvas + TOUTE la surcouche HTML : icônes, modales, barre de
      sorts...) est conçu pour une résolution interne fixe de 1280×600.
      Plutôt que de rendre chaque élément en unités relatives (immense
      chantier vu le nombre de modales déjà écrites en pixels), on garde
      `.stage-frame` à sa taille native et on l'échelonne tout entier avec un
-     `transform: scale()` calculé en JS (voir redimensionnerScene) — le
-     wrapper `.stage-frame-wrap`, lui, occupe la largeur réellement
-     disponible (identique au comportement précédent de canvas{width:100%}),
-     et récupère la bordure/l'ombre/le rognage qu'avait `.stage-frame` avant.
-     Résultat : sur un écran de téléphone, les icônes/modales rétrécissent
-     avec le reste au lieu de déborder. */
+     `transform: scale()` calculé en JS (voir redimensionnerScene), à partir
+     du plus petit rapport largeur/hauteur disponible (`.layout` occupe tout
+     le viewport) — jamais rogné, quel que soit le format de l'écran (large
+     et bas sur desktop, étroit et haut sur téléphone en portrait), avec un
+     bandeau de la couleur de fond de part et d'autre plutôt qu'un débordement.
+     `.layout` centre `.stage-frame-wrap` (qui ne fait plus que la taille
+     mise à l'échelle) à l'intérieur. */
+  .layout {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100vw;
+    height: 100vh;
+    height: 100dvh; /* tient compte de la barre d'adresse mobile quand le navigateur le permet */
+  }
   .stage-frame-wrap {
     position: relative;
-    width: 100%;
-    max-width: 1280px;
-    margin: 0 auto;
     overflow: hidden;
-    border: 4px solid #fff;
-    box-shadow: 0 0 0 4px var(--hairline), 0 10px 28px rgba(20,10,50,0.35);
-    border-radius: 20px;
     background: #1c202c;
   }
   .stage-frame {
@@ -141,11 +115,6 @@ placeholder
   }
   .touch-bouton.actif { background: radial-gradient(circle at 32% 28%, rgba(255,255,255,0.55) 0%, rgba(20,14,10,0.75) 72%); }
   .touch-bouton-saut { width: 68px; height: 68px; font-size: 26px; }
-  .hint {
-    margin-top: 10px;
-    font-size: 12.5px;
-    color: #cfc3ef;
-  }
   .donjon-hud {
     font-size: 13px;
     line-height: 1.5;
@@ -1200,7 +1169,6 @@ placeholder
      le jeu proprement dit (header + .layout, voir la règle body ci-dessous)
      tant qu'on n'a pas cliqué "Jouer" — le WebSocket n'est ouvert qu'à ce
      moment-là (voir connecter() côté JS). */
-  body.mode-accueil header,
   body.mode-accueil .layout,
   body.mode-accueil .touch-controls { display: none !important; }
   .ecran-accueil { display: none; }
@@ -1824,11 +1792,6 @@ placeholder
   </div>
 </div>
 
-<header>
-  <h1>Vert-Hige</h1>
-  <p>Prototype web du platformer multijoueur Les Royaumes Brisés. Flèches pour bouger et sauter, A/Z/E pour les sorts, R pour l'ultime.</p>
-</header>
-
 <div class="layout">
   <div class="stage">
     <div class="stage-frame-wrap" id="stage-frame-wrap">
@@ -2215,7 +2178,6 @@ placeholder
       </div>
     </div>
 
-    <p class="hint">← → pour se déplacer · Espace / ↑ pour sauter · A / Z / E pour les sorts · R pour l'ultime · F = ramasser · C = fiche de personnage · I = inventaire · clic = sort A</p>
   </div>
 </div>
 
@@ -3146,17 +3108,26 @@ canvas.addEventListener("mousedown", () => { touches.a = true; envoyerInput(); }
 canvas.addEventListener("mouseup", () => { touches.a = false; envoyerInput(); });
 canvas.addEventListener("mouseleave", () => { touches.a = false; envoyerInput(); });
 
-// --- Mise à l'échelle responsive (voir la note CSS sur .stage-frame-wrap) --
+// --- Plein écran responsive (voir la note CSS sur .layout/.stage-frame-wrap)
 // `.stage-frame` garde sa résolution native 1280×600 ; seul un
-// transform:scale() change, calculé à partir de la largeur RÉELLEMENT
-// disponible pour `.stage-frame-wrap` (qui, elle, suit les règles CSS
-// normales — flex/max-width — comme le faisait canvas{width:100%} avant).
+// transform:scale() change, calculé à partir du plus petit des deux rapports
+// largeur/hauteur DISPONIBLES SUR TOUT LE VIEWPORT (.layout occupe 100vw ×
+// 100dvh) — jamais le seul ratio largeur comme avant le passage en plein
+// écran, sous peine de déborder verticalement sur un écran étroit et haut
+// (téléphone en portrait, le format qui compte le plus pour le portage
+// mobile). `.stage-frame-wrap` est dimensionnée exactement à la taille mise
+// à l'échelle puis centrée par le flex de `.layout` — un bandeau de fond
+// comble le reste plutôt qu'un rognage.
 function redimensionnerScene() {
   const wrap = document.getElementById("stage-frame-wrap");
   const frame = document.getElementById("stage-frame");
   if (!wrap || !frame) return;
-  const echelle = wrap.clientWidth / 1280;
+  const layout = wrap.parentElement.parentElement; // .stage-frame-wrap > .stage > .layout
+  const largeurDispo = layout.clientWidth;
+  const hauteurDispo = layout.clientHeight;
+  const echelle = Math.min(largeurDispo / 1280, hauteurDispo / 600);
   frame.style.transform = `scale(${echelle})`;
+  wrap.style.width = `${Math.round(1280 * echelle)}px`;
   wrap.style.height = `${Math.round(600 * echelle)}px`;
 }
 window.addEventListener("resize", redimensionnerScene);
