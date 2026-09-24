@@ -247,10 +247,23 @@ const MONSTRES_CONFIG = {
   },
 };
 
+// Compteur global : garantit un id UNIQUE par monstre. L'ancien id dérivé de
+// `type` + position de plateforme (`mob-${type}-${x}`) collisionnait dès que
+// deux monstres du même type se retrouvaient sur la même plateforme —
+// notamment dans les biomes (genererZoneBiome), où la plateforme de chaque
+// monstre est tirée au hasard AVEC remise parmi les plateformes surélevées :
+// deux monstres partageant alors le même id, le client (qui indexe le hp
+// précédent par id, voir hpMonstresPrecedents/detecterImpacts côté client)
+// comparait le hp de l'un à celui de l'autre à chaque tick dès qu'ils
+// avaient des PV différents, ce qui produisait un nombre de dégâts flottant
+// erroné en continu (à l'infini, jamais juste une fois) sur l'un des deux —
+// bug reproduit sur un monstre de Crêtes d'Ambre.
+let prochainMonstreId = 1;
+
 function creerMonstre(type, plateforme) {
   const cfg = MONSTRES_CONFIG[type];
   const monstre = {
-    id: `mob-${type}-${Math.round(plateforme.x)}`,
+    id: `mob-${type}-${prochainMonstreId++}`,
     type,
     x: plateforme.x + plateforme.width / 2 - cfg.largeur / 2,
     y: plateforme.y - cfg.hauteur,
@@ -1530,9 +1543,20 @@ function genererZoneBiome(biome, indexSeed) {
     lianes: indexSeed % 2 === 0 ? [{ x: Math.round(largeur * (0.35 + rng() * 0.3)), y: 260, hauteur: 260 }] : [],
   };
 
+  // Plateformes mélangées (Fisher-Yates, seed partagée avec le reste de la
+  // génération pour un layout stable) plutôt qu'un tirage avec remise : deux
+  // monstres sur la MÊME plateforme n'est plus qu'un problème visuel
+  // (empilement) une fois les id garantis uniques (voir creerMonstre), mais
+  // reste évitable sans coût — et évite de retomber sur le souci d'origine
+  // si `creerMonstre` redevenait un jour dérivé de la position.
+  const plateformesMelangees = plateformesSurelevees.slice();
+  for (let i = plateformesMelangees.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [plateformesMelangees[i], plateformesMelangees[j]] = [plateformesMelangees[j], plateformesMelangees[i]];
+  }
   const nbMonstres = 4 + Math.floor(rng() * 2);
   for (let i = 0; i < nbMonstres; i++) {
-    const plateforme = plateformesSurelevees[Math.floor(rng() * plateformesSurelevees.length)] || plateformes[0];
+    const plateforme = plateformesMelangees[i % plateformesMelangees.length] || plateformes[0];
     zone.monstres.push(creerMonstre(biome.typeMonstre, plateforme));
   }
   return zone;
