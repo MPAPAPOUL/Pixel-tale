@@ -146,54 +146,6 @@ placeholder
     font-size: 12.5px;
     color: #cfc3ef;
   }
-  .sidebar {
-    flex: 1 1 240px;
-    max-width: 270px;
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-  }
-  .panel {
-    background: linear-gradient(180deg, var(--panel) 0%, var(--panel-2) 100%);
-    border: 3px solid #fff;
-    box-shadow: 0 0 0 3px var(--hairline), 0 6px 16px rgba(20,10,50,0.28);
-    border-radius: 18px;
-    padding: 14px 16px;
-  }
-  .panel h2 {
-    font-family: "Baloo 2", sans-serif;
-    font-size: 15px;
-    font-weight: 700;
-    margin: 0 0 10px;
-    color: #7a5cc9;
-    border-bottom: 2px dashed var(--hairline-soft);
-    padding-bottom: 8px;
-  }
-  ul#roster {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-  ul#roster li {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 13.5px;
-  }
-  .dot {
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-    flex-shrink: 0;
-  }
-  .roster-titre {
-    color: #ffd76a;
-    font-size: 11.5px;
-    font-style: italic;
-  }
   .donjon-hud {
     font-size: 13px;
     line-height: 1.5;
@@ -979,6 +931,9 @@ placeholder
     background: rgba(255,255,255,0.05);
     border: 1px solid var(--hairline);
     font-size: 13px;
+    /* Texte clair : la modale a un fond sombre, mais héritait de --text
+       (violet très foncé, pensé pour un fond clair) — illisible dessus. */
+    color: #e6dcff;
   }
   .btn-acheter {
     flex-shrink: 0;
@@ -1653,6 +1608,32 @@ placeholder
   }
   .hud-suivi-quete-barre-remplissage { height: 100%; background: linear-gradient(90deg, #6fd19c, #a8e6c1); transition: width 0.15s ease; }
 
+  /* --- Objectifs de la carte (progression de l'Antre du Sire-Hano), posés à
+       GAUCHE de l'écran — même habillage que .hud-suivi-quetes ci-dessus
+       (même fond, même coin arrondi) pour rester cohérent visuellement,
+       teinte violette plutôt que verte pour se distinguer des quêtes au
+       premier coup d'œil. Remplace l'ancien panneau "Antre du Sire-Hano" qui
+       vivait dans la sidebar sous le jeu. */
+  .hud-suivi-donjon {
+    position: absolute;
+    top: 114px;
+    left: 14px;
+    z-index: 7;
+    width: 210px;
+    padding: 8px 10px;
+    color: #e6dcff; /* texte par défaut clair : .donjon-hud (voir plus haut) a été pensé pour un fond clair */
+    background: rgba(20,14,10,0.55);
+    border: 1px solid #8a4fc7;
+    border-radius: 10px;
+  }
+  .hud-suivi-donjon-titre {
+    font-family: "Baloo 2", sans-serif;
+    font-size: 12.5px;
+    font-weight: 700;
+    color: #f0d9a0;
+    margin-bottom: 6px;
+  }
+
   /* --- Icône aide / contrôles (à côté de la fiche de personnage) --------- */
   .icone-aide {
     position: absolute;
@@ -1884,6 +1865,17 @@ placeholder
           <div class="hud-suivi-quete-texte"><span id="hud-suivi-quete-2-texte"></span><span id="hud-suivi-quete-2-chiffres"></span></div>
           <div class="hud-suivi-quete-barre-fond"><div class="hud-suivi-quete-barre-remplissage" id="hud-suivi-quete-2-barre"></div></div>
         </div>
+      </div>
+
+      <!-- Objectifs de la carte (progression de l'Antre du Sire-Hano) : même
+           style que le suivi de quêtes ci-dessus, mais posé à GAUCHE de
+           l'écran plutôt que dans les panneaux qui s'empilaient sous le jeu
+           en dessous d'une certaine largeur. Toujours visible, pas de clic
+           dessus (pas de panneau détaillé à ouvrir, contrairement aux
+           quêtes) — voir mettreAJourHUDDonjon. -->
+      <div class="hud-suivi-donjon" id="hud-suivi-donjon">
+        <div class="hud-suivi-donjon-titre">Antre du Sire-Hano</div>
+        <div id="donjon-hud" class="donjon-hud"></div>
       </div>
 
       <!-- Icône réglages : sous l'icône téléporteur, toujours visible. -->
@@ -2138,24 +2130,6 @@ placeholder
     </div>
 
     <p class="hint">← → pour se déplacer · Espace / ↑ pour sauter · A / Z / E pour les sorts · R pour l'ultime · F = ramasser · C = fiche de personnage · I = inventaire · clic = sort A</p>
-  </div>
-
-  <div class="sidebar">
-    <div class="panel">
-      <h2>Aventuriers présents</h2>
-      <ul id="roster"></ul>
-    </div>
-    <div class="panel">
-      <h2>Antre du Sire-Hano</h2>
-      <div id="donjon-hud" class="donjon-hud"></div>
-    </div>
-    <div class="panel">
-      <h2>Ton pseudo</h2>
-      <div class="rename-row">
-        <input id="rename-input" type="text" maxlength="20" placeholder="Nouveau nom...">
-        <button id="btn-rename">OK</button>
-      </div>
-    </div>
   </div>
 </div>
 
@@ -3159,8 +3133,8 @@ function render() {
   dessinerToastHautFait();
   dessinerToastConnexion();
   dessinerToastDragon();
+  avancerFileToasts();
 
-  mettreAJourRoster();
   mettreAJourSortsHUD();
   mettreAJourHUDDonjon();
   mettreAJourIconeSortieDonjon();
@@ -3911,6 +3885,60 @@ function dessinerMaisonnette(x, y) {
 // réunie — chaque joueur qui la franchit obtient sa PROPRE instance de
 // l'arène. Côté Antre, le retour se fait via l'icône de porte du HUD (haut
 // droit de l'écran), voir mettreAJourIconeSortieDonjon().
+
+// Bannière (banderole) affichée au-dessus des portes de donjon : le nom du
+// lieu était auparavant écrit en clair par-dessus le décor (ciel, nuages...),
+// peu lisible selon la zone du ciel derrière — demande explicite de le
+// rendre lisible avec un vrai support. `lignes` est un tableau de
+// { texte, font, couleur }, empilées du haut vers le bas ; `centreX` et
+// `yBase` positionnent le BAS de la bannière (juste au-dessus du cadre de la
+// porte, comme l'ancien texte).
+function dessinerBanniereTexte(centreX, yBase, lignes) {
+  ctx.save();
+  ctx.textAlign = "center";
+  let largeurMax = 0;
+  for (const ligne of lignes) {
+    ctx.font = ligne.font;
+    largeurMax = Math.max(largeurMax, ctx.measureText(ligne.texte).width);
+  }
+  const paddingX = 14;
+  const hauteurLigne = 17;
+  const largeurBanniere = largeurMax + paddingX * 2;
+  const hauteurBanniere = lignes.length * hauteurLigne + 8;
+  const hautBanniere = yBase - hauteurBanniere;
+  const demiLargeur = largeurBanniere / 2;
+  const pointe = 8;
+
+  // Pointes en fanion de part et d'autre du corps (silhouette de banderole).
+  ctx.fillStyle = "rgba(18,12,10,0.82)";
+  ctx.strokeStyle = "#c9a24b";
+  ctx.lineWidth = 2;
+  for (const sens of [-1, 1]) {
+    ctx.beginPath();
+    ctx.moveTo(centreX + sens * demiLargeur, hautBanniere);
+    ctx.lineTo(centreX + sens * (demiLargeur + pointe), hautBanniere + hauteurBanniere / 2);
+    ctx.lineTo(centreX + sens * demiLargeur, hautBanniere + hauteurBanniere);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+  }
+
+  // Corps principal (rectangle arrondi), par-dessus les pointes pour une
+  // jointure propre.
+  arrondiRect(centreX - demiLargeur, hautBanniere, largeurBanniere, hauteurBanniere, 5);
+  ctx.fill();
+  ctx.stroke();
+
+  let y = hautBanniere + hauteurLigne - 3;
+  for (const ligne of lignes) {
+    ctx.font = ligne.font;
+    ctx.fillStyle = ligne.couleur;
+    ctx.fillText(ligne.texte, centreX, y);
+    y += hauteurLigne;
+  }
+  ctx.restore();
+}
+
 function dessinerPorteDonjon() {
   const donjonState = state.donjon;
   if (!donjonState) return;
@@ -4009,13 +4037,10 @@ function dessinerPorteDonjon() {
 
     // Fronton + décompte des fragments, au-dessus de la porte.
     const centreX = x;
-    const y = hautY - cadreEp - 14;
-    ctx.fillStyle = "#e7c98a";
-    ctx.font = "700 13px 'Baloo 2', sans-serif";
-    ctx.textAlign = "center";
-    ctx.fillText("Antre du Sire-Hano", centreX, y);
-    ctx.font = "600 12px 'Work Sans', sans-serif";
-    ctx.fillText(`Clé de groupe : ${donjonState.fragments} / ${donjonState.fragmentsRequis} fragments`, centreX, y + 18);
+    dessinerBanniereTexte(centreX, hautY - cadreEp - 6, [
+      { texte: "Antre du Sire-Hano", font: "700 13px 'Baloo 2', sans-serif", couleur: "#e7c98a" },
+      { texte: `Clé de groupe : ${donjonState.fragments} / ${donjonState.fragmentsRequis} fragments`, font: "600 12px 'Work Sans', sans-serif", couleur: "#e7c98a" },
+    ]);
     return;
   }
 
@@ -4035,10 +4060,9 @@ function dessinerPorteDonjon() {
     ctx.lineTo(x, hautY + hauteurPorte - 6);
     ctx.stroke();
 
-    ctx.fillStyle = "#cdbfa0";
-    ctx.font = "600 12px 'Work Sans', sans-serif";
-    ctx.textAlign = "center";
-    ctx.fillText("Antre du Sire-Hano — refermée", x, hautY - cadreEp - 10);
+    dessinerBanniereTexte(x, hautY - cadreEp - 2, [
+      { texte: "Antre du Sire-Hano — refermée", font: "600 12px 'Work Sans', sans-serif", couleur: "#cdbfa0" },
+    ]);
     return;
   }
 
@@ -4056,10 +4080,9 @@ function dessinerPorteDonjon() {
     ctx.stroke();
   }
 
-  ctx.fillStyle = "#e7c98a";
-  ctx.font = "700 13px 'Baloo 2', sans-serif";
-  ctx.textAlign = "center";
-  ctx.fillText("⚔️ Antre du Sire-Hano — entrez", x, hautY - cadreEp - 10);
+  dessinerBanniereTexte(x, hautY - cadreEp - 2, [
+    { texte: "⚔️ Antre du Sire-Hano — entrez", font: "700 13px 'Baloo 2', sans-serif", couleur: "#e7c98a" },
+  ]);
 }
 
 // Un battant de porte en bois sombre, planches verticales + cercles de fer
@@ -4186,13 +4209,10 @@ function dessinerPorteTroneAmbre() {
       ctx.stroke();
     }
 
-    const y = hautY - cadreEp - 14;
-    ctx.fillStyle = "#e7c98a";
-    ctx.font = "700 13px 'Baloo 2', sans-serif";
-    ctx.textAlign = "center";
-    ctx.fillText("Salle du Trône", centreX, y);
-    ctx.font = "600 12px 'Work Sans', sans-serif";
-    ctx.fillText(`Entrée : ${salle.prix} 🪙 (tu as ${state.or || 0})`, centreX, y + 18);
+    dessinerBanniereTexte(centreX, hautY - cadreEp - 6, [
+      { texte: "Salle du Trône", font: "700 13px 'Baloo 2', sans-serif", couleur: "#e7c98a" },
+      { texte: `Entrée : ${salle.prix} 🪙 (tu as ${state.or || 0})`, font: "600 12px 'Work Sans', sans-serif", couleur: "#e7c98a" },
+    ]);
     return;
   }
 
@@ -4209,10 +4229,9 @@ function dessinerPorteTroneAmbre() {
     ctx.stroke();
   }
 
-  ctx.fillStyle = "#e7c98a";
-  ctx.font = "700 13px 'Baloo 2', sans-serif";
-  ctx.textAlign = "center";
-  ctx.fillText(`👑 Salle du Trône — entrez (${salle.prix} 🪙)`, centreX, hautY - cadreEp - 10);
+  dessinerBanniereTexte(centreX, hautY - cadreEp - 2, [
+    { texte: `👑 Salle du Trône — entrez (${salle.prix} 🪙)`, font: "700 13px 'Baloo 2', sans-serif", couleur: "#e7c98a" },
+  ]);
 }
 
 // Décor intérieur de la Salle du Trône : sol/murs de pierre ambrée + un
@@ -5544,20 +5563,6 @@ function arrondiRect(x, y, w, h, r) {
   ctx.closePath();
 }
 
-function mettreAJourRoster() {
-  const ul = document.getElementById("roster");
-  ul.innerHTML = "";
-  for (const p of state.players) {
-    const li = document.createElement("li");
-    const statut = p.alive ? `${p.hp}/${p.hpMax} PV · ${p.mana}/${p.manaMax} PM` : "K.O.";
-    const niveau = p.niveau ? ` · Nv.${p.niveau}` : "";
-    const titre = p.titre ? `<span class="roster-titre">« ${escapeHtml(p.titre)} »</span> ` : "";
-    li.innerHTML = `<span class="dot" style="background:${p.couleur}"></span>
-      <span>${titre}${escapeHtml(p.pseudo)}${p.id === selfId ? " (toi)" : ""}${niveau} — ${statut}</span>`;
-    ul.appendChild(li);
-  }
-}
-
 // Icônes cohérentes par classe/touche, à la place du nom du sort (peu
 // lisible en petit) — une seule barre de sort est jamais affichée à la
 // fois (celle de sa propre classe), donc pas besoin d'unicité inter-classes.
@@ -6424,7 +6429,9 @@ function verifierNouveauLoot() {
   const items = [info, ...(loot.bundle || []).map((t) => TYPES_ARMES[t]).filter(Boolean)];
   const noms = items.map((i) => `${i.emoji} ${i.label}`).join(" + ");
   const texte = items.length > 1 ? `${noms} récupérés !` : `${noms} récupéré(e) !`;
-  toastLoot = { texte, debut: performance.now(), legendaire: !!loot.legendaire, mythique: !!loot.mythique };
+  const legendaire = !!loot.legendaire;
+  const mythique = !!loot.mythique;
+  fileToast(() => { toastLoot = { texte, debut: performance.now(), legendaire, mythique }; });
 }
 
 function dessinerToastLoot() {
@@ -6491,8 +6498,10 @@ function verifierNouvelleMonteeDeNiveau() {
   const info = state.monteeDeNiveau;
   if (!info || info.niveau === dernierNiveauToastAffiche) return;
   dernierNiveauToastAffiche = info.niveau;
-  toastNiveau = { niveau: info.niveau, debut: performance.now() };
-  declencherSecousse(6); // petit "pop" — nettement plus discret qu'un coup encaissé
+  fileToast(() => {
+    toastNiveau = { niveau: info.niveau, debut: performance.now() };
+    declencherSecousse(6); // petit "pop" — nettement plus discret qu'un coup encaissé
+  });
 }
 
 function dessinerToastNiveau() {
@@ -6534,8 +6543,11 @@ let dragonNoirPhasePrecedente = null;
 let dragonNoirVaincuPrecedent = false;
 let toastDragon = null; // { texte, sousTexte, couleur, debut }
 
-function declencherToastDragon(texte, sousTexte, couleur) {
-  toastDragon = { texte, sousTexte, couleur: couleur || "#ff9a4a", debut: performance.now() };
+function declencherToastDragon(texte, sousTexte, couleur, secousse) {
+  fileToast(() => {
+    toastDragon = { texte, sousTexte, couleur: couleur || "#ff9a4a", debut: performance.now() };
+    if (secousse) declencherSecousse(secousse);
+  });
 }
 
 function verifierEvenementsDragon() {
@@ -6543,12 +6555,10 @@ function verifierEvenementsDragon() {
   if (!dragon) return;
 
   if (dragonNoirPhasePrecedente !== null && dragon.phase === 2 && dragonNoirPhasePrecedente === 1 && !dragon.vaincu) {
-    declencherToastDragon("LE DRAGON NOIR SE TRANSFORME !", "Forme humanoïde — sorts identiques, plus forts et plus rapides", "#ff5a3a");
-    declencherSecousse(12);
+    declencherToastDragon("LE DRAGON NOIR SE TRANSFORME !", "Forme humanoïde — sorts identiques, plus forts et plus rapides", "#ff5a3a", 12);
   }
   if (!dragonNoirVaincuPrecedent && dragon.vaincu) {
-    declencherToastDragon("LE DRAGON NOIR EST VAINCU !", "La Couronne d'Orage retrouve le calme…", "#9fe3ff");
-    declencherSecousse(10);
+    declencherToastDragon("LE DRAGON NOIR EST VAINCU !", "La Couronne d'Orage retrouve le calme…", "#9fe3ff", 10);
   }
   if (dragonNoirVaincuPrecedent && !dragon.vaincu && dragon.respawnRestant === 0) {
     declencherToastDragon("Le Dragon Noir est réapparu", "Couronne d'Orage", "#c78a4f");
@@ -6590,17 +6600,6 @@ function dessinerToastDragon() {
     ctx.fillText(toastDragon.sousTexte, canvas.width / 2, y + 24);
   }
   ctx.restore();
-}
-
-document.getElementById("btn-rename").addEventListener("click", envoyerRenommage);
-document.getElementById("rename-input").addEventListener("keydown", (e) => {
-  if (e.key === "Enter") envoyerRenommage();
-});
-function envoyerRenommage() {
-  const input = document.getElementById("rename-input");
-  const nom = input.value.trim();
-  if (nom) envoyer({ type: "rename", name: nom });
-  input.value = "";
 }
 
 // --- Envoi du chat ---------------------------------------------------------
@@ -7207,8 +7206,10 @@ function verifierNouveauHautFait() {
   const info = state.hautFait;
   if (!info || info.nom === dernierHautFaitToastAffiche) return;
   dernierHautFaitToastAffiche = info.nom;
-  toastHautFait = { nom: info.nom, titre: info.titre, debut: performance.now() };
-  declencherSecousse(5);
+  fileToast(() => {
+    toastHautFait = { nom: info.nom, titre: info.titre, debut: performance.now() };
+    declencherSecousse(5);
+  });
 }
 
 function dessinerToastHautFait() {
@@ -7319,7 +7320,9 @@ function verifierNouvelleRecompenseConnexion() {
   const info = state.perso && state.perso.recompenseConnexion;
   if (!info || info.serie === derniereSerieToastAffichee) return;
   derniereSerieToastAffichee = info.serie;
-  toastConnexion = { jourCycle: info.jourCycle, or: info.or, xp: info.xp, debut: performance.now() };
+  fileToast(() => {
+    toastConnexion = { jourCycle: info.jourCycle, or: info.or, xp: info.xp, debut: performance.now() };
+  });
 }
 
 function dessinerToastConnexion() {
@@ -7356,6 +7359,30 @@ function dessinerToastConnexion() {
   ctx.fillStyle = "#ffd76a";
   ctx.fillText(recompense, canvas.width / 2, y + 22);
   ctx.restore();
+}
+
+// --- File d'attente des toasts ---------------------------------------------
+// Les 5 toasts ci-dessus (loot, niveau, haut fait, dragon, connexion)
+// partagent tous la même zone de l'écran : sans file d'attente, deux
+// événements simultanés (ex. montée de niveau + victoire sur un boss)
+// s'affichaient superposés. Chaque déclencheur passe par fileToast() :
+// l'activation (celle qui fixe `debut` et démarre donc le décompte
+// d'affichage) n'a lieu immédiatement que si aucun toast n'est déjà affiché,
+// sinon elle est mise en attente et avancerFileToasts() (appelée juste après
+// les 5 dessinerToastX() dans render()) la déclenche dès que la place se
+// libère. La détection de nouveauté elle-même (dernierXToastAffiche = ...)
+// reste immédiate, pour ne jamais rater un événement même si son affichage
+// est différé.
+let toastFileAttente = [];
+function unToastEstActif() {
+  return !!(toastLoot || toastNiveau || toastHautFait || toastDragon || toastConnexion);
+}
+function fileToast(activer) {
+  if (unToastEstActif()) toastFileAttente.push(activer);
+  else activer();
+}
+function avancerFileToasts() {
+  if (!unToastEstActif() && toastFileAttente.length) toastFileAttente.shift()();
 }
 </script>
 </body>

@@ -129,11 +129,13 @@ const CLASSES = {
     hpMax: 80,
     manaMax: 80,
     manaRegen: 10,
+    // decalageY : remonte le point de départ des flèches de 2px par rapport
+    // au centre du joueur (demande explicite, elles partaient trop bas).
     attaques: {
-      a: { nom: "Tir rapide", type: "projectile", degats: 9, cooldown: 0.35, vitesse: 620, rayon: 5, porteeMax: 650, coutMana: 6 },
-      z: { nom: "Tir puissant", type: "projectile", degats: 20, cooldown: 1.0, vitesse: 480, rayon: 7, porteeMax: 700, coutMana: 16 },
-      e: { nom: "Tir perçant", type: "projectile", degats: 14, cooldown: 1.4, vitesse: 550, rayon: 6, porteeMax: 750, transperce: true, coutMana: 20 },
-      r: { nom: "Volée de flèches", type: "volee", degats: 14, cooldown: 8, vitesse: 620, rayon: 6, porteeMax: 700, nombre: 5, ecartY: 12, coutMana: 40 },
+      a: { nom: "Tir rapide", type: "projectile", degats: 9, cooldown: 0.35, vitesse: 620, rayon: 5, porteeMax: 650, coutMana: 6, decalageY: -2 },
+      z: { nom: "Tir puissant", type: "projectile", degats: 20, cooldown: 1.0, vitesse: 480, rayon: 7, porteeMax: 700, coutMana: 16, decalageY: -2 },
+      e: { nom: "Tir perçant", type: "projectile", degats: 14, cooldown: 1.4, vitesse: 550, rayon: 6, porteeMax: 750, transperce: true, coutMana: 20, decalageY: -2 },
+      r: { nom: "Volée de flèches", type: "volee", degats: 14, cooldown: 8, vitesse: 620, rayon: 6, porteeMax: 700, nombre: 5, ecartY: 12, coutMana: 40, decalageY: -2 },
     },
   },
   krix: {
@@ -205,6 +207,8 @@ const MONSTRES_CONFIG = {
     couleur: "#d99a3f",
     largeur: 20, // sprite plus haut que large (ratio moyen ≈0.78) — était 26 (carré)
     hauteur: 26,
+    hitboxLargeur: 40, // zone de collision doublée (voir hitboxMonstre) — le sprite garde sa taille ci-dessus, trop petit pour viser vu sa vitesse erratique
+    hitboxHauteur: 52,
     vitesse: 140, // rapide et erratique
     hpMax: 14,
     degatsContact: 5,
@@ -940,7 +944,19 @@ function creerEntiteSireHano(phaseIndex, xCentre) {
     cooldowns: { melee: 1, volee: 2.5, aoe: 4 },
     attaqueAnimRestant: 0,
     aoeEnAttente: null, // { x, y, rayon, degats, tempsRestant, telegrapheMax }
+    // Phase 3 ("Dernière réplique") : hitbox étendue de 2px vers le haut —
+    // demande explicite, la silhouette réduite (échelle 0.62) la rendait trop
+    // dure à toucher par le dessus. Purement une extension de collision, la
+    // taille du sprite (largeur/hauteur ci-dessus) ne change pas.
+    hitboxSupHaut: phaseIndex === 2 ? 2 : 0,
   };
+}
+
+// Rectangle de collision d'une entité de Sire-Hano — voir hitboxSupHaut
+// ci-dessus (uniquement non-nul en phase 3).
+function hitboxEntiteSireHano(entite) {
+  const sup = entite.hitboxSupHaut || 0;
+  return { x: entite.x, y: entite.y - sup, largeur: entite.largeur, hauteur: entite.hauteur + sup };
 }
 
 // Démarre (ou relance à la phase suivante) le combat de Sire-Hano pour une
@@ -1560,16 +1576,18 @@ function genererZoneVillage() {
         x: 300,
         y: 552,
         dialogue: ["Envie d'un peu d'acier neuf ?", "Tout ce que je vends a déjà sauvé une vie. La mienne, surtout."],
+        // Prix x2 (demande explicite) par rapport aux valeurs d'origine
+        // (40/55/25).
         boutique: [
-          { item: "epee", label: "Épée courte", prix: 40 },
-          { item: "arc", label: "Arc simple", prix: 40 },
-          { item: "baton", label: "Bâton noueux", prix: 40 },
-          { item: "armureT1", label: "Cuirasse rustique", prix: 55 },
-          { item: "casque", label: "Casque cabossé", prix: 25 },
-          { item: "jambieres", label: "Jambières rapiécées", prix: 25 },
-          { item: "anneau", label: "Anneau terni", prix: 25 },
-          { item: "bottes", label: "Bottes usées", prix: 25 },
-          { item: "bracelet", label: "Bracelet simple", prix: 25 },
+          { item: "epee", label: "Épée courte", prix: 80 },
+          { item: "arc", label: "Arc simple", prix: 80 },
+          { item: "baton", label: "Bâton noueux", prix: 80 },
+          { item: "armureT1", label: "Cuirasse rustique", prix: 110 },
+          { item: "casque", label: "Casque cabossé", prix: 50 },
+          { item: "jambieres", label: "Jambières rapiécées", prix: 50 },
+          { item: "anneau", label: "Anneau terni", prix: 50 },
+          { item: "bottes", label: "Bottes usées", prix: 50 },
+          { item: "bracelet", label: "Bracelet simple", prix: 50 },
         ],
       },
       {
@@ -2253,6 +2271,22 @@ function rectanglesSeChevauchent(x1, y1, w1, h1, x2, y2, w2, h2) {
   return x1 < x2 + w2 && x1 + w1 > x2 && y1 < y2 + h2 && y1 + h1 > y2;
 }
 
+// Rectangle de collision utilisé quand un JOUEUR touche un monstre (mêlée,
+// charge, projectile) — distinct de la taille visuelle du sprite (cfg.largeur/
+// hauteur) pour permettre d'agrandir la zone où un coup compte sans changer
+// le rendu. Centré sur le sprite : si hitboxLargeur/hitboxHauteur ne sont pas
+// définis pour le type, retombe simplement sur la taille du sprite.
+function hitboxMonstre(m, cfg) {
+  const largeur = cfg.hitboxLargeur || cfg.largeur;
+  const hauteur = cfg.hitboxHauteur || cfg.hauteur;
+  return {
+    x: m.x - (largeur - cfg.largeur) / 2,
+    y: m.y - (hauteur - cfg.hauteur) / 2,
+    largeur,
+    hauteur,
+  };
+}
+
 function cercleRectangleSeChevauchent(cx, cy, rayon, rx, ry, rw, rh) {
   const pointProcheX = Math.max(rx, Math.min(cx, rx + rw));
   const pointProcheY = Math.max(ry, Math.min(cy, ry + rh));
@@ -2410,7 +2444,7 @@ function creerProjectile(p, attaque, degats) {
     couleur: p.couleur,
     effet: attaque.effet || "orbe", // pilote le rendu visuel côté client (voir dessinerProjectiles)
     x: p.x + (p.facing >= 0 ? JOUEUR_LARGEUR : 0),
-    y: p.y + JOUEUR_HAUTEUR / 2,
+    y: p.y + JOUEUR_HAUTEUR / 2 + (attaque.decalageY || 0),
     vx: attaque.vitesse * p.facing,
     degats,
     rayon: attaque.rayon,
@@ -2438,13 +2472,15 @@ function declencherAttaque(p, zone, touche) {
     for (const m of zone.monstres) {
       if (m.morte) continue;
       const cfgMonstre = MONSTRES_CONFIG[m.type];
-      if (rectanglesSeChevauchent(zoneX, p.y, attaque.portee, JOUEUR_HAUTEUR, m.x, m.y, cfgMonstre.largeur, cfgMonstre.hauteur)) {
+      const hb = hitboxMonstre(m, cfgMonstre);
+      if (rectanglesSeChevauchent(zoneX, p.y, attaque.portee, JOUEUR_HAUTEUR, hb.x, hb.y, hb.largeur, hb.hauteur)) {
         infligerDegatsMonstre(zone, m, degats, p.id);
       }
     }
     if (sireHanoEstCiblable(zone)) {
       for (const entite of zone.sireHano.entites) {
-        if (rectanglesSeChevauchent(zoneX, p.y, attaque.portee, JOUEUR_HAUTEUR, entite.x, entite.y, entite.largeur, entite.hauteur)) {
+        const hbEntite = hitboxEntiteSireHano(entite);
+        if (rectanglesSeChevauchent(zoneX, p.y, attaque.portee, JOUEUR_HAUTEUR, hbEntite.x, hbEntite.y, hbEntite.largeur, hbEntite.hauteur)) {
           infligerDegatsSireHano(zone, entite, degats, p.id);
         }
       }
@@ -2576,7 +2612,8 @@ function simulerCombat(dtSecondes) {
       for (const m of zone.monstres) {
         if (m.morte || p.dashDejaTouches.includes(m.id)) continue;
         const cfgMonstre = MONSTRES_CONFIG[m.type];
-        if (rectanglesSeChevauchent(p.x, p.y, JOUEUR_LARGEUR, JOUEUR_HAUTEUR, m.x, m.y, cfgMonstre.largeur, cfgMonstre.hauteur)) {
+        const hb = hitboxMonstre(m, cfgMonstre);
+        if (rectanglesSeChevauchent(p.x, p.y, JOUEUR_LARGEUR, JOUEUR_HAUTEUR, hb.x, hb.y, hb.largeur, hb.hauteur)) {
           infligerDegatsMonstre(zone, m, p.dashDegats, p.id);
           p.dashDejaTouches.push(m.id);
         }
@@ -2585,7 +2622,8 @@ function simulerCombat(dtSecondes) {
         for (const entite of zone.sireHano.entites) {
           const sentinelle = "sireHano:" + entite.id;
           if (p.dashDejaTouches.includes(sentinelle)) continue;
-          if (rectanglesSeChevauchent(p.x, p.y, JOUEUR_LARGEUR, JOUEUR_HAUTEUR, entite.x, entite.y, entite.largeur, entite.hauteur)) {
+          const hbEntite = hitboxEntiteSireHano(entite);
+          if (rectanglesSeChevauchent(p.x, p.y, JOUEUR_LARGEUR, JOUEUR_HAUTEUR, hbEntite.x, hbEntite.y, hbEntite.largeur, hbEntite.hauteur)) {
             infligerDegatsSireHano(zone, entite, p.dashDegats, p.id);
             p.dashDejaTouches.push(sentinelle);
           }
@@ -2636,7 +2674,8 @@ function simulerProjectilesJoueursZone(zone, dtSecondes) {
     for (const m of zone.monstres) {
       if (m.morte || proj.dejaTouches.includes(m.id)) continue;
       const cfgMonstre = MONSTRES_CONFIG[m.type];
-      if (cercleRectangleSeChevauchent(proj.x, proj.y, proj.rayon, m.x, m.y, cfgMonstre.largeur, cfgMonstre.hauteur)) {
+      const hb = hitboxMonstre(m, cfgMonstre);
+      if (cercleRectangleSeChevauchent(proj.x, proj.y, proj.rayon, hb.x, hb.y, hb.largeur, hb.hauteur)) {
         infligerDegatsMonstre(zone, m, proj.degats, proj.proprietaireId);
         proj.dejaTouches.push(m.id);
         if (!proj.transperce) {
@@ -2649,7 +2688,8 @@ function simulerProjectilesJoueursZone(zone, dtSecondes) {
       for (const entite of zone.sireHano.entites) {
         const sentinelle = "sireHano:" + entite.id;
         if (proj.dejaTouches.includes(sentinelle)) continue;
-        if (cercleRectangleSeChevauchent(proj.x, proj.y, proj.rayon, entite.x, entite.y, entite.largeur, entite.hauteur)) {
+        const hbEntite = hitboxEntiteSireHano(entite);
+        if (cercleRectangleSeChevauchent(proj.x, proj.y, proj.rayon, hbEntite.x, hbEntite.y, hbEntite.largeur, hbEntite.hauteur)) {
           infligerDegatsSireHano(zone, entite, proj.degats, proj.proprietaireId);
           proj.dejaTouches.push(sentinelle);
           if (!proj.transperce) { stoppe = true; }
