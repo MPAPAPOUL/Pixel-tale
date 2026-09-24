@@ -703,6 +703,25 @@ const GEMMES_VICTOIRE_SIRE_HANO = 5;
 const GEMMES_VICTOIRE_DRAGON_NOIR = 8; // le boss le plus costaud du jeu récompense un peu plus
 const GEMMES_VICTOIRE_CHEVALIER_NOIR = 8; // même palier de récompense que le Dragon Noir
 
+// Boutique à gemmes (voir l'icône dédiée côté client, à côté du
+// téléporteur) : donne enfin un usage aux gemmes (jusqu'ici jamais
+// dépensées nulle part) — de l'équipement légendaire GARANTI en échange,
+// alternative fiable au tirage aléatoire des boss (5% par pièce). Mêmes
+// clés que TYPES_ARMES côté client (revalidées ici, jamais fait confiance
+// au prix envoyé par le client). Le mythique reste volontairement absent
+// de cette liste : encore exclusif au coup de grâce sur Sire-Hano.
+const BOUTIQUE_GEMMES = [
+  { item: "epeeLegendaire", prix: 35 },
+  { item: "arcLegendaire", prix: 35 },
+  { item: "batonLegendaire", prix: 35 },
+  { item: "armureLegendaire", prix: 45 },
+  { item: "casqueLegendaire", prix: 25 },
+  { item: "jambieresLegendaire", prix: 25 },
+  { item: "anneauLegendaire", prix: 25 },
+  { item: "bottesLegendaire", prix: 25 },
+  { item: "braceletLegendaire", prix: 25 },
+];
+
 function gainerXp(p, montant) {
   if (!montant || montant <= 0) return;
   p.xp += montant;
@@ -1045,6 +1064,20 @@ function creerDragonNoir(zone) {
   };
 }
 
+// Régénération passive des boss (Dragon Noir, Chevalier Noir, chaque entité
+// de Sire-Hano) : 10% de leurs PV max par seconde, mais seulement s'ils n'ont
+// reçu aucun coup depuis au moins 3 secondes — demande explicite. Laisse un
+// répit à un groupe qui décroche un instant sans permettre de vider un boss
+// à petits coups puis de le laisser reposer indéfiniment entre deux passages.
+const BOSS_REGEN_DELAI_SANS_COUP = 3; // secondes
+const BOSS_REGEN_RATIO_PAR_SECONDE = 0.10; // 10% des PV max par seconde
+function appliquerRegenBoss(entite, dtSecondes) {
+  if (entite.hp <= 0 || entite.hp >= entite.hpMax) return;
+  const depuisDernierCoup = (Date.now() - (entite._dernierCoupTs || 0)) / 1000;
+  if (depuisDernierCoup < BOSS_REGEN_DELAI_SANS_COUP) return;
+  entite.hp = Math.min(entite.hpMax, entite.hp + entite.hpMax * BOSS_REGEN_RATIO_PAR_SECONDE * dtSecondes);
+}
+
 function dragonNoirEstCiblable(zone) {
   return !!zone.dragonNoir && !zone.dragonNoir.vaincu && zone.dragonNoir.respawnRestant <= 0;
 }
@@ -1053,6 +1086,7 @@ function infligerDegatsDragonNoir(zone, degats, joueurId) {
   const dragon = zone.dragonNoir;
   if (!dragon || dragon.vaincu || dragon.invulnerableRestant > 0) return;
   dragon.hp = Math.max(0, dragon.hp - degats);
+  dragon._dernierCoupTs = Date.now();
   if (joueurId) dragon.attaquants.add(joueurId);
 
   // Transformation à 50% PV : bascule une seule fois vers la phase 2 (plus
@@ -1108,6 +1142,7 @@ function simulerDragonNoir(dtSecondes) {
     return;
   }
 
+  appliquerRegenBoss(dragon, dtSecondes);
   if (dragon.invulnerableRestant > 0) dragon.invulnerableRestant = Math.max(0, dragon.invulnerableRestant - dtSecondes);
   if (dragon.attaqueAnimRestant > 0) dragon.attaqueAnimRestant = Math.max(0, dragon.attaqueAnimRestant - dtSecondes);
   for (const touche of Object.keys(dragon.cooldowns)) {
@@ -1512,17 +1547,44 @@ for (const [id, art] of Object.entries(ART_DEDIE_PAR_BIOME)) {
   if (MONSTRES_CONFIG[id]) Object.assign(MONSTRES_CONFIG[id], art);
 }
 
+// Élément grimpable par biome (voir dessinerLianes côté client pour le
+// rendu propre à chaque `type`) — un thème cohérent avec l'ambiance de la
+// région plutôt que la même liane verte partout : liane pour les biomes
+// végétaux/humides, corde pour les biomes rocheux/arides, chaîne pour la
+// région électrique, cristal pour l'abysse lumineuse, racine pétrifiée pour
+// le jardin de pierre.
+const TYPE_GRIMPE_PAR_BIOME = {
+  "cretes-ambre": "cristal", // résine figée, aspect cristallin
+  "marais-de-suin": "liane", // demande explicite
+  "foret-chuchote": "liane",
+  "pics-verglaces": "corde",
+  "dunes-cendrees": "corde",
+  "abysses-luisantes": "cristal",
+  "jardins-petrifies": "racine",
+  "couronne-orage": "chaine",
+};
+
 // Génère la zone persistante d'un biome : plateformes procédurales (seed
 // fixe = layout stable), une poignée de monstres du type propre à la région
 // répartis sur les plateformes surélevées (jamais au sol, pour ne pas
-// bloquer le point d'arrivée du téléporteur), et — une région sur deux — une
-// liane à grimper (voir simulerPhysique) en plus des marches déjà données
-// par le relief en escalier de genererPlateformes.
+// bloquer le point d'arrivée du téléporteur), et un élément grimpable (voir
+// TYPE_GRIMPE_PAR_BIOME) qui relie la plateforme la PLUS HAUTE au sol —
+// garanti sur CHAQUE biome (avant : une région sur deux, et sans garantie de
+// réellement relier le haut au bas), en plus des marches déjà données par le
+// relief en escalier de genererPlateformes.
 function genererZoneBiome(biome, indexSeed) {
   const rng = mulberry32(1000 + indexSeed * 97);
   const largeur = 1400 + Math.floor(rng() * 260);
   const plateformes = genererPlateformes(rng, largeur, 9);
   const plateformesSurelevees = plateformes.slice(1);
+
+  // La plateforme la plus haute (y le plus petit) de tout le relief — c'est
+  // elle qu'on relie au sol, pour garantir une connexion du haut vers le bas
+  // quelle que soit la disposition tirée au hasard.
+  const plateformeSommet = plateformes.reduce((sommet, p) => (p.y < sommet.y ? p : sommet), plateformes[0]);
+  const xGrimpe = Math.round(plateformeSommet.x + plateformeSommet.width * (0.3 + rng() * 0.4));
+  const SOL_Y = 600;
+  const MARGE_BAS = 20; // s'arrête un peu avant le sol, purement esthétique
 
   const zone = {
     id: biome.id,
@@ -1540,7 +1602,12 @@ function genererZoneBiome(biome, indexSeed) {
     effets: [],
     objetsAuSol: [],
     sireHano: null,
-    lianes: indexSeed % 2 === 0 ? [{ x: Math.round(largeur * (0.35 + rng() * 0.3)), y: 260, hauteur: 260 }] : [],
+    lianes: [{
+      x: xGrimpe,
+      y: plateformeSommet.y,
+      hauteur: SOL_Y - plateformeSommet.y - MARGE_BAS,
+      type: TYPE_GRIMPE_PAR_BIOME[biome.id] || "liane",
+    }],
   };
 
   // Plateformes mélangées (Fisher-Yates, seed partagée avec le reste de la
@@ -1791,6 +1858,7 @@ function infligerDegatsChevalierNoir(zone, degats, joueurId) {
   const cn = zone.chevalierNoir;
   if (!cn || cn.vaincu || cn.invulnerableRestant > 0) return;
   cn.hp = Math.max(0, cn.hp - degats);
+  cn._dernierCoupTs = Date.now();
   cn.toucheRestant = 0.22; // pose de blessure brève côté client
   if (joueurId) cn.attaquants.add(joueurId);
 
@@ -1827,6 +1895,7 @@ function simulerChevalierNoir(dtSecondes) {
     return;
   }
 
+  appliquerRegenBoss(cn, dtSecondes);
   if (cn.invulnerableRestant > 0) cn.invulnerableRestant = Math.max(0, cn.invulnerableRestant - dtSecondes);
   if (cn.attaqueAnimRestant > 0) cn.attaqueAnimRestant = Math.max(0, cn.attaqueAnimRestant - dtSecondes);
   if (cn.toucheRestant > 0) cn.toucheRestant = Math.max(0, cn.toucheRestant - dtSecondes);
@@ -1958,7 +2027,12 @@ function teleporterVers(p, destinationId) {
   }
   p.zone = destinationId;
   p.x = 60;
-  p.y = 40;
+  // Au sol (y=600 partout, voir genererPlateformes/genererZoneVillage/etc.)
+  // plutôt que tout en haut de l'écran (y=40) : le joueur retombait certes
+  // au sol par la gravité, mais atterrissait parfois sur une plateforme
+  // surélevée plutôt que sur le sol si une plateforme se trouvait juste en
+  // dessous du point d'arrivée.
+  p.y = 600 - JOUEUR_HAUTEUR;
   p.vx = 0;
   p.vy = 0;
   p.invulnerableRestant = 1.0;
@@ -2298,15 +2372,29 @@ function rectanglesSeChevauchent(x1, y1, w1, h1, x2, y2, w2, h2) {
 // Rectangle de collision utilisé quand un JOUEUR touche un monstre (mêlée,
 // charge, projectile) — distinct de la taille visuelle du sprite (cfg.largeur/
 // hauteur) pour permettre d'agrandir la zone où un coup compte sans changer
-// le rendu. Centré sur le sprite : si hitboxLargeur/hitboxHauteur ne sont pas
-// définis pour le type, retombe simplement sur la taille du sprite.
+// le rendu. Si le type définit son propre hitboxLargeur/hitboxHauteur (voir
+// fisselo, doublé dans les deux dimensions, centré), ceux-ci priment. Sinon,
+// par défaut pour TOUS les monstres (demande explicite) : +30% de hauteur
+// UNIQUEMENT VERS LE HAUT — la largeur et le bas de la hitbox restent
+// exactement ceux du sprite.
+const MULTIPLICATEUR_HITBOX_DEFAUT = 1.3;
+
 function hitboxMonstre(m, cfg) {
-  const largeur = cfg.hitboxLargeur || cfg.largeur;
-  const hauteur = cfg.hitboxHauteur || cfg.hauteur;
+  if (cfg.hitboxLargeur || cfg.hitboxHauteur) {
+    const largeur = cfg.hitboxLargeur || cfg.largeur;
+    const hauteur = cfg.hitboxHauteur || cfg.hauteur;
+    return {
+      x: m.x - (largeur - cfg.largeur) / 2,
+      y: m.y - (hauteur - cfg.hauteur) / 2,
+      largeur,
+      hauteur,
+    };
+  }
+  const hauteur = Math.round(cfg.hauteur * MULTIPLICATEUR_HITBOX_DEFAUT);
   return {
-    x: m.x - (largeur - cfg.largeur) / 2,
-    y: m.y - (hauteur - cfg.hauteur) / 2,
-    largeur,
+    x: m.x,
+    y: m.y - (hauteur - cfg.hauteur), // toute l'extension vers le haut, rien vers le bas
+    largeur: cfg.largeur,
     hauteur,
   };
 }
@@ -2377,6 +2465,7 @@ function infligerDegatsSireHano(zone, entite, degats, joueurId) {
   const boss = zone.sireHano;
   if (!boss || boss.vaincu || entite.morte || entite.invulnerableRestant > 0) return;
   entite.hp = Math.max(0, entite.hp - degats);
+  entite._dernierCoupTs = Date.now();
   if (joueurId) boss.attaquants.add(joueurId);
   if (entite.hp > 0) return;
 
@@ -2906,6 +2995,7 @@ function simulerSireHano(dtSecondes) {
 }
 
 function simulerUneEntiteSireHano(instance, entite, dtSecondes) {
+  appliquerRegenBoss(entite, dtSecondes);
   if (entite.invulnerableRestant > 0) entite.invulnerableRestant = Math.max(0, entite.invulnerableRestant - dtSecondes);
   if (entite.attaqueAnimRestant > 0) entite.attaqueAnimRestant = Math.max(0, entite.attaqueAnimRestant - dtSecondes);
   for (const touche of Object.keys(entite.cooldowns)) {
@@ -3749,6 +3839,14 @@ wss.on("connection", (ws, req) => {
           joueur.or -= offre.prix;
           joueur.inventaire[offre.item] = (joueur.inventaire[offre.item] || 0) + 1;
         }
+      }
+    } else if (message.type === "acheter_gemme") {
+      // Boutique à gemmes : accessible partout, pas besoin d'un PNJ — voir
+      // BOUTIQUE_GEMMES. Même principe de validation entièrement serveur.
+      const offre = BOUTIQUE_GEMMES.find((o) => o.item === message.item);
+      if (offre && (joueur.gemmes || 0) >= offre.prix) {
+        joueur.gemmes -= offre.prix;
+        joueur.inventaire[offre.item] = (joueur.inventaire[offre.item] || 0) + 1;
       }
     } else if (message.type === "quete_reclamer") {
       // Panneau de quêtes journalières : réclame la récompense d'une quête

@@ -659,6 +659,32 @@ placeholder
   .icone-teleporteur:active { transform: translateY(1px); filter: brightness(0.95); }
   .icone-teleporteur-symbole { font-size: 22px; filter: drop-shadow(0 0 4px rgba(110,220,255,0.6)); }
 
+  /* --- Icône boutique à gemmes (juste à côté du téléporteur) ------------- */
+  .icone-boutique-gemmes {
+    position: absolute;
+    top: 14px;
+    right: 126px;
+    z-index: 7;
+    width: 46px;
+    height: 46px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: radial-gradient(circle at 32% 28%, #3a2a4a 0%, #221a2e 65%, #130a18 100%);
+    border: 2px solid #c78aff;
+    box-shadow: 0 0 0 2px rgba(20,5,20,0.6), 0 4px 10px rgba(0,0,0,0.45), inset 0 0 8px rgba(200,140,255,0.25);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: filter 0.12s ease, transform 0.12s ease;
+  }
+  .icone-boutique-gemmes.masque { display: none; }
+  .icone-boutique-gemmes:hover { filter: brightness(1.25); transform: translateY(-1px); }
+  .icone-boutique-gemmes:active { transform: translateY(1px); filter: brightness(0.95); }
+  .icone-boutique-gemmes-symbole { font-size: 22px; filter: drop-shadow(0 0 4px rgba(200,140,255,0.6)); }
+  .modale-fantasy.modale-boutique-gemmes { width: min(92%, 420px); max-height: 82%; overflow-y: auto; text-align: left; position: relative; }
+  .modale-boutique-gemmes h2 { text-align: center; }
+
   .modale-fantasy.modale-teleporteur {
     width: min(92%, 420px);
     max-height: 82%;
@@ -743,7 +769,7 @@ placeholder
     top: 104px;
     left: 14px;
     z-index: 7;
-    width: 148px;
+    width: 172px;
     padding: 7px 9px;
     display: flex;
     flex-direction: column;
@@ -758,7 +784,20 @@ placeholder
     color: #f0d9a0;
     margin-bottom: 1px;
   }
+  .hud-vitales-ligne {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .hud-vitales-barre-label {
+    flex: 0 0 30px;
+    font-size: 9.5px;
+    font-weight: 700;
+    color: #e6dcff;
+    text-align: right;
+  }
   .hud-vitales-barre-fond {
+    flex: 1 1 auto;
     height: 7px;
     border-radius: 4px;
     background: rgba(0,0,0,0.4);
@@ -917,7 +956,7 @@ placeholder
   }
 
   /* --- Boutique du village ------------------------------------------------ */
-  .modale-fantasy.modale-boutique { width: min(92%, 420px); max-height: 82%; overflow-y: auto; text-align: left; }
+  .modale-fantasy.modale-boutique { width: min(92%, 420px); max-height: 82%; overflow-y: auto; text-align: left; position: relative; }
   .modale-boutique h2 { text-align: center; }
   .boutique-intro { font-style: italic; color: #cfc3ef; margin-bottom: 14px !important; }
   .boutique-ligne {
@@ -1639,7 +1678,7 @@ placeholder
        vivait dans la sidebar sous le jeu. */
   .hud-suivi-donjon {
     position: absolute;
-    top: 114px;
+    top: 182px; /* sous .hud-vitales (PV/Mana/XP, top:104px, ~60px de haut) — se chevauchaient tous les deux à top:104-114px */
     left: 14px;
     z-index: 7;
     width: 210px;
@@ -1950,9 +1989,9 @@ placeholder
            du centre de l'écran. -->
       <div class="hud-vitales" id="hud-vitales">
         <div class="hud-vitales-niveau" id="hud-vitales-niveau">Niveau 1</div>
-        <div class="hud-vitales-barre-fond"><div class="hud-vitales-barre-remplissage pv" id="hud-vitales-pv" style="width:100%"></div></div>
-        <div class="hud-vitales-barre-fond"><div class="hud-vitales-barre-remplissage mana" id="hud-vitales-mana" style="width:100%"></div></div>
-        <div class="hud-vitales-barre-fond"><div class="hud-vitales-barre-remplissage xp" id="hud-vitales-xp" style="width:0%"></div></div>
+        <div class="hud-vitales-ligne"><span class="hud-vitales-barre-label">PV</span><div class="hud-vitales-barre-fond"><div class="hud-vitales-barre-remplissage pv" id="hud-vitales-pv" style="width:100%"></div></div></div>
+        <div class="hud-vitales-ligne"><span class="hud-vitales-barre-label">Mana</span><div class="hud-vitales-barre-fond"><div class="hud-vitales-barre-remplissage mana" id="hud-vitales-mana" style="width:100%"></div></div></div>
+        <div class="hud-vitales-ligne"><span class="hud-vitales-barre-label">XP</span><div class="hud-vitales-barre-fond"><div class="hud-vitales-barre-remplissage xp" id="hud-vitales-xp" style="width:0%"></div></div></div>
       </div>
 
       <!-- Nom de la zone actuelle, en haut au centre. -->
@@ -2018,6 +2057,21 @@ placeholder
         </div>
       </div>
 
+      <!-- Boutique à gemmes : accessible partout (pas besoin d'un PNJ), à
+           côté du téléporteur — voir mettreAJourBoutiqueGemmes. -->
+      <button type="button" class="icone-boutique-gemmes" id="icone-boutique-gemmes" title="Boutique à gemmes">
+        <span class="icone-boutique-gemmes-symbole">💎</span>
+      </button>
+      <div class="modale-overlay masque" id="modale-boutique-gemmes">
+        <div class="modale-fantasy modale-boutique-gemmes">
+          <button type="button" class="btn-fermer-modale" id="btn-fermer-boutique-gemmes" title="Fermer">✕</button>
+          <h2>Boutique à gemmes</h2>
+          <p class="boutique-intro">Équipement légendaire garanti, contre les gemmes récoltées sur les monstres et les boss.</p>
+          <div id="liste-boutique-gemmes"></div>
+          <div class="inventaire-tooltip" id="boutique-gemmes-tooltip"></div>
+        </div>
+      </div>
+
       <!-- Boutique du village (ouverte par F près du vendeur, voir
            interactionPnjProche). -->
       <div class="modale-overlay masque" id="modale-boutique">
@@ -2026,6 +2080,7 @@ placeholder
           <h2 id="boutique-titre">Boutique</h2>
           <p class="boutique-intro" id="boutique-intro"></p>
           <div id="liste-boutique"></div>
+          <div class="inventaire-tooltip" id="boutique-tooltip"></div>
         </div>
       </div>
 
@@ -5154,31 +5209,134 @@ function dessinerObjetsAuSol() {
 
 // --- Monde étendu : lianes, PNJ du village, interaction (touche F) --------
 
+// Élément grimpable : rendu différent selon `l.type` (voir
+// TYPE_GRIMPE_PAR_BIOME côté serveur) pour rester cohérent avec l'ambiance
+// de chaque région plutôt que la même liane verte partout. "liane" (biomes
+// végétaux) reste le rendu d'origine, sert aussi de secours si un `type`
+// inconnu arrivait.
 function dessinerLianes() {
   const lianes = state.lianes || [];
   const t = performance.now();
   for (const l of lianes) {
     ctx.save();
-    ctx.strokeStyle = "#4a7a3a";
-    ctx.lineWidth = 5;
-    ctx.lineCap = "round";
-    ctx.beginPath();
-    // Un léger balancement sinusoïdal pour ne pas avoir une ligne raide.
-    for (let y = l.y; y <= l.y + l.hauteur; y += 10) {
-      const decalage = Math.sin(t / 900 + y / 40) * 3;
-      if (y === l.y) ctx.moveTo(l.x + decalage, y);
-      else ctx.lineTo(l.x + decalage, y);
-    }
-    ctx.stroke();
-    // Petites feuilles décoratives.
-    ctx.fillStyle = "#5f9a4a";
-    for (let y = l.y + 14; y < l.y + l.hauteur; y += 34) {
-      const decalage = Math.sin(t / 900 + y / 40) * 3;
-      ctx.beginPath();
-      ctx.ellipse(l.x + decalage + 6, y, 6, 3, 0.6, 0, Math.PI * 2);
-      ctx.fill();
+    if (l.type === "corde") {
+      dessinerCorde(l, t);
+    } else if (l.type === "chaine") {
+      dessinerChaine(l, t);
+    } else if (l.type === "cristal") {
+      dessinerCristalGrimpe(l, t);
+    } else if (l.type === "racine") {
+      dessinerRacine(l, t);
+    } else {
+      dessinerLiane(l, t);
     }
     ctx.restore();
+  }
+}
+
+function dessinerLiane(l, t) {
+  ctx.strokeStyle = "#4a7a3a";
+  ctx.lineWidth = 5;
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  // Un léger balancement sinusoïdal pour ne pas avoir une ligne raide.
+  for (let y = l.y; y <= l.y + l.hauteur; y += 10) {
+    const decalage = Math.sin(t / 900 + y / 40) * 3;
+    if (y === l.y) ctx.moveTo(l.x + decalage, y);
+    else ctx.lineTo(l.x + decalage, y);
+  }
+  ctx.stroke();
+  // Petites feuilles décoratives.
+  ctx.fillStyle = "#5f9a4a";
+  for (let y = l.y + 14; y < l.y + l.hauteur; y += 34) {
+    const decalage = Math.sin(t / 900 + y / 40) * 3;
+    ctx.beginPath();
+    ctx.ellipse(l.x + decalage + 6, y, 6, 3, 0.6, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+// Corde tressée (Pics Verglacés, Dunes Cendrées) : quasi rigide (léger
+// balancement, bien moins que la liane), avec des nœuds réguliers.
+function dessinerCorde(l, t) {
+  ctx.strokeStyle = "#8a6a4a";
+  ctx.lineWidth = 4;
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  for (let y = l.y; y <= l.y + l.hauteur; y += 10) {
+    const decalage = Math.sin(t / 1400 + y / 60) * 1.2;
+    if (y === l.y) ctx.moveTo(l.x + decalage, y);
+    else ctx.lineTo(l.x + decalage, y);
+  }
+  ctx.stroke();
+  ctx.fillStyle = "#5f4632";
+  for (let y = l.y + 18; y < l.y + l.hauteur; y += 40) {
+    const decalage = Math.sin(t / 1400 + y / 60) * 1.2;
+    ctx.beginPath();
+    ctx.arc(l.x + decalage, y, 4, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+// Chaîne (Couronne d'Orage) : maillons rigides + une étincelle électrique
+// qui remonte de temps en temps, pour rester dans le thème de la région.
+function dessinerChaine(l, t) {
+  ctx.strokeStyle = "#9aa3ad";
+  ctx.lineWidth = 4;
+  ctx.lineCap = "round";
+  for (let y = l.y; y < l.y + l.hauteur; y += 16) {
+    ctx.beginPath();
+    ctx.ellipse(l.x, y, 5, 8, 0, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+  const yEclair = l.y + ((t / 6) % l.hauteur);
+  ctx.strokeStyle = "rgba(255,245,180,0.85)";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(l.x - 3, yEclair - 10);
+  ctx.lineTo(l.x + 3, yEclair);
+  ctx.lineTo(l.x - 3, yEclair + 10);
+  ctx.stroke();
+}
+
+// Formation de cristal (Crêtes d'Ambre, Abysses Luisantes) : facettes fixes
+// + une lueur pulsante, pas de balancement (c'est de la roche).
+function dessinerCristalGrimpe(l, t) {
+  const pulse = 0.5 + Math.sin(t / 500) * 0.5;
+  ctx.strokeStyle = `rgba(150,200,255,${0.55 + pulse * 0.35})`;
+  ctx.fillStyle = `rgba(150,200,255,${0.25 + pulse * 0.2})`;
+  ctx.lineWidth = 3;
+  for (let y = l.y; y < l.y + l.hauteur; y += 30) {
+    ctx.beginPath();
+    ctx.moveTo(l.x, y);
+    ctx.lineTo(l.x + 7, y + 14);
+    ctx.lineTo(l.x, y + 28);
+    ctx.lineTo(l.x - 7, y + 14);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+  }
+}
+
+// Racine pétrifiée (Jardins Pétrifiés) : silhouette de liane, mais figée
+// (aucun balancement) et teintée pierre plutôt que végétale.
+function dessinerRacine(l) {
+  ctx.strokeStyle = "#7a7568";
+  ctx.lineWidth = 6;
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  for (let y = l.y; y <= l.y + l.hauteur; y += 20) {
+    const decalage = Math.sin(y / 50) * 5; // ondulation figée, fonction de y seul (pas de t)
+    if (y === l.y) ctx.moveTo(l.x + decalage, y);
+    else ctx.lineTo(l.x + decalage, y);
+  }
+  ctx.stroke();
+  ctx.fillStyle = "#8f8a7a";
+  for (let y = l.y + 10; y < l.y + l.hauteur; y += 45) {
+    const decalage = Math.sin(y / 50) * 5;
+    ctx.beginPath();
+    ctx.arc(l.x + decalage + 5, y, 3.5, 0, Math.PI * 2);
+    ctx.fill();
   }
 }
 
@@ -5812,6 +5970,10 @@ function mettreAJourIconeTeleporteur() {
   const masque = dansDonjon || dansSalleTrone;
   document.getElementById("icone-teleporteur").classList.toggle("masque", masque);
   if (masque) document.getElementById("modale-teleporteur").classList.add("masque");
+  // Boutique à gemmes : même visibilité que le téléporteur juste à côté (pas
+  // de sens en plein combat de donjon/Salle du Trône).
+  document.getElementById("icone-boutique-gemmes").classList.toggle("masque", masque);
+  if (masque) document.getElementById("modale-boutique-gemmes").classList.add("masque");
 }
 
 function mettreAJourTeleporteur() {
@@ -5893,12 +6055,41 @@ function mettreAJourBoutique(pnj) {
       const abordable = or >= offre.prix;
       const info = TYPES_ARMES[offre.item];
       return `
-        <div class="boutique-ligne">
+        <div class="boutique-ligne" data-item="${offre.item}">
           <span>${info ? htmlIconeObjet(info, "icone-inline") : "❔"} ${offre.label} — 🪙${offre.prix}</span>
           <button type="button" class="btn-acheter" data-item="${offre.item}" ${abordable ? "" : "disabled"}>Acheter</button>
         </div>`;
     })
     .join("");
+}
+
+// Tooltip stats au survol d'une ligne de la boutique — même mécanique que le
+// tooltip d'inventaire (délégation posée une fois sur le conteneur stable,
+// voir plus haut), demande explicite pour voir les stats avant d'acheter.
+{
+  const listeEl = document.getElementById("liste-boutique");
+  const tooltipEl = document.getElementById("boutique-tooltip");
+  const conteneurEl = document.querySelector(".modale-fantasy.modale-boutique");
+  listeEl.addEventListener("mouseover", (e) => {
+    const ligneEl = e.target.closest(".boutique-ligne[data-item]");
+    if (!ligneEl) return;
+    const info = TYPES_ARMES[ligneEl.dataset.item];
+    if (!info) return;
+    tooltipEl.innerHTML = `<span class="nom">${info.label}</span><span class="desc">${info.description || ""}</span>`;
+    tooltipEl.classList.toggle("legendaire", !!info.legendaire);
+    tooltipEl.classList.toggle("mythique", !!info.mythique);
+    const rectLigne = ligneEl.getBoundingClientRect();
+    const rectConteneur = conteneurEl.getBoundingClientRect();
+    tooltipEl.style.left = `${rectLigne.left - rectConteneur.left}px`;
+    tooltipEl.style.top = `${rectLigne.top - rectConteneur.top}px`;
+    tooltipEl.style.transform = "translateY(-100%) translateY(-6px)";
+    tooltipEl.classList.add("visible");
+  });
+  listeEl.addEventListener("mouseout", (e) => {
+    const ligneEl = e.target.closest(".boutique-ligne[data-item]");
+    if (!ligneEl || ligneEl.contains(e.relatedTarget)) return;
+    tooltipEl.classList.remove("visible");
+  });
 }
 
 function interactionPnjProche() {
@@ -5943,6 +6134,88 @@ setInterval(() => {
   if (modale.classList.contains("masque") || !state) return;
   const pnj = state.pnjs && state.pnjs.find((n) => n.nom === document.getElementById("boutique-titre").textContent);
   if (pnj) mettreAJourBoutique(pnj);
+}, 500);
+
+// --- Boutique à gemmes --------------------------------------------------
+// Accessible partout via son icône dédiée (pas besoin d'un PNJ, contrairement
+// à la boutique en or) — voir BOUTIQUE_GEMMES côté serveur pour la
+// validation (prix ici uniquement pour l'affichage, jamais fait confiance).
+const BOUTIQUE_GEMMES_CLIENT = [
+  { item: "epeeLegendaire", prix: 35 },
+  { item: "arcLegendaire", prix: 35 },
+  { item: "batonLegendaire", prix: 35 },
+  { item: "armureLegendaire", prix: 45 },
+  { item: "casqueLegendaire", prix: 25 },
+  { item: "jambieresLegendaire", prix: 25 },
+  { item: "anneauLegendaire", prix: 25 },
+  { item: "bottesLegendaire", prix: 25 },
+  { item: "braceletLegendaire", prix: 25 },
+];
+
+function mettreAJourBoutiqueGemmes() {
+  const conteneur = document.getElementById("liste-boutique-gemmes");
+  const gemmes = state.gemmes || 0;
+  conteneur.innerHTML = BOUTIQUE_GEMMES_CLIENT
+    .map((offre) => {
+      const abordable = gemmes >= offre.prix;
+      const info = TYPES_ARMES[offre.item];
+      return `
+        <div class="boutique-ligne" data-item="${offre.item}">
+          <span>${info ? htmlIconeObjet(info, "icone-inline") : "❔"} ${info ? info.label : offre.item} — 💎${offre.prix}</span>
+          <button type="button" class="btn-acheter" data-item="${offre.item}" ${abordable ? "" : "disabled"}>Acheter</button>
+        </div>`;
+    })
+    .join("");
+}
+
+// Tooltip stats au survol — même mécanique que les deux autres (inventaire,
+// boutique en or).
+{
+  const listeEl = document.getElementById("liste-boutique-gemmes");
+  const tooltipEl = document.getElementById("boutique-gemmes-tooltip");
+  const conteneurEl = document.querySelector(".modale-fantasy.modale-boutique-gemmes");
+  listeEl.addEventListener("mouseover", (e) => {
+    const ligneEl = e.target.closest(".boutique-ligne[data-item]");
+    if (!ligneEl) return;
+    const info = TYPES_ARMES[ligneEl.dataset.item];
+    if (!info) return;
+    tooltipEl.innerHTML = `<span class="nom">${info.label}</span><span class="desc">${info.description || ""}</span>`;
+    tooltipEl.classList.toggle("legendaire", !!info.legendaire);
+    tooltipEl.classList.toggle("mythique", !!info.mythique);
+    const rectLigne = ligneEl.getBoundingClientRect();
+    const rectConteneur = conteneurEl.getBoundingClientRect();
+    tooltipEl.style.left = `${rectLigne.left - rectConteneur.left}px`;
+    tooltipEl.style.top = `${rectLigne.top - rectConteneur.top}px`;
+    tooltipEl.style.transform = "translateY(-100%) translateY(-6px)";
+    tooltipEl.classList.add("visible");
+  });
+  listeEl.addEventListener("mouseout", (e) => {
+    const ligneEl = e.target.closest(".boutique-ligne[data-item]");
+    if (!ligneEl || ligneEl.contains(e.relatedTarget)) return;
+    tooltipEl.classList.remove("visible");
+  });
+}
+
+document.getElementById("icone-boutique-gemmes").addEventListener("click", () => {
+  mettreAJourBoutiqueGemmes();
+  document.getElementById("modale-boutique-gemmes").classList.remove("masque");
+});
+document.getElementById("btn-fermer-boutique-gemmes").addEventListener("click", () => {
+  document.getElementById("modale-boutique-gemmes").classList.add("masque");
+});
+document.getElementById("modale-boutique-gemmes").addEventListener("click", (e) => {
+  if (e.target.id === "modale-boutique-gemmes") document.getElementById("modale-boutique-gemmes").classList.add("masque");
+  const bouton = e.target.closest(".btn-acheter[data-item]");
+  if (bouton && !bouton.disabled) {
+    envoyer({ type: "acheter_gemme", item: bouton.dataset.item });
+  }
+});
+// Rafraîchit la boutique en temps réel tant qu'elle est ouverte (mêmes
+// raisons que la boutique en or ci-dessus).
+setInterval(() => {
+  const modale = document.getElementById("modale-boutique-gemmes");
+  if (modale.classList.contains("masque") || !state) return;
+  mettreAJourBoutiqueGemmes();
 }, 500);
 
 // --- Fiche de personnage (niveau/XP, stats, sorts, équipement + inventaire) -
