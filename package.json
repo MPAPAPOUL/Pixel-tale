@@ -1,0 +1,1 @@
+{"name": "royaumes-brises-web", "version": "1.0.0", "description": "Les Royaumes Brises - Vert-Hige prototype", "main": "server/server.js", "scripts": {"start": "node server/server.js"}, "dependencies": {"ws": "^8.18.0"}, "engines": {"node": ">=18"}}
