@@ -1173,6 +1173,55 @@
   body.mode-accueil .touch-controls { display: none !important; }
   .ecran-accueil { display: none; }
   body.mode-accueil .ecran-accueil { display: flex; }
+
+  /* --- Invite à pivoter (mobile en portrait) -------------------------------
+     `.mode-tactile` est déjà posé par activerControlesTactiles (détection
+     appareil tactile, voir plus bas) — ne se déclenche donc jamais sur un
+     écran de PC avec simple pointeur tactile secondaire. Priorité maximale
+     (z-index le plus haut de toute la page) : masque littéralement tout le
+     reste, accueil compris, avec !important pour passer par-dessus les
+     display:flex déjà !important ailleurs. */
+  .invite-rotation {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 500;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    padding: 24px;
+    text-align: center;
+    color: #fff;
+    background: linear-gradient(160deg, var(--bg) 0%, var(--bg-2) 100%);
+  }
+  .invite-rotation-icone {
+    font-size: 60px;
+    animation: pivoter-icone 1.6s ease-in-out infinite;
+  }
+  @keyframes pivoter-icone {
+    0%, 100% { transform: rotate(0deg); }
+    50% { transform: rotate(90deg); }
+  }
+  .invite-rotation h2 {
+    font-family: "Baloo 2", sans-serif;
+    font-size: 22px;
+    margin: 0;
+    text-shadow: 0 2px 0 #c9782f, 0 4px 10px rgba(0,0,0,0.25);
+  }
+  .invite-rotation p {
+    margin: 0;
+    color: #d8cdf5;
+    font-size: 14px;
+    max-width: 32ch;
+    line-height: 1.5;
+  }
+  @media (orientation: portrait) {
+    body.mode-tactile .invite-rotation { display: flex; }
+    body.mode-tactile .layout,
+    body.mode-tactile .ecran-accueil,
+    body.mode-tactile .touch-controls { display: none !important; }
+  }
   .ecran-accueil {
     position: fixed;
     inset: 0;
@@ -1733,6 +1782,20 @@
 </style>
 </head>
 <body class="mode-accueil">
+
+<!-- Invite à pivoter l'appareil : ce jeu est conçu pour un canvas large
+     (1280×600), injouable en portrait sur téléphone (voir la tentative de
+     verrouillage d'orientation côté JS, qui échoue silencieusement sur la
+     plupart des navigateurs — Safari iOS ne l'implémente pas du tout, Chrome
+     ne l'autorise qu'en plein écran actif). Ce panneau, lui, fonctionne
+     PARTOUT (media query CSS pure) : au lieu de laisser un jeu inutilisable
+     s'afficher, on bloque tout derrière ce message tant que l'appareil
+     tactile reste en portrait — voir la media query sur .invite-rotation. -->
+<div class="invite-rotation" id="invite-rotation">
+  <div class="invite-rotation-icone">📱</div>
+  <h2>Tourne ton téléphone</h2>
+  <p>Ce jeu se joue en mode paysage (à l'horizontale) — tourne ton appareil pour continuer l'aventure.</p>
+</div>
 
 <!-- Écran d'accueil : deux cartes, une seule visible à la fois (voir
      initialiserEcranAccueil côté JS).
@@ -3146,6 +3209,21 @@ function activerControlesTactiles() {
   if (tactile) document.body.classList.add("mode-tactile");
 }
 activerControlesTactiles();
+
+// Tentative de verrouillage en paysage — un "bonus" qui ne marche que sur
+// une minorité de navigateurs (Chrome Android, et encore seulement si le
+// document est en plein écran actif ; Safari iOS n'implémente carrément pas
+// screen.orientation.lock). Échec silencieux partout ailleurs : c'est
+// l'invite CSS "Tourne ton téléphone" (voir .invite-rotation) qui prend le
+// relais dans tous les cas, elle fonctionne sans aucune permission ni API.
+function tenterVerrouillagePaysage() {
+  try {
+    if (screen.orientation && screen.orientation.lock) {
+      screen.orientation.lock("landscape").catch(() => {});
+    }
+  } catch {}
+}
+document.addEventListener("click", tenterVerrouillagePaysage, { once: true });
 
 function bindBoutonTactile(id, appuyer, relacher) {
   const el = document.getElementById(id);
