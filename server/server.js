@@ -3346,14 +3346,39 @@ const EMOTES_AUTORISEES = new Set(["👋", "😂", "😭", "❤️", "😮", "�
 const CHEMIN_COMPTES = path.join(__dirname, "data", "comptes.json");
 let comptes = {};
 
+// Un compte (jeton) peut désormais posséder PLUSIEURS personnages (voir
+// "Sélection de personnage" plus bas) — chacun avec sa propre progression,
+// dans `comptes[jeton].personnages` (tableau, un id par personnage). Les
+// sauvegardes antérieures à cette fonctionnalité stockaient directement la
+// progression du personnage unique à la racine de `comptes[jeton]` : migrées
+// ici à la volée en un compte à un seul personnage, pour ne perdre la
+// progression de personne au premier démarrage avec ce nouveau format.
+function migrerComptesVersMultiPersonnages() {
+  for (const jeton of Object.keys(comptes)) {
+    const compte = comptes[jeton];
+    if (compte && !Array.isArray(compte.personnages)) {
+      comptes[jeton] = { personnages: [{ id: "p1", ...compte }] };
+    }
+  }
+}
+
 function chargerComptes() {
   try {
     comptes = JSON.parse(fs.readFileSync(CHEMIN_COMPTES, "utf8"));
   } catch {
     comptes = {}; // premier lancement, fichier absent ou corrompu : on repart d'un stockage vide
   }
+  migrerComptesVersMultiPersonnages();
 }
 chargerComptes();
+
+const MAX_PERSONNAGES_PAR_COMPTE = 3;
+
+// Résumé public d'un personnage (utilisé par l'écran de sélection, jamais la
+// progression complète) — voir la route GET /api/personnages plus bas.
+function resumePersonnage(p) {
+  return { id: p.id, pseudo: p.pseudo, classe: p.classe, niveau: p.niveau || 1 };
+}
 
 let sauvegardeEnAttente = false;
 function sauvegarderComptes() {
@@ -3396,6 +3421,20 @@ function extraireProgression(p) {
     connexionQuotidienne: p.connexionQuotidienne,
     apparence: p.apparence,
   };
+}
+
+// Écrit la progression de `joueur` dans le slot `joueur._personnageId` du
+// compte `jeton` (ajouté au tableau s'il n'existait pas encore — cas d'un
+// personnage tout juste créé) — remplace l'ancien `comptes[jeton] =
+// extraireProgression(joueur)`, qui écrasait tout le compte au lieu d'un
+// seul personnage.
+function sauvegarderPersonnage(jeton, joueur) {
+  if (!jeton || !joueur._personnageId) return;
+  if (!comptes[jeton] || !Array.isArray(comptes[jeton].personnages)) comptes[jeton] = { personnages: [] };
+  const liste = comptes[jeton].personnages;
+  const progression = { id: joueur._personnageId, ...extraireProgression(joueur) };
+  const index = liste.findIndex((p) => p.id === joueur._personnageId);
+  if (index >= 0) liste[index] = progression; else liste.push(progression);
 }
 
 function appliquerProgression(p, sauvegarde) {
@@ -3455,7 +3494,7 @@ const joueursParJeton = new Map(); // jeton → joueur, pour la sauvegarde péri
 setInterval(() => {
   for (const [jeton, joueur] of joueursParJeton) {
     assurerQuetesDuJour(joueur); // régénère les quêtes du jour si minuit est passé pendant la session
-    comptes[jeton] = extraireProgression(joueur);
+    sauvegarderPersonnage(jeton, joueur);
   }
   if (joueursParJeton.size > 0) sauvegarderComptes();
 }, 30000);
@@ -3470,18 +3509,24 @@ wss.on("connection", (ws, req) => {
   joueur.invulnerableRestant = 1.0; // petit répit à la connexion
 
   // Jeton de progression persistante (voir la section "Persistance"
-  // ci-dessus) — envoyé par le client en query string. Sans jeton valable
-  // (ancien client, requête directe...), le joueur reste temporaire comme
-  // avant, simplement non sauvegardé.
+  // ci-dessus) — envoyé par le client en query string, avec soit
+  // `personnageId` (reprendre un personnage existant de ce compte, voir
+  // l'écran de sélection côté client) soit `nouveauPersonnage=1` (+`classe`,
+  // pour en créer un). Sans jeton valable, ou sans correspondance/demande de
+  // création valide, le joueur reste temporaire comme avant, simplement non
+  // sauvegardé — voir le `jeton = null` de la branche `else` plus bas.
   let jeton = null;
+  let personnageId = null;
+  let nouveauPersonnage = false;
   let classeChoisie = null;
   try {
     const params = new URL(req.url, `http://${req.headers.host}`).searchParams;
     jeton = params.get("jeton");
+    personnageId = params.get("personnageId");
+    nouveauPersonnage = params.get("nouveauPersonnage") === "1";
     classeChoisie = params.get("classe");
   } catch {
     jeton = null;
-    classeChoisie = null;
   }
   if (jeton) {
     // Un même jeton ne doit jamais piloter deux personnages en même temps
@@ -3498,7 +3543,7 @@ wss.on("connection", (ws, req) => {
       // asynchrone par le .close() ci-dessous) d'écraser plus tard la
       // sauvegarde avec cette progression déjà obsolète — on vient de la
       // sauvegarder nous-mêmes ci-dessous, et la nouvelle session va
-      // continuer à faire évoluer comptes[jeton] à partir de maintenant.
+      // continuer à faire évoluer ce personnage à partir de maintenant.
       ancienJoueur._sessionRemplacee = true;
       const ancienWs = clients.get(ancienJoueur.id);
       if (ancienWs && ancienWs.readyState === ancienWs.OPEN) {
@@ -3512,27 +3557,45 @@ wss.on("connection", (ws, req) => {
         ancienneInstance.joueurs.delete(ancienJoueur.id);
         if (ancienneInstance.joueurs.size === 0) instancesDonjon.delete(ancienneInstance.id);
       }
-      comptes[jeton] = extraireProgression(ancienJoueur);
+      sauvegarderPersonnage(jeton, ancienJoueur);
       sauvegarderComptes();
       players.delete(ancienJoueur.id);
       clients.delete(ancienJoueur.id);
       joueursParJeton.delete(jeton);
     }
-    const estNouveau = !comptes[jeton];
-    if (!estNouveau) appliquerProgression(joueur, comptes[jeton]); // restaure niveau/XP/or/équipement
-    // La classe choisie sur l'écran d'accueil s'applique dans tous les cas
-    // (nouveau personnage OU changement de classe d'un personnage existant
-    // — un simple respec, le reste de la progression est conservé) :
-    // appliquée APRÈS appliquerProgression pour bien remplacer la classe
-    // sauvegardée quand le joueur en choisit une autre.
-    if (classeChoisie && CLASSES[classeChoisie]) {
-      joueur.classe = classeChoisie;
-      joueur.couleur = CLASSES[classeChoisie].couleur;
-      if (estNouveau) joueur.pseudo = `${CLASSES[classeChoisie].label} ${joueur.id}`;
+
+    const personnages = (comptes[jeton] && comptes[jeton].personnages) || [];
+    const existant = personnageId ? personnages.find((pers) => pers.id === personnageId) : null;
+
+    if (existant) {
+      // Personnage existant : uniquement sa progression sauvegardée, jamais
+      // de classe reçue du client ici — demande explicite : plus question de
+      // changer de classe en se reconnectant (l'écran de sélection ne permet
+      // que de choisir QUEL personnage rejouer, chacun garde sa classe).
+      appliquerProgression(joueur, existant);
+      joueur._personnageId = existant.id;
+    } else if (nouveauPersonnage && personnages.length < MAX_PERSONNAGES_PAR_COMPTE) {
+      // Tout nouveau personnage pour ce compte (classe obligatoire, imposée
+      // côté client par validerFormulaireAccueil).
+      joueur._personnageId = `perso${Date.now()}${Math.floor(Math.random() * 1000)}`;
+      if (classeChoisie && CLASSES[classeChoisie]) {
+        joueur.classe = classeChoisie;
+        joueur.couleur = CLASSES[classeChoisie].couleur;
+      }
+      joueur.pseudo = `${CLASSES[joueur.classe].label} ${joueur.id}`;
       recalculerStatsEquipement(joueur);
       joueur.hp = joueur.hpMax;
       joueur.mana = joueur.manaMax;
+      sauvegarderPersonnage(jeton, joueur); // visible immédiatement dans GET /api/personnages
+      sauvegarderComptes();
+    } else {
+      // `personnageId` introuvable et aucune création valide demandée (ou
+      // compte déjà au maximum de personnages) : jeton ignoré plutôt que de
+      // planter la connexion — le joueur reste temporaire, non sauvegardé.
+      jeton = null;
     }
+  }
+  if (jeton) {
     // Récompense de connexion quotidienne : seulement pour un personnage
     // identifié par un jeton persistant — un joueur sans jeton n'est jamais
     // le "même" joueur d'une connexion à l'autre (rien ne le relie),
@@ -3546,7 +3609,11 @@ wss.on("connection", (ws, req) => {
   players.set(joueur.id, joueur);
   clients.set(joueur.id, ws);
 
-  ws.send(JSON.stringify({ type: "welcome", selfId: joueur.id, classes: CLASSES }));
+  // `personnageId` (null pour un joueur temporaire, sans jeton valable) :
+  // le client s'en sert pour reconnecter automatiquement (perte réseau...)
+  // sur CE personnage plutôt que de renvoyer un `nouveauPersonnage=1` qui en
+  // recréerait un autre à chaque coupure — voir connecter() côté client.
+  ws.send(JSON.stringify({ type: "welcome", selfId: joueur.id, classes: CLASSES, personnageId: joueur._personnageId || null }));
 
   ws.on("message", (data) => {
     let message;
@@ -3691,7 +3758,7 @@ wss.on("connection", (ws, req) => {
       // sauvegarde ici écraserait sa progression avec des données
       // obsolètes : on ne touche alors ni comptes[jeton] ni
       // joueursParJeton, déjà gérés par la nouvelle session.)
-      comptes[jeton] = extraireProgression(joueur);
+      sauvegarderPersonnage(jeton, joueur);
       sauvegarderComptes();
       joueursParJeton.delete(jeton);
     }
@@ -3712,6 +3779,18 @@ const TYPES_MIME = {
 };
 
 const server = http.createServer((req, res) => {
+  // Écran de sélection de personnage (voir client, préparerEcranAccueil) :
+  // liste des personnages d'un compte AVANT d'ouvrir le WebSocket de jeu,
+  // pour savoir quel écran d'accueil afficher (sélection vs création). Pas
+  // besoin d'un vrai routeur pour cette unique route.
+  if (req.method === "GET" && req.url.startsWith("/api/personnages")) {
+    const jeton = new URL(req.url, `http://${req.headers.host}`).searchParams.get("jeton");
+    const personnages = (jeton && comptes[jeton] && comptes[jeton].personnages) || [];
+    res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+    res.end(JSON.stringify({ personnages: personnages.map(resumePersonnage), max: MAX_PERSONNAGES_PAR_COMPTE }));
+    return;
+  }
+
   let chemin = req.url === "/" ? "/index.html" : req.url;
   chemin = path.join(CLIENT_DIR, path.normalize(chemin).replace(/^(\.\.[/\\])+/, ""));
 

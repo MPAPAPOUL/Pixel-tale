@@ -1227,6 +1227,29 @@ placeholder
   .carte-classe .classe-desc { font-size: 11.5px; color: #cfc3ef; line-height: 1.4; }
   .carte-classe .classe-stats { font-size: 10.5px; color: #9d8fc7; margin-top: 6px; }
 
+  /* --- Écran de sélection de personnage (compte avec au moins un
+       personnage) : une carte cliquable par personnage, même famille
+       visuelle que .carte-classe ci-dessus pour rester cohérent. ---------- */
+  .accueil-liste-persos { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
+  .carte-perso {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 3px;
+    width: 100%;
+    text-align: left;
+    padding: 12px 16px;
+    border-radius: 14px;
+    border: 2px solid var(--hairline);
+    background: rgba(255,255,255,0.04);
+    cursor: pointer;
+    font-family: inherit;
+    transition: border-color 0.12s ease, background 0.12s ease, transform 0.12s ease;
+  }
+  .carte-perso:hover { transform: translateY(-2px); border-color: var(--gold); background: rgba(255,159,67,0.12); }
+  .carte-perso-pseudo { font-family: "Baloo 2", sans-serif; font-size: 15px; }
+  .carte-perso-details { font-size: 11.5px; color: #cfc3ef; }
+
   /* --- Personnalisation d'avatar (écran de création) : genre + nuanciers
        cheveux/yeux avec aperçu live — voir obtenirSpriteRecolore côté JS.
        Contrairement à la classe, ces choix ont une valeur par défaut
@@ -1704,29 +1727,37 @@ placeholder
 </head>
 <body class="mode-accueil">
 
-<!-- Écran d'accueil / création de personnage : pseudo + classe, tous deux
-     OBLIGATOIRES pour un tout nouveau personnage (voir
-     joueurExistantAuChargement et validerFormulaireAccueil côté JS) — le
-     bouton "Jouer" reste désactivé tant que les deux ne sont pas renseignés.
-     Un personnage déjà existant peut laisser le pseudo vide (conserve son
-     nom actuel) et n'est pas forcé de re-choisir une classe. Le WebSocket
-     n'est ouvert qu'au clic sur "Jouer" (voir connecter()). -->
+<!-- Écran d'accueil : deux cartes, une seule visible à la fois (voir
+     initialiserEcranAccueil côté JS).
+     - #accueil-carte-persos : compte existant avec au moins un personnage —
+       écran de SÉLECTION, aucun choix de classe ici (demande explicite :
+       plus de changement de classe à la reconnexion). Un bouton "Nouveau
+       personnage" bascule vers la carte de création ci-dessous.
+     - #accueil-carte-creation : pseudo + classe OBLIGATOIRES, que ce soit un
+       tout premier personnage ou un personnage supplémentaire — voir
+       validerFormulaireAccueil. Le WebSocket n'est ouvert qu'au clic sur
+       "Jouer"/une carte de personnage (voir connecter()). -->
 <div class="ecran-accueil" id="ecran-accueil">
-  <div class="accueil-carte">
+  <div class="accueil-carte masque" id="accueil-carte-persos">
+    <h1 class="accueil-titre">Les Royaumes Brisés</h1>
+    <p class="accueil-soustitre">Choisis ton personnage.</p>
+    <div class="accueil-liste-persos" id="accueil-liste-persos"></div>
+    <div class="accueil-actions">
+      <button type="button" class="btn-jouer" id="btn-nouveau-perso">+ Nouveau personnage</button>
+    </div>
+  </div>
+
+  <div class="accueil-carte" id="accueil-carte-creation">
     <h1 class="accueil-titre">Les Royaumes Brisés</h1>
     <p class="accueil-soustitre" id="accueil-soustitre">Un prototype de RPG multijoueur — crée ton personnage pour commencer l'aventure à Vert-Hige.</p>
 
     <div id="accueil-bloc-classes">
-      <p class="accueil-section-titre" id="accueil-classes-titre">Choisis ta classe</p>
+      <p class="accueil-section-titre">Choisis ta classe (obligatoire)</p>
       <div class="accueil-classes" id="accueil-classes"></div>
     </div>
 
-    <div id="accueil-bloc-retour" class="masque">
-      <p class="accueil-retour-texte">Ta progression t'attend — reconnecte-toi pour la retrouver.</p>
-    </div>
-
     <div id="accueil-bloc-avatar">
-      <p class="accueil-section-titre" id="accueil-avatar-titre">Personnalise ton avatar</p>
+      <p class="accueil-section-titre">Personnalise ton avatar (genre obligatoire)</p>
       <div class="accueil-avatar-ligne">
         <canvas id="accueil-avatar-preview" width="96" height="112"></canvas>
         <div class="accueil-avatar-options">
@@ -1743,7 +1774,7 @@ placeholder
     </div>
 
     <div class="accueil-pseudo">
-      <input type="text" id="accueil-pseudo" maxlength="20" placeholder="Ton pseudo">
+      <input type="text" id="accueil-pseudo" maxlength="20" placeholder="Ton pseudo (obligatoire)">
     </div>
     <p class="accueil-erreur masque" id="accueil-erreur"></p>
 
@@ -2173,9 +2204,14 @@ function obtenirJetonJoueur() {
     return `t${Date.now()}-${Math.random().toString(36).slice(2)}`;
   }
 }
-let joueurExistantAuChargement = false;
-try { joueurExistantAuChargement = !!localStorage.getItem("rb_jeton_v2"); } catch { /* ignore */ }
+// true si ce navigateur avait déjà un jeton avant ce chargement de page —
+// pilote uniquement la décision d'interroger GET /api/personnages (voir
+// initialiserEcranAccueil) : inutile pour un tout nouveau jeton, qui ne peut
+// avoir aucun personnage.
+let jetonExistaitAuChargement = false;
+try { jetonExistaitAuChargement = !!localStorage.getItem("rb_jeton_v2"); } catch { /* ignore */ }
 const jetonJoueur = obtenirJetonJoueur();
+const MAX_PERSONNAGES_ACCUEIL = 3; // doit rester synchronisé avec MAX_PERSONNAGES_PAR_COMPTE côté serveur
 
 // --- Sprites -----------------------------------------------------------
 // Tous les visuels sont dessinés à la main par des artistes (libres de
@@ -2740,8 +2776,15 @@ function dessinerSprite(img, hitboxX, hitboxY, hitboxLargeur, hitboxHauteur, fac
 let ws = null;
 let delaiReconnexion = 1000; // recul progressif jusqu'à RECONNEXION_DELAI_MAX
 const RECONNEXION_DELAI_MAX = 8000;
-let classeChoisieAuDepart = null; // classe cliquée sur l'écran d'accueil (ignorée par le serveur si le personnage existe déjà)
+let classeChoisieAuDepart = null; // classe cliquée sur la carte de création, pour un nouveau personnage
 let pseudoDesireAuDepart = null; // pseudo saisi sur l'écran d'accueil, envoyé une fois connecté
+// Mémorise les paramètres de connexion du personnage actif (personnageId,
+// ou nouveauPersonnage+classe avant que le serveur n'attribue un id) pour
+// qu'une reconnexion automatique (perte réseau, mise en arrière-plan
+// mobile...) rejoigne le MÊME personnage plutôt que de rejouer
+// nouveauPersonnage=1 à chaque coupure — voir connecter() et le handler
+// "welcome" qui la met à jour avec l'id définitif dès qu'il est connu.
+let derniersParametresConnexion = null;
 // Cheveux/yeux/genre choisis sur l'écran de création, envoyés une fois
 // connecté (même mécanique que pseudoDesireAuDepart) — voir
 // validerEtEnvoyerAvatar() qui construit cet objet uniquement s'il y a
@@ -2752,10 +2795,17 @@ let pseudoDesireAuDepart = null; // pseudo saisi sur l'écran d'accueil, envoyé
 let personnalisationDesireeAuDepart = null;
 let deconnexionVolontaire = false; // "Retour à l'accueil" : pas de reconnexion automatique dans ce cas
 
-function connecter() {
+function connecter(options) {
+  if (options) derniersParametresConnexion = options;
+  const opts = derniersParametresConnexion || {};
   const protocole = location.protocol === "https:" ? "wss:" : "ws:";
   const parametres = new URLSearchParams({ jeton: jetonJoueur });
-  if (classeChoisieAuDepart) parametres.set("classe", classeChoisieAuDepart);
+  if (opts.personnageId) {
+    parametres.set("personnageId", opts.personnageId);
+  } else if (opts.nouveauPersonnage) {
+    parametres.set("nouveauPersonnage", "1");
+    if (opts.classe) parametres.set("classe", opts.classe);
+  }
   ws = new WebSocket(`${protocole}//${location.host}?${parametres.toString()}`);
   ws.addEventListener("open", () => {
     delaiReconnexion = 1000; // la connexion a réussi : on repart d'un recul court la prochaine fois
@@ -2916,10 +2966,7 @@ function gererMessageServeur(event) {
   if (msg.type === "welcome") {
     selfId = msg.selfId;
     classesInfo = msg.classes;
-    // À partir d'ici, un "Retour à l'accueil" suivi d'un nouveau "Jouer"
-    // doit être traité comme un retour (pas reproposer le choix de classe)
-    // même si ce jeton était tout neuf au chargement de la page.
-    joueurExistantAuChargement = true;
+    if (msg.personnageId) derniersParametresConnexion = { personnageId: msg.personnageId };
   } else if (msg.type === "state") {
     detecterImpacts(msg);
     state = msg;
@@ -6705,11 +6752,6 @@ const PALETTE_YEUX_CLIENT = [
 let genreChoisiAuDepart = null; // obligatoire pour un tout nouveau personnage
 let couleurCheveuxChoisieAuDepart = PALETTE_CHEVEUX_CLIENT[0].hex; // présélection = teinte d'origine, inoffensive même non-modifiée
 let couleurYeuxChoisieAuDepart = PALETTE_YEUX_CLIENT[0].hex;
-// true dès que le joueur touche à un nuancier ou au genre — un personnage
-// déjà existant qui n'y touche pas ne déclenche AUCUN envoi "personnaliser"
-// (voir personnalisationDesireeAuDepart), pour ne jamais écraser une
-// apparence déjà choisie lors d'une session précédente.
-let avatarModifieParJoueur = false;
 
 function rendreGenreAccueil() {
   document.querySelectorAll(".pilule-genre").forEach((bouton) => {
@@ -6731,7 +6773,6 @@ document.getElementById("accueil-genre").addEventListener("click", (e) => {
   const bouton = e.target.closest(".pilule-genre");
   if (!bouton) return;
   genreChoisiAuDepart = bouton.dataset.genre;
-  avatarModifieParJoueur = true;
   rendreAvatarAccueil();
   validerFormulaireAccueil();
 });
@@ -6739,14 +6780,12 @@ document.getElementById("accueil-nuancier-cheveux").addEventListener("click", (e
   const bouton = e.target.closest(".pastille-couleur");
   if (!bouton) return;
   couleurCheveuxChoisieAuDepart = bouton.dataset.hex;
-  avatarModifieParJoueur = true;
   rendreAvatarAccueil();
 });
 document.getElementById("accueil-nuancier-yeux").addEventListener("click", (e) => {
   const bouton = e.target.closest(".pastille-couleur");
   if (!bouton) return;
   couleurYeuxChoisieAuDepart = bouton.dataset.hex;
-  avatarModifieParJoueur = true;
   rendreAvatarAccueil();
 });
 
@@ -6782,27 +6821,18 @@ function boucleApercuAvatarAccueil() {
 }
 boucleApercuAvatarAccueil();
 
-// Écran de création de personnage pour un tout nouveau joueur (aucun jeton
-// en localStorage) : pseudo ET classe deviennent OBLIGATOIRES, le bouton
-// "Jouer" reste désactivé tant que les deux ne sont pas renseignés — voir
-// validerFormulaireAccueil. Un personnage déjà existant (jeton présent)
-// n'est jamais bloqué : il peut laisser le pseudo vide (conserve son nom
-// actuel) et n'est pas forcé de re-choisir une classe — le bouton reste
-// donc toujours actif pour lui, et aucune classe n'est pré-sélectionnée
-// (autrefois la première classe était pré-cochée par défaut, ce qui
-// respécialisait silencieusement tout personnage existant en Dorken à
-// chaque rechargement de page dès qu'il cliquait "Jouer" sans y prêter
-// attention — corrigé ici en ne présélectionnant plus jamais rien).
+// Écran de création de personnage : pseudo, classe ET genre sont désormais
+// TOUJOURS obligatoires (que ce soit le tout premier personnage du compte ou
+// un personnage supplémentaire) — le bouton "Jouer" reste désactivé tant que
+// les trois ne sont pas renseignés. Il n'y a plus de notion de "personnage
+// existant qui peut sauter la classe" ici : un compte avec un personnage
+// existant passe par l'écran de SÉLECTION (#accueil-carte-persos) et
+// n'atteint cette carte que pour en créer un nouveau — voir
+// initialiserEcranAccueil.
 function validerFormulaireAccueil() {
   const pseudo = document.getElementById("accueil-pseudo").value.trim();
   const btnJouer = document.getElementById("btn-jouer");
   const erreurEl = document.getElementById("accueil-erreur");
-
-  if (joueurExistantAuChargement) {
-    btnJouer.disabled = false;
-    erreurEl.classList.add("masque");
-    return true;
-  }
 
   const manques = [];
   if (pseudo.length < 2) manques.push("un pseudo (2 caractères minimum)");
@@ -6821,54 +6851,111 @@ function validerFormulaireAccueil() {
   return true;
 }
 
-function preparerEcranAccueil() {
-  // Les cartes de classe restent toujours visibles et cliquables — y
-  // compris pour un personnage déjà existant : choisir une classe ici
-  // l'applique côté serveur (un simple changement de classe, le reste de
-  // la progression — niveau, XP, or, équipement — est conservé).
-  document.getElementById("accueil-bloc-classes").classList.remove("masque");
-  document.getElementById("accueil-bloc-retour").classList.add("masque");
-  document.getElementById("accueil-soustitre").textContent = joueurExistantAuChargement
-    ? "Content de te revoir ! Choisis une classe pour continuer (ou change-en si tu veux essayer autre chose)."
-    : "Crée ton personnage : choisis un pseudo et une classe pour commencer l'aventure à Vert-Hige.";
-  document.getElementById("accueil-classes-titre").textContent = joueurExistantAuChargement
-    ? "Choisis ta classe"
-    : "Choisis ta classe (obligatoire)";
-  document.getElementById("accueil-pseudo").placeholder = joueurExistantAuChargement
-    ? "Ton pseudo (laisse vide pour garder l'actuel)"
-    : "Ton pseudo (obligatoire)";
-  document.getElementById("accueil-avatar-titre").textContent = joueurExistantAuChargement
-    ? "Personnalise ton avatar"
-    : "Personnalise ton avatar (genre obligatoire)";
+// Réinitialise la carte de création (utile quand on y arrive depuis "+
+// Nouveau personnage", pour ne pas repartir avec les choix du personnage
+// précédemment créé pendant la même visite de l'écran d'accueil).
+function reinitialiserFormulaireCreation() {
+  classeChoisieAuDepart = null;
+  genreChoisiAuDepart = null;
+  couleurCheveuxChoisieAuDepart = PALETTE_CHEVEUX_CLIENT[0].hex;
+  couleurYeuxChoisieAuDepart = PALETTE_YEUX_CLIENT[0].hex;
+  document.getElementById("accueil-pseudo").value = "";
   rendreClassesAccueil();
   rendreAvatarAccueil();
   validerFormulaireAccueil();
 }
-preparerEcranAccueil();
 document.getElementById("accueil-pseudo").addEventListener("input", validerFormulaireAccueil);
 
 document.getElementById("btn-jouer").addEventListener("click", () => {
   if (!validerFormulaireAccueil()) return; // filet de sécurité — le bouton est censé déjà être désactivé
   const pseudo = document.getElementById("accueil-pseudo").value.trim();
   if (pseudo) pseudoDesireAuDepart = pseudo;
-  // Personnalisation (genre/cheveux/yeux) : voir le commentaire sur
-  // personnalisationDesireeAuDepart — jamais envoyée pour un personnage
-  // existant qui n'a rien touché, pour ne pas écraser son apparence déjà
-  // sauvegardée avec les valeurs par défaut de l'écran.
-  if (!joueurExistantAuChargement || avatarModifieParJoueur) {
-    const personnalisation = { type: "personnaliser" };
-    if (genreChoisiAuDepart) personnalisation.genre = genreChoisiAuDepart;
-    if (couleurCheveuxChoisieAuDepart) personnalisation.couleurCheveux = couleurCheveuxChoisieAuDepart;
-    if (couleurYeuxChoisieAuDepart) personnalisation.couleurYeux = couleurYeuxChoisieAuDepart;
-    personnalisationDesireeAuDepart = personnalisation;
-  }
+  const personnalisation = { type: "personnaliser" };
+  if (genreChoisiAuDepart) personnalisation.genre = genreChoisiAuDepart;
+  if (couleurCheveuxChoisieAuDepart) personnalisation.couleurCheveux = couleurCheveuxChoisieAuDepart;
+  if (couleurYeuxChoisieAuDepart) personnalisation.couleurYeux = couleurYeuxChoisieAuDepart;
+  personnalisationDesireeAuDepart = personnalisation;
+  demarrerPartie({ nouveauPersonnage: true, classe: classeChoisieAuDepart });
+});
+
+// Passe du mode accueil au jeu et ouvre la connexion. `options.personnageId`
+// (personnage existant, voir l'écran de sélection) ou
+// `options.nouveauPersonnage` + `options.classe` (nouveau personnage) —
+// voir connecter().
+function demarrerPartie(options) {
   document.body.classList.remove("mode-accueil");
   // Le cadre de jeu était masqué (display:none) pendant l'écran d'accueil,
   // donc redimensionnerScene() n'avait alors rien à mesurer (largeur 0) —
   // on la relance maintenant que .stage-frame-wrap est de nouveau affiché.
   redimensionnerScene();
-  connecter();
+  connecter(options);
+}
+
+// --- Sélection de personnage (compte existant) ------------------------
+// Liste récupérée via GET /api/personnages AVANT d'ouvrir le WebSocket de
+// jeu (voir initialiserEcranAccueil) — détermine quelle carte d'accueil
+// afficher : sélection (au moins un personnage) ou création (compte tout
+// neuf, ou requête échouée).
+function rendreListePersonnages(personnages, max) {
+  const conteneur = document.getElementById("accueil-liste-persos");
+  conteneur.innerHTML = personnages
+    .map((p) => {
+      const infosClasse = classesInfo && classesInfo[p.classe];
+      const labelClasse = infosClasse ? infosClasse.label : p.classe;
+      return `
+        <button type="button" class="carte-perso" data-personnage-id="${p.id}">
+          <span class="carte-perso-pseudo">${escapeHtml(p.pseudo)}</span>
+          <span class="carte-perso-details">${escapeHtml(labelClasse)} — Nv.${p.niveau}</span>
+        </button>`;
+    })
+    .join("");
+  const btnNouveau = document.getElementById("btn-nouveau-perso");
+  btnNouveau.disabled = personnages.length >= max;
+  btnNouveau.textContent = personnages.length >= max
+    ? `Maximum de ${max} personnages atteint`
+    : "+ Nouveau personnage";
+}
+
+document.getElementById("accueil-liste-persos").addEventListener("click", (e) => {
+  const carte = e.target.closest(".carte-perso[data-personnage-id]");
+  if (!carte) return;
+  demarrerPartie({ personnageId: carte.dataset.personnageId });
 });
+
+document.getElementById("btn-nouveau-perso").addEventListener("click", () => {
+  if (document.getElementById("btn-nouveau-perso").disabled) return;
+  reinitialiserFormulaireCreation();
+  document.getElementById("accueil-carte-persos").classList.add("masque");
+  document.getElementById("accueil-carte-creation").classList.remove("masque");
+});
+
+// Point d'entrée de l'écran d'accueil : interroge le compte (s'il existe)
+// pour savoir s'il a déjà des personnages, et choisit la carte à afficher en
+// conséquence — remplace l'ancien flux où un compte existant retombait
+// systématiquement sur l'écran de création (avec choix de classe, donc
+// respec accidentel possible), voir jetonExistaitAuChargement.
+async function initialiserEcranAccueil() {
+  let personnages = [];
+  if (jetonExistaitAuChargement) {
+    try {
+      const reponse = await fetch(`/api/personnages?jeton=${encodeURIComponent(jetonJoueur)}`);
+      const donnees = await reponse.json();
+      personnages = donnees.personnages || [];
+    } catch {
+      personnages = []; // hors-ligne/erreur réseau : retombe sur la création plutôt que de bloquer l'écran
+    }
+  }
+  if (personnages.length > 0) {
+    rendreListePersonnages(personnages, MAX_PERSONNAGES_ACCUEIL);
+    document.getElementById("accueil-carte-persos").classList.remove("masque");
+    document.getElementById("accueil-carte-creation").classList.add("masque");
+  } else {
+    reinitialiserFormulaireCreation();
+    document.getElementById("accueil-carte-persos").classList.add("masque");
+    document.getElementById("accueil-carte-creation").classList.remove("masque");
+  }
+}
+initialiserEcranAccueil();
 
 // --- Réglages (accessibles depuis l'accueil ET en jeu) ------------------
 function ouvrirReglages() {
@@ -6902,9 +6989,9 @@ document.getElementById("btn-retour-accueil").addEventListener("click", () => {
   if (ws) ws.close();
   state = null;
   selfId = null;
+  derniersParametresConnexion = null; // le prochain personnage joué sera choisi explicitement sur l'accueil
   document.body.classList.add("mode-accueil");
-  document.getElementById("accueil-pseudo").value = "";
-  preparerEcranAccueil();
+  initialiserEcranAccueil(); // re-vérifie la liste de personnages (celui qu'on vient de créer y apparaît désormais)
 });
 
 // --- Quêtes journalières --------------------------------------------------
