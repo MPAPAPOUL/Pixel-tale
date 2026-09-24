@@ -6900,8 +6900,10 @@ function rendreListePersonnages(personnages, max) {
   const conteneur = document.getElementById("accueil-liste-persos");
   conteneur.innerHTML = personnages
     .map((p) => {
-      const infosClasse = classesInfo && classesInfo[p.classe];
-      const labelClasse = infosClasse ? infosClasse.label : p.classe;
+      // DESCRIPTIONS_CLASSES plutôt que classesInfo (n'arrive qu'après
+      // connexion, donc pas encore dispo sur l'écran d'accueil).
+      const infosClasse = DESCRIPTIONS_CLASSES.find((c) => c.id === p.classe);
+      const labelClasse = infosClasse ? infosClasse.nom : p.classe;
       return `
         <button type="button" class="carte-perso" data-personnage-id="${p.id}">
           <span class="carte-perso-pseudo">${escapeHtml(p.pseudo)}</span>
