@@ -1,9 +1,9 @@
 # Site vitrine — Les Royaumes Brisés
 
 Site statique (une seule page HTML, aucun serveur/build nécessaire) qui
-présente le jeu et propose son téléchargement. Ce site est indépendant du
-jeu lui-même (`client/` + `server/`) : **le jeu n'est pas jouable depuis ce
-site**, il n'y a qu'une page d'information + un bouton de téléchargement.
+présente le jeu — classes, univers, bestiaire complet. Ce site est
+indépendant du jeu lui-même (`client/` + `server/`) : **le jeu n'est ni
+jouable ni téléchargeable depuis ce site**, c'est une pure vitrine.
 
 ## Fichiers
 
@@ -111,6 +111,8 @@ Le texte, les liens et les images sont directement dans `index.html`
 fichier correspondant dans `assets/img/` (mêmes dimensions pas
 nécessaires, les images sont redimensionnées en CSS).
 
-Le bouton "Télécharger le .zip" pointe vers l'archive GitHub du dépôt
-(`.../archive/refs/heads/main.zip`) : il se met donc à jour tout seul à
-chaque `git push` sur `main`, aucune action à refaire ici.
+Les chiffres du bestiaire (PV, dégâts, XP, taux de drop) sont recopiés à
+la main depuis `server/server.js` — si l'équilibrage du jeu change
+(`MONSTRES_CONFIG`, `CHANCE_DROP_*`, `BIOMES_DEFINITION`...), pense à les
+mettre à jour dans `index.html` aussi, rien ne les synchronise
+automatiquement.
