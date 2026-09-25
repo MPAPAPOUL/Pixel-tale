@@ -370,16 +370,20 @@
   /* --- Chat & emotes (inspiré de MapleStory 2) -------------------------- */
   /* Superposé directement sur l'écran de jeu, en transparence à 60% pour
      garder une vue sur l'action derrière le panneau. */
+  /* Centrée en bas de l'écran (plutôt qu'en bas à gauche) et plus
+     transparente qu'avant — demande explicite — pour gêner le moins
+     possible la vue sur l'action tout en restant facile à repérer. */
   .chat-overlay {
     position: absolute;
-    left: 12px;
+    left: 50%;
     bottom: 12px;
-    width: 250px;
-    max-width: 42%;
+    transform: translateX(-50%);
+    width: 320px;
+    max-width: 60%;
     z-index: 6;
-    background: linear-gradient(180deg, rgba(255,247,236,0.6) 0%, rgba(255,238,203,0.6) 100%);
-    border: 2px solid rgba(255,255,255,0.7);
-    box-shadow: 0 0 0 2px rgba(122,92,201,0.5), 0 6px 16px rgba(20,10,50,0.28);
+    background: linear-gradient(180deg, rgba(255,247,236,0.32) 0%, rgba(255,238,203,0.32) 100%);
+    border: 2px solid rgba(255,255,255,0.5);
+    box-shadow: 0 0 0 2px rgba(122,92,201,0.35), 0 6px 16px rgba(20,10,50,0.22);
     border-radius: 16px;
     padding: 10px 12px;
     backdrop-filter: blur(2px);
@@ -391,8 +395,7 @@
     width: auto;
   }
   .chat-overlay.retracte .chat-log,
-  .chat-overlay.retracte .chat-row,
-  .chat-overlay.retracte .emote-picker {
+  .chat-overlay.retracte .chat-row {
     display: none;
   }
   .chat-overlay-header {
@@ -472,25 +475,6 @@
     padding: 7px 14px;
     font-size: 13px;
   }
-  .emote-picker {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 5px;
-    margin-top: 8px;
-  }
-  .emote-picker button {
-    flex: 0 0 auto;
-    background: rgba(255,255,255,0.85);
-    color: initial;
-    box-shadow: 0 0 0 2px var(--hairline-soft), 0 2px 0 rgba(74,53,96,0.12);
-    border: 2px solid rgba(255,255,255,0.85);
-    padding: 4px 7px;
-    font-size: 14px;
-    line-height: 1;
-    border-radius: 9px;
-  }
-  .emote-picker button:hover { box-shadow: 0 0 0 2px var(--hairline), 0 2px 0 rgba(74,53,96,0.12); }
-
   /* --- Icône de sortie du donjon (haut droit) ---------------------------- */
   .masque { display: none !important; }
   .icone-sortie-donjon {
@@ -2214,7 +2198,6 @@
           <input id="chat-input" type="text" maxlength="80" placeholder="Dire quelque chose...">
           <button id="btn-chat">Envoyer</button>
         </div>
-        <div class="emote-picker" id="emote-picker"></div>
       </div>
 
       <!-- Barre d'action (sorts) superposée en bas de l'écran de jeu. -->
@@ -2982,12 +2965,11 @@ document.addEventListener("visibilitychange", () => {
   }
 });
 
-// --- Chat & emotes ---------------------------------------------------------
+// --- Chat --------------------------------------------------------------
 // Bulles affichées au-dessus des personnages (une par joueur, la plus
-// récente remplace la précédente) : Map<idJoueur, {texte, expire, emote}>.
+// récente remplace la précédente) : Map<idJoueur, {texte, expire}>.
 const bulles = new Map();
 const DUREE_BULLE_CHAT = 4500;
-const DUREE_BULLE_EMOTE = 2200;
 
 function pseudoDe(id) {
   const p = state && state.players && state.players.find((j) => j.id === id);
@@ -3124,10 +3106,8 @@ function gererMessageServeur(event) {
     render();
   } else if (msg.type === "chat") {
     const pseudo = pseudoDe(msg.id);
-    bulles.set(msg.id, { texte: msg.texte, expire: Date.now() + DUREE_BULLE_CHAT, emote: false });
+    bulles.set(msg.id, { texte: msg.texte, expire: Date.now() + DUREE_BULLE_CHAT });
     ajouterLigneChat(pseudo, msg.texte);
-  } else if (msg.type === "emote") {
-    bulles.set(msg.id, { texte: msg.emote, expire: Date.now() + DUREE_BULLE_EMOTE, emote: true });
   }
 }
 // La connexion n'est ouverte qu'au clic sur "Jouer" de l'écran d'accueil
@@ -5777,12 +5757,7 @@ function dessinerBulles() {
     ctx.save();
     ctx.globalAlpha = alpha;
 
-    if (bulle.emote) {
-      ctx.font = "22px sans-serif";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "bottom";
-      ctx.fillText(bulle.texte, centreX, bas);
-    } else {
+    {
       ctx.font = "600 12.5px 'Work Sans', sans-serif";
       const largeurTexte = ctx.measureText(bulle.texte).width;
       const largeurBulle = Math.min(220, Math.max(36, largeurTexte + 20));
@@ -7082,18 +7057,6 @@ btnRetracterChat.addEventListener("click", () => {
   definirChatReplie(!chatOverlay.classList.contains("retracte"));
 });
 definirChatReplie(true);
-
-// --- Picker d'emotes rapides -------------------------------------------
-const EMOTES_RAPIDES = ["👋", "😂", "😭", "❤️", "😮", "👍", "💀", "🎉"];
-const picker = document.getElementById("emote-picker");
-for (const emote of EMOTES_RAPIDES) {
-  const btn = document.createElement("button");
-  btn.type = "button";
-  btn.textContent = emote;
-  btn.title = "Envoyer cette emote";
-  btn.addEventListener("click", () => envoyer({ type: "emote", emote }));
-  picker.appendChild(btn);
-}
 
 // Rendu de secours tant qu'aucun état n'est encore arrivé du serveur.
 dessinerCiel();

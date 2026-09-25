@@ -3486,10 +3486,6 @@ function diffuserATous(objet) {
 // Connexions WebSocket
 // ---------------------------------------------------------------------------
 
-// Liste blanche des emotes rapides envoyables par les joueurs (pas de texte
-// libre pour celles-ci : un simple picker côté client).
-const EMOTES_AUTORISEES = new Set(["👋", "😂", "😭", "❤️", "😮", "👍", "💀", "🎉"]);
-
 // ---------------------------------------------------------------------------
 // Persistance légère (fichier JSON, pas de base de données — inutile pour
 // ce prototype et évite une dépendance externe à installer). Le client
@@ -3802,11 +3798,6 @@ wss.on("connection", (ws, req) => {
       const texte = String(message.texte || "").trim().slice(0, 80);
       if (texte) {
         diffuserATous({ type: "chat", id: joueur.id, texte });
-      }
-    } else if (message.type === "emote") {
-      const emote = String(message.emote || "");
-      if (EMOTES_AUTORISEES.has(emote)) {
-        diffuserATous({ type: "emote", id: joueur.id, emote });
       }
     } else if (message.type === "quitterDonjon") {
       // Icône de porte du HUD (à tout moment) OU bouton rouge "Quitter le
