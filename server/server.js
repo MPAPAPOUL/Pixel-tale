@@ -32,10 +32,16 @@ const CLIENT_DIR = path.join(__dirname, "..", "client");
 // propre instance de l'arène (son propre combat contre Sire-Hano), pas un
 // espace partagé par tout le serveur. PORTE_DONJON_X reste la position de la
 // porte dans Vert-Hige (mur invisible tant que la clé n'est pas complète).
-const PORTE_DONJON_X = 2400;
+const PORTE_DONJON_X = 4200; // île de Vert-Hige agrandie (était 2400) pour une vraie zone à explorer
 const MONDE_LARGEUR_VERTHIGE = PORTE_DONJON_X + 60;
-const LARGEUR_ARENE_DONJON = 1380; // arène agrandie (était 760)
-const MONDE_HAUTEUR = 640; // hauteur commune aux deux mondes
+const LARGEUR_ARENE_DONJON = 1380; // arène du donjon INCHANGÉE — l'agrandissement des maps ne la concerne pas
+const MONDE_HAUTEUR = 640; // hauteur du donjon et de la Salle du Trône (arènes compactes, inchangées)
+// Hauteur des zones "à explorer" (Vert-Hige + les 8 biomes) : nettement plus
+// haute que MONDE_HAUTEUR pour une vraie sensation de verticalité (relief,
+// plateformes en hauteur, scroll de caméra) — le donjon et la Salle du Trône
+// gardent volontairement MONDE_HAUTEUR, voir plus haut.
+const MONDE_HAUTEUR_ZONE = 1400;
+const SOL_Y_ZONE = MONDE_HAUTEUR_ZONE - 40; // sol ancré en bas du monde agrandi, comme MONDE_HAUTEUR/sol=600-640 pour les petites salles
 
 const JOUEUR_LARGEUR = 36;
 // La hitbox va du bas (pieds, ancrés au sol — voir toutes les affectations
@@ -64,22 +70,15 @@ const HP_REGEN_PAR_SECONDE = 2; // régénération de vie passive de base (PV/s)
 // peut pas tomber dans le vide. Les autres forment le relief à explorer.
 // Écarts calibrés pour la physique actuelle (saut ≈ 110px de haut,
 // ≈ 160px de large en vol) — à retoucher au playtest si besoin.
-const PLATEFORMES_VERTHIGE = [
-  { x: 0, y: 600, width: MONDE_LARGEUR_VERTHIGE, height: 40 }, // sol
-  { x: 60, y: 480, width: 120, height: 24 },
-  { x: 260, y: 420, width: 140, height: 24 },
-  { x: 460, y: 500, width: 160, height: 24 },
-  { x: 680, y: 420, width: 120, height: 24 },
-  { x: 860, y: 340, width: 140, height: 24 },
-  { x: 1060, y: 460, width: 160, height: 24 },
-  { x: 1260, y: 400, width: 120, height: 24 },
-  { x: 1260, y: 290, width: 120, height: 24 }, // tour au-dessus de la précédente
-  { x: 1460, y: 520, width: 180, height: 24 },
-  { x: 1700, y: 430, width: 120, height: 24 },
-  { x: 1880, y: 350, width: 140, height: 24 },
-  { x: 2080, y: 470, width: 160, height: 24 },
-  { x: 2280, y: 560, width: 100, height: 24 },
-];
+// Île générée procéduralement (comme les biomes, voir genererPlateformes plus
+// bas — appelable ici grâce au hoisting des déclarations `function`) : seed
+// fixe pour un layout stable d'un redémarrage à l'autre. Nettement plus
+// grande que l'ancien tracé écrit à la main (largeur et hauteur quasi
+// doublées) pour une vraie zone à explorer, sans toucher au donjon
+// (PLATEFORMES_DONJON, juste en dessous) ni à MONDE_HAUTEUR.
+const SEED_VERTHIGE = 4242;
+const NB_ETAGES_VERTHIGE = 30;
+const PLATEFORMES_VERTHIGE = genererPlateformes(mulberry32(SEED_VERTHIGE), MONDE_LARGEUR_VERTHIGE, NB_ETAGES_VERTHIGE, SOL_Y_ZONE);
 
 // Arène de l'Antre du Sire-Hano — map à part entière, coordonnées locales
 // (x=0 = mur d'entrée / porte retour vers Vert-Hige). Agrandie pour laisser
@@ -302,15 +301,15 @@ function creerMonstre(type, plateforme) {
   return monstre;
 }
 
-// Six monstres : deux de chaque espèce, sur des plateformes différentes.
-const monstres = [
-  creerMonstre("troubalourd", PLATEFORMES_VERTHIGE[5]), // plateforme x:860
-  creerMonstre("troubalourd", PLATEFORMES_VERTHIGE[10]), // plateforme x:1700
-  creerMonstre("fisselo", PLATEFORMES_VERTHIGE[2]), // plateforme x:260
-  creerMonstre("fisselo", PLATEFORMES_VERTHIGE[9]), // plateforme x:1460
-  creerMonstre("tiralark", PLATEFORMES_VERTHIGE[7]), // plateforme x:1260
-  creerMonstre("tiralark", PLATEFORMES_VERTHIGE[12]), // plateforme x:2080
-];
+// Un monstre par plateforme surélevée (jamais au sol, comme les biomes, voir
+// genererZoneBiome) — les 3 espèces d'origine en cycle. Vert-Hige étant
+// maintenant beaucoup plus grande (voir PLATEFORMES_VERTHIGE), ceci remplace
+// les 6 monstres placés à la main par un peuplement nettement plus dense,
+// proportionné à la nouvelle taille de l'île.
+const TYPES_MONSTRES_VERTHIGE = ["troubalourd", "fisselo", "tiralark"];
+const monstres = PLATEFORMES_VERTHIGE.slice(1).map((plateforme, i) =>
+  creerMonstre(TYPES_MONSTRES_VERTHIGE[i % TYPES_MONSTRES_VERTHIGE.length], plateforme)
+);
 
 // ---------------------------------------------------------------------------
 // Donjon : L'Antre du Sire-Hano — clé de groupe + boss
@@ -1284,7 +1283,7 @@ const zoneVerthige = {
   blurb: "L'île de départ : prairies, jungle et la porte de l'Antre.",
   plateformes: PLATEFORMES_VERTHIGE,
   largeur: MONDE_LARGEUR_VERTHIGE,
-  hauteur: MONDE_HAUTEUR,
+  hauteur: MONDE_HAUTEUR_ZONE,
   monstres, // les Fisselo / Troubalourd / Tiralark de l'île (tableau global)
   projectiles: [],
   projectilesMonstres: [],
@@ -1390,7 +1389,7 @@ function sortirDonjon(p) {
   const instance = instancesDonjon.get(p.zone);
   p.zone = ZONE_VERTHIGE;
   p.x = PORTE_DONJON_X - 70;
-  p.y = 600 - JOUEUR_HAUTEUR;
+  p.y = PLATEFORMES_VERTHIGE[0].y - JOUEUR_HAUTEUR;
   p.vx = 0;
   p.vy = 0;
   p.invulnerableRestant = 1.0;
@@ -1471,12 +1470,17 @@ function mulberry32(seed) {
 // `nbEtages` plateformes de largeur/hauteur variables. Sert à la fois de
 // "relief" (les marches demandées) et de terrain de patrouille pour les
 // monstres du biome.
-function genererPlateformes(rng, largeur, nbEtages) {
-  const plateformes = [{ x: 0, y: 600, width: largeur, height: 40 }];
+function genererPlateformes(rng, largeur, nbEtages, solY = 600) {
+  const plateformes = [{ x: 0, y: solY, width: largeur, height: 40 }];
   let x = 70 + Math.floor(rng() * 60);
+  const margeHaut = 150; // ne monte jamais plus haut que ça, quelle que soit la hauteur du monde
+  // Pas vertical dérivé de solY plutôt qu'une valeur fixe (52) : sur un monde
+  // beaucoup plus haut que les 600px d'origine (voir MONDE_HAUTEUR_ZONE), un
+  // pas fixe laisserait toute la moitié haute du monde vide de plateformes.
+  const pas = Math.max(40, Math.floor((solY - margeHaut - 80) / (nbEtages + 1)));
   for (let i = 0; i < nbEtages; i++) {
-    const w = 130 + Math.floor(rng() * 170);
-    const y = Math.max(150, 520 - i * 52 - Math.floor(rng() * 40));
+    const w = 170 + Math.floor(rng() * 230); // plateformes plus grandes (était 130-300)
+    const y = Math.max(margeHaut, solY - 80 - i * pas - Math.floor(rng() * 40));
     plateformes.push({ x: Math.round(x), y: Math.round(y), width: w, height: 24 });
     x += w + 50 + Math.floor(rng() * 130);
     if (x > largeur - 220) x = 60 + Math.floor(rng() * 90);
@@ -1606,8 +1610,8 @@ const TYPE_GRIMPE_PAR_BIOME = {
 // relief en escalier de genererPlateformes.
 function genererZoneBiome(biome, indexSeed) {
   const rng = mulberry32(1000 + indexSeed * 97);
-  const largeur = 1400 + Math.floor(rng() * 260);
-  const plateformes = genererPlateformes(rng, largeur, 9);
+  const largeur = 2600 + Math.floor(rng() * 500); // biome nettement plus grand (était 1400-1660)
+  const plateformes = genererPlateformes(rng, largeur, 16, SOL_Y_ZONE); // 16 étages (était 9) pour remplir la hauteur agrandie
   const plateformesSurelevees = plateformes.slice(1);
 
   // La plateforme la plus haute (y le plus petit) de tout le relief — c'est
@@ -1615,7 +1619,7 @@ function genererZoneBiome(biome, indexSeed) {
   // quelle que soit la disposition tirée au hasard.
   const plateformeSommet = plateformes.reduce((sommet, p) => (p.y < sommet.y ? p : sommet), plateformes[0]);
   const xGrimpe = Math.round(plateformeSommet.x + plateformeSommet.width * (0.3 + rng() * 0.4));
-  const SOL_Y = 600;
+  const SOL_Y = SOL_Y_ZONE;
   const MARGE_BAS = 20; // s'arrête un peu avant le sol, purement esthétique
 
   const zone = {
@@ -1627,7 +1631,7 @@ function genererZoneBiome(biome, indexSeed) {
     tierLoot: biome.tier,
     plateformes,
     largeur,
-    hauteur: MONDE_HAUTEUR,
+    hauteur: MONDE_HAUTEUR_ZONE,
     monstres: [],
     projectiles: [],
     projectilesMonstres: [],
@@ -1653,7 +1657,7 @@ function genererZoneBiome(biome, indexSeed) {
     const j = Math.floor(rng() * (i + 1));
     [plateformesMelangees[i], plateformesMelangees[j]] = [plateformesMelangees[j], plateformesMelangees[i]];
   }
-  const nbMonstres = 4 + Math.floor(rng() * 2);
+  const nbMonstres = 10 + Math.floor(rng() * 5); // biome agrandi : nettement plus de monstres (était 4-5)
   for (let i = 0; i < nbMonstres; i++) {
     const plateforme = plateformesMelangees[i % plateformesMelangees.length] || plateformes[0];
     zone.monstres.push(creerMonstre(biome.typeMonstre, plateforme));
@@ -1778,7 +1782,7 @@ const DESTINATIONS_TELEPORTEUR = [
 // l'instant elle ne contient qu'un trône vide (voir dessinerSalleTroneAmbre
 // côté client), en attendant d'y intégrer un boss (le Chevalier Noir) plus
 // tard.
-const PORTE_TRONE_AMBRE_X = 1300; // dans les limites de "cretes-ambre" (largeur procédurale ≈1606, voir genererZoneBiome)
+const PORTE_TRONE_AMBRE_X = 1300; // dans les limites de "cretes-ambre" (largeur procédurale ≈2600-3100, voir genererZoneBiome)
 const PRIX_ENTREE_TRONE_AMBRE = 500;
 const LARGEUR_TRONE_AMBRE = 1300; // ≥ largeur du viewport (1280) pour que la caméra (clampée à state.world.width - canvas.width) ne laisse jamais voir le ciel au-delà des murs
 const ZONE_TRONE_AMBRE = "salle-trone-ambre";
@@ -1821,7 +1825,7 @@ function entrerSalleTroneAmbre(p) {
 function sortirSalleTroneAmbre(p) {
   p.zone = "cretes-ambre";
   p.x = PORTE_TRONE_AMBRE_X - 70;
-  p.y = 600 - JOUEUR_HAUTEUR;
+  p.y = ZONES_PERSISTANTES.get("cretes-ambre").plateformes[0].y - JOUEUR_HAUTEUR;
   p.vx = 0;
   p.vy = 0;
   p.invulnerableRestant = 1.0;
@@ -2068,12 +2072,15 @@ function teleporterVers(p, destinationId) {
   }
   p.zone = destinationId;
   p.x = 60;
-  // Au sol (y=600 partout, voir genererPlateformes/genererZoneVillage/etc.)
+  // Au sol (plateformes[0] est TOUJOURS le sol, voir genererPlateformes/
+  // genererZoneVillage/etc. — le sol n'est plus à la même hauteur partout
+  // depuis l'agrandissement de Vert-Hige/des biomes, voir MONDE_HAUTEUR_ZONE,
+  // d'où la lecture dynamique via zoneDeJoueur plutôt qu'une constante)
   // plutôt que tout en haut de l'écran (y=40) : le joueur retombait certes
   // au sol par la gravité, mais atterrissait parfois sur une plateforme
   // surélevée plutôt que sur le sol si une plateforme se trouvait juste en
   // dessous du point d'arrivée.
-  p.y = 600 - JOUEUR_HAUTEUR;
+  p.y = zoneDeJoueur(p).plateformes[0].y - JOUEUR_HAUTEUR;
   p.vx = 0;
   p.vy = 0;
   p.invulnerableRestant = 1.0;
@@ -2568,7 +2575,7 @@ function respawnJoueur(p) {
   p.mana = p.manaMax;
   p.alive = true;
   p.x = 60 + Math.random() * 300;
-  p.y = 600 - JOUEUR_HAUTEUR;
+  p.y = zoneDeJoueur(p).plateformes[0].y - JOUEUR_HAUTEUR;
   p.vx = 0;
   p.vy = 0;
   p.invulnerableRestant = 1.5; // petit répit à la réapparition
@@ -3657,7 +3664,7 @@ wss.on("connection", (ws, req) => {
   const joueur = creerJoueur();
   // Point de spawn : sur le sol, position X aléatoire raisonnable.
   joueur.x = 60 + Math.random() * 300;
-  joueur.y = 600 - JOUEUR_HAUTEUR;
+  joueur.y = PLATEFORMES_VERTHIGE[0].y - JOUEUR_HAUTEUR;
   joueur.invulnerableRestant = 1.0; // petit répit à la connexion
 
   // Jeton de progression persistante (voir la section "Persistance"
