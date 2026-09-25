@@ -166,7 +166,10 @@ const TOUCHES_SORTS = ["a", "z", "e", "r"];
 // creerJoueur).
 const PALETTE_CHEVEUX = ["#c9c9c9", "#2b2b2b", "#6b4a2c", "#b35a2e", "#d9b654", "#3a4a7a"];
 const PALETTE_YEUX = ["#448636", "#3b6fd6", "#6b4a2c", "#d19a3d", "#8b3bd6", "#8a95a1"];
-const GENRES_VALIDES = ["garcon", "fille"];
+// Vêtements : pas de valeur par défaut (voir apparence dans creerJoueur,
+// couleurVetements: null) — contrairement aux cheveux/yeux, l'armure/robe
+// garde la teinte d'origine de la classe tant que le joueur n'a rien choisi.
+const PALETTE_VETEMENTS = ["#c1502e", "#4f9d69", "#4f6fb0", "#7c5cc9", "#d9b654", "#3a3a3a", "#e8e8e8"];
 
 // ---------------------------------------------------------------------------
 // Monstres
@@ -2089,10 +2092,9 @@ function creerJoueur() {
     // client). Note : seul le sprite Quater a un iris de couleur
     // distincte dans l'art source, donc `couleurYeux` n'a pour l'instant
     // aucun effet visuel sur Dorken/Krix (yeux noirs, non recolorables).
-    // `genre` reste purement cosmétique/déclaratif (aucun second corps
-    // disponible dans le pack de sprites utilisé) — voir la validation
-    // dans le message "personnaliser".
-    apparence: { genre: "garcon", couleurCheveux: "#c9c9c9", couleurYeux: "#448636" },
+    // `couleurVetements` : null par défaut (garde la teinte d'origine de
+    // l'armure/robe de la classe) — voir PALETTE_VETEMENTS.
+    apparence: { couleurCheveux: "#c9c9c9", couleurYeux: "#448636", couleurVetements: null },
     input: { left: false, right: false, jump: false, bas: false, a: false, z: false, e: false, r: false, f: false },
     hp: infosClasse.hpMax,
     hpMax: infosClasse.hpMax,
@@ -3585,9 +3587,9 @@ function appliquerProgression(p, sauvegarde) {
   // contient rien, ou contient une valeur hors palette (même garde-fou que
   // le message "personnaliser").
   if (sauvegarde.apparence) {
-    if (GENRES_VALIDES.includes(sauvegarde.apparence.genre)) p.apparence.genre = sauvegarde.apparence.genre;
     if (PALETTE_CHEVEUX.includes(sauvegarde.apparence.couleurCheveux)) p.apparence.couleurCheveux = sauvegarde.apparence.couleurCheveux;
     if (PALETTE_YEUX.includes(sauvegarde.apparence.couleurYeux)) p.apparence.couleurYeux = sauvegarde.apparence.couleurYeux;
+    if (PALETTE_VETEMENTS.includes(sauvegarde.apparence.couleurVetements)) p.apparence.couleurVetements = sauvegarde.apparence.couleurVetements;
   }
   // Série de connexion quotidienne — restaurée telle quelle ;
   // verifierRecompenseConnexion (appelée juste après, à la connexion)
@@ -3753,9 +3755,9 @@ wss.on("connection", (ws, req) => {
       // Écran de création (et réglages en jeu) : chaque champ n'est
       // appliqué QUE s'il correspond exactement à une valeur des palettes
       // fermées ci-dessus — voir le commentaire sur PALETTE_CHEVEUX.
-      if (GENRES_VALIDES.includes(message.genre)) joueur.apparence.genre = message.genre;
       if (PALETTE_CHEVEUX.includes(message.couleurCheveux)) joueur.apparence.couleurCheveux = message.couleurCheveux;
       if (PALETTE_YEUX.includes(message.couleurYeux)) joueur.apparence.couleurYeux = message.couleurYeux;
+      if (PALETTE_VETEMENTS.includes(message.couleurVetements)) joueur.apparence.couleurVetements = message.couleurVetements;
     } else if (message.type === "chat") {
       const texte = String(message.texte || "").trim().slice(0, 80);
       if (texte) {

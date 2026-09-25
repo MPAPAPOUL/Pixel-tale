@@ -1306,12 +1306,10 @@
   .carte-perso-pseudo { font-family: "Baloo 2", sans-serif; font-size: 15px; }
   .carte-perso-details { font-size: 11.5px; color: #cfc3ef; }
 
-  /* --- Personnalisation d'avatar (écran de création) : genre + nuanciers
-       cheveux/yeux avec aperçu live — voir obtenirSpriteRecolore côté JS.
-       Contrairement à la classe, ces choix ont une valeur par défaut
-       présélectionnée (pas de blocage de "Jouer" tant qu'on n'y touche pas),
-       sauf le genre qui reste obligatoire pour un tout nouveau personnage
-       (voir validerFormulaireAccueil). ------------------------------------ */
+  /* --- Personnalisation d'avatar (écran de création) : nuanciers
+       cheveux/yeux/vêtements avec aperçu live — voir obtenirSpriteRecolore
+       côté JS. Contrairement à la classe, ces choix ne bloquent jamais
+       "Jouer" (voir validerFormulaireAccueil). ---------------------------- */
   #accueil-bloc-avatar { margin-bottom: 20px; }
   .accueil-avatar-ligne { display: flex; gap: 16px; align-items: flex-start; }
   #accueil-avatar-preview {
@@ -1328,20 +1326,6 @@
     color: #cfc3ef;
     margin: 8px 0 5px;
   }
-  .accueil-genre { display: flex; gap: 8px; }
-  .pilule-genre {
-    flex: 1;
-    padding: 7px 10px;
-    border-radius: 999px;
-    border: 2px solid var(--hairline);
-    background: rgba(255,255,255,0.04);
-    color: #f2ecff;
-    font-family: "Baloo 2", sans-serif;
-    font-size: 12.5px;
-    cursor: pointer;
-    transition: border-color 0.12s ease, background 0.12s ease;
-  }
-  .pilule-genre.selectionnee { border-color: var(--gold); background: rgba(255,159,67,0.16); }
   .accueil-nuancier { display: flex; gap: 7px; flex-wrap: wrap; }
   .pastille-couleur {
     width: 24px;
@@ -1827,18 +1811,16 @@
     </div>
 
     <div id="accueil-bloc-avatar">
-      <p class="accueil-section-titre">Personnalise ton avatar (genre obligatoire)</p>
+      <p class="accueil-section-titre">Personnalise ton avatar</p>
       <div class="accueil-avatar-ligne">
         <canvas id="accueil-avatar-preview" width="96" height="112"></canvas>
         <div class="accueil-avatar-options">
-          <div class="accueil-genre" id="accueil-genre">
-            <button type="button" class="pilule-genre" data-genre="garcon">👦 Garçon</button>
-            <button type="button" class="pilule-genre" data-genre="fille">👧 Fille</button>
-          </div>
           <p class="accueil-avatar-souslabel">Cheveux</p>
           <div class="accueil-nuancier" id="accueil-nuancier-cheveux"></div>
           <p class="accueil-avatar-souslabel">Yeux</p>
           <div class="accueil-nuancier" id="accueil-nuancier-yeux"></div>
+          <p class="accueil-avatar-souslabel">Vêtements</p>
+          <div class="accueil-nuancier" id="accueil-nuancier-vetements"></div>
         </div>
       </div>
     </div>
@@ -2419,7 +2401,7 @@ const CACHE_PATTERN_PIERRE_SOMBRE = {};
 // l'épée, Quater = archer, Krix = mage — chaque classe garde donc sa
 // silhouette/arme d'origine (contrairement à la version précédente qui
 // partageait un unique sprite d'archer entre les 3 classes). La
-// personnalisation cheveux/yeux/genre de l'écran de création reste commune
+// personnalisation cheveux/yeux/vêtements de l'écran de création reste commune
 // aux trois (voir CONFIG_RECOLORAGE ci-dessous, différente par classe car
 // chaque variante d'art a des teintes cheveux/yeux différentes).
 const SPRITES_JOUEURS_ELFE = {
@@ -2487,6 +2469,14 @@ const SPRITES_JOUEURS_ELFE = {
 //    que soit la couleur choisie dans le sélecteur "Yeux" (pas d'iris
 //    séparable dans l'art source) — seul Quater a un rendu différent selon
 //    ce choix. Voir la note équivalente côté serveur (creerJoueur).
+// Vêtements (armure/robe) : même principe "exact" que les cheveux
+// Dorken/Krix ci-dessus (correspondance sur des teintes précises
+// échantillonnées, tolérance serrée) — teintes relevées par histogramme des
+// couleurs dominantes de la moitié basse de chaque sprite (zone armure/
+// robe, hors tête), classées ombre/base/lumière. Appliqué à TOUTE la
+// classe, y compris Quater (mode "achromatique" pour les cheveux, mais son
+// armure est bien chromatique comme les deux autres) — voir
+// obtenirSpriteRecolore, passe indépendante de celle des cheveux/yeux.
 const CONFIG_RECOLORAGE = {
   quater: {
     mode: "achromatique",
@@ -2495,6 +2485,12 @@ const CONFIG_RECOLORAGE = {
     cheveuxGrisTolerance: 10,
     cheveuxLumaMin: 70,
     cheveuxLumaMax: 245,
+    vetementsPaliers: [
+      { r: 20, g: 53, b: 15, tolerance: 10, clarteMultiplicateur: 0.55 }, // ombre
+      { r: 68, g: 109, b: 41, tolerance: 10, clarteMultiplicateur: 1.0 }, // base
+      { r: 77, g: 119, b: 49, tolerance: 10, clarteMultiplicateur: 1.08 },
+      { r: 131, g: 174, b: 104, tolerance: 14, clarteMultiplicateur: 1.5 }, // lumière
+    ],
   },
   dorken: {
     mode: "exact",
@@ -2502,6 +2498,13 @@ const CONFIG_RECOLORAGE = {
     zoneCheveuxFraction: 0.45, // limite le recolorage cheveux à la tête (haut de l'image)
     cheveuxPaliers: [
       { r: 20, g: 24, b: 25, tolerance: 10, clarteMultiplicateur: 1.0 },
+    ],
+    vetementsPaliers: [
+      { r: 33, g: 26, b: 53, tolerance: 10, clarteMultiplicateur: 0.32 }, // ombre profonde
+      { r: 74, g: 53, b: 109, tolerance: 10, clarteMultiplicateur: 0.68 },
+      { r: 76, g: 53, b: 114, tolerance: 10, clarteMultiplicateur: 0.68 },
+      { r: 110, g: 81, b: 146, tolerance: 10, clarteMultiplicateur: 1.0 }, // base
+      { r: 122, g: 98, b: 159, tolerance: 12, clarteMultiplicateur: 1.15 }, // lumière
     ],
   },
   krix: {
@@ -2513,6 +2516,13 @@ const CONFIG_RECOLORAGE = {
       { r: 147, g: 91, b: 36, tolerance: 14, clarteMultiplicateur: 1.0 },
       { r: 139, g: 108, b: 72, tolerance: 14, clarteMultiplicateur: 1.0 },
       { r: 137, g: 106, b: 71, tolerance: 14, clarteMultiplicateur: 1.0 },
+    ],
+    vetementsPaliers: [
+      { r: 17, g: 42, b: 61, tolerance: 10, clarteMultiplicateur: 0.48 }, // ombre profonde
+      { r: 29, g: 64, b: 96, tolerance: 10, clarteMultiplicateur: 0.75 },
+      { r: 40, g: 79, b: 114, tolerance: 10, clarteMultiplicateur: 0.95 },
+      { r: 42, g: 84, b: 129, tolerance: 10, clarteMultiplicateur: 1.0 }, // base
+      { r: 57, g: 106, b: 149, tolerance: 12, clarteMultiplicateur: 1.24 }, // lumière
     ],
   },
 };
@@ -2557,13 +2567,30 @@ function hslVersRgb(h, s, l) {
 }
 
 const CACHE_SPRITES_RECOLORES = new Map();
-// Retourne une source dessinable (canvas hors-écran) avec les cheveux/yeux
-// recolorés selon `couleurCheveux`/`couleurYeux` (hex) et la configuration
-// de la classe `classe` (voir CONFIG_RECOLORAGE), mise en cache par image
-// source + classe + combo de couleurs. `img` doit déjà être chargée
-// (imagePrete) avant l'appel.
-function obtenirSpriteRecolore(img, classe, couleurCheveux, couleurYeux) {
-  const cle = `${img.src}|${classe}|${couleurCheveux}|${couleurYeux}`;
+// Applique les paliers vêtements (voir CONFIG_RECOLORAGE) à UN pixel déjà
+// extrait — factorisé car appelé depuis les deux modes (achromatique/exact)
+// ci-dessous, sur des pixels qui n'ont pas déjà été recolorés comme
+// cheveux/yeux. Retourne true si le pixel a été modifié.
+function essayerRecolorerVetement(px, i, r, g, b, paliers, vetHsl) {
+  if (!paliers || !vetHsl) return false;
+  for (const palier of paliers) {
+    if (Math.abs(r - palier.r) <= palier.tolerance && Math.abs(g - palier.g) <= palier.tolerance && Math.abs(b - palier.b) <= palier.tolerance) {
+      const clarte = Math.max(0.08, Math.min(0.92, vetHsl.l * palier.clarteMultiplicateur));
+      const rgb = hslVersRgb(vetHsl.h, vetHsl.s, clarte);
+      px[i] = rgb.r; px[i + 1] = rgb.g; px[i + 2] = rgb.b;
+      return true;
+    }
+  }
+  return false;
+}
+
+// Retourne une source dessinable (canvas hors-écran) avec les cheveux/yeux/
+// vêtements recolorés selon couleurCheveux/couleurYeux/couleurVetements
+// (hex) et la configuration de la classe `classe` (voir CONFIG_RECOLORAGE),
+// mise en cache par image source + classe + combo de couleurs. `img` doit
+// déjà être chargée (imagePrete) avant l'appel.
+function obtenirSpriteRecolore(img, classe, couleurCheveux, couleurYeux, couleurVetements) {
+  const cle = `${img.src}|${classe}|${couleurCheveux}|${couleurYeux}|${couleurVetements || ""}`;
   const enCache = CACHE_SPRITES_RECOLORES.get(cle);
   if (enCache) return enCache;
 
@@ -2580,6 +2607,13 @@ function obtenirSpriteRecolore(img, classe, couleurCheveux, couleurYeux) {
   const eye = config.yeuxSource ? hexVersRgb(couleurYeux) : null;
   const hairRgbCible = hexVersRgb(couleurCheveux);
   const hairHsl = rgbVersHsl(hairRgbCible.r, hairRgbCible.g, hairRgbCible.b);
+  // Pas de couleur choisie (personnage jamais personnalisé, ou sauvegarde
+  // antérieure à cette fonctionnalité) : on garde l'armure/robe d'ORIGINE,
+  // contrairement aux cheveux (qui ont toujours une valeur par défaut côté
+  // serveur, voir creerJoueur) — pas de retint générique imposé à tout le
+  // monde.
+  const vetRgbCible = couleurVetements ? hexVersRgb(couleurVetements) : null;
+  const vetHsl = vetRgbCible ? rgbVersHsl(vetRgbCible.r, vetRgbCible.g, vetRgbCible.b) : null;
 
   if (config.mode === "achromatique") {
     for (let i = 0; i < px.length; i += 4) {
@@ -2596,14 +2630,19 @@ function obtenirSpriteRecolore(img, classe, couleurCheveux, couleurYeux) {
       if (max - min <= config.cheveuxGrisTolerance && luma >= config.cheveuxLumaMin && luma <= config.cheveuxLumaMax) {
         const rgb = hslVersRgb(hairHsl.h, hairHsl.s, luma / 255);
         px[i] = rgb.r; px[i + 1] = rgb.g; px[i + 2] = rgb.b;
+        continue;
       }
+
+      essayerRecolorerVetement(px, i, r, g, b, config.vetementsPaliers, vetHsl);
     }
   } else {
     // mode "exact" (Dorken/Krix) : cheveux chromatiques ou noir profond —
     // correspondance sur des teintes précises échantillonnées dans le
     // sprite, restreinte à la zone haute (tête) pour ne jamais toucher aux
     // contours du reste du corps ni à l'arme (voir le commentaire sur
-    // CONFIG_RECOLORAGE). Pas de passe yeux (yeuxSource est null).
+    // CONFIG_RECOLORAGE). Pas de passe yeux (yeuxSource est null). Les
+    // vêtements, eux, sont vérifiés sur TOUTE l'image (armure/robe hors
+    // zone tête) dès que le pixel n'a pas déjà été recoloré comme cheveux.
     const zoneH = Math.round(h * (config.zoneCheveuxFraction || 1));
     for (let y = 0; y < h; y++) {
       const dansLaZone = y < zoneH;
@@ -2611,16 +2650,20 @@ function obtenirSpriteRecolore(img, classe, couleurCheveux, couleurYeux) {
         const i = (y * w + x) * 4;
         const a = px[i + 3];
         if (a === 0) continue;
-        if (!dansLaZone) continue;
         const r = px[i], g = px[i + 1], b = px[i + 2];
-        for (const palier of config.cheveuxPaliers) {
-          if (Math.abs(r - palier.r) <= palier.tolerance && Math.abs(g - palier.g) <= palier.tolerance && Math.abs(b - palier.b) <= palier.tolerance) {
-            const clarte = Math.max(0.12, Math.min(0.88, hairHsl.l * palier.clarteMultiplicateur));
-            const rgb = hslVersRgb(hairHsl.h, hairHsl.s, clarte);
-            px[i] = rgb.r; px[i + 1] = rgb.g; px[i + 2] = rgb.b;
-            break;
+        let recolore = false;
+        if (dansLaZone) {
+          for (const palier of config.cheveuxPaliers) {
+            if (Math.abs(r - palier.r) <= palier.tolerance && Math.abs(g - palier.g) <= palier.tolerance && Math.abs(b - palier.b) <= palier.tolerance) {
+              const clarte = Math.max(0.12, Math.min(0.88, hairHsl.l * palier.clarteMultiplicateur));
+              const rgb = hslVersRgb(hairHsl.h, hairHsl.s, clarte);
+              px[i] = rgb.r; px[i + 1] = rgb.g; px[i + 2] = rgb.b;
+              recolore = true;
+              break;
+            }
           }
         }
+        if (!recolore) essayerRecolorerVetement(px, i, r, g, b, config.vetementsPaliers, vetHsl);
       }
     }
   }
@@ -2865,7 +2908,7 @@ let pseudoDesireAuDepart = null; // pseudo saisi sur l'écran d'accueil, envoyé
 // nouveauPersonnage=1 à chaque coupure — voir connecter() et le handler
 // "welcome" qui la met à jour avec l'id définitif dès qu'il est connu.
 let derniersParametresConnexion = null;
-// Cheveux/yeux/genre choisis sur l'écran de création, envoyés une fois
+// Cheveux/yeux/vêtements choisis sur l'écran de création, envoyés une fois
 // connecté (même mécanique que pseudoDesireAuDepart) — voir
 // validerEtEnvoyerAvatar() qui construit cet objet uniquement s'il y a
 // vraiment quelque chose à envoyer (jamais pour un personnage existant qui
@@ -5627,11 +5670,11 @@ function dessinerJoueurs() {
     // commentaire dans dessinerSprite) — pieds ancrés, pas de saut visuel.
     const squashY = p.accroupi ? 0.62 : 1;
     if (pose && imagePrete(pose)) {
-      // Recoloration cheveux/yeux (écran de création) — voir
+      // Recoloration cheveux/yeux/vêtements (écran de création) — voir
       // obtenirSpriteRecolore ; apparence par défaut si absente (ancien
       // état serveur pas encore reçu, ou joueur pas encore identifié).
-      const apparence = p.apparence || { couleurCheveux: "#c9c9c9", couleurYeux: "#448636" };
-      const source = obtenirSpriteRecolore(pose, p.classe, apparence.couleurCheveux, apparence.couleurYeux);
+      const apparence = p.apparence || { couleurCheveux: "#c9c9c9", couleurYeux: "#448636", couleurVetements: null };
+      const source = obtenirSpriteRecolore(pose, p.classe, apparence.couleurCheveux, apparence.couleurYeux, apparence.couleurVetements);
       dessinerSprite(source, p.x, p.y, LARGEUR, HAUTEUR, p.facing, 1, squashY, true);
     } else {
       dessinerCorpsClasse(p, LARGEUR, HAUTEUR);
@@ -7071,33 +7114,33 @@ const PALETTE_YEUX_CLIENT = [
   { hex: "#8b3bd6", nom: "Violet" },
   { hex: "#8a95a1", nom: "Gris" },
 ];
-let genreChoisiAuDepart = null; // obligatoire pour un tout nouveau personnage
+// Vêtements : PAS de présélection (voir PALETTE_VETEMENTS_CLIENT_AUCUNE plus
+// bas) — contrairement aux cheveux/yeux, un personnage qui ne touche à rien
+// garde l'armure/robe d'origine de sa classe plutôt qu'une teinte imposée.
+const PALETTE_VETEMENTS_CLIENT = [
+  { hex: "#c1502e", nom: "Rouge" },
+  { hex: "#4f9d69", nom: "Vert" },
+  { hex: "#4f6fb0", nom: "Bleu" },
+  { hex: "#7c5cc9", nom: "Violet" },
+  { hex: "#d9b654", nom: "Doré" },
+  { hex: "#3a3a3a", nom: "Noir" },
+  { hex: "#e8e8e8", nom: "Blanc" },
+];
 let couleurCheveuxChoisieAuDepart = PALETTE_CHEVEUX_CLIENT[0].hex; // présélection = teinte d'origine, inoffensive même non-modifiée
 let couleurYeuxChoisieAuDepart = PALETTE_YEUX_CLIENT[0].hex;
+let couleurVetementsChoisieAuDepart = null; // pas de présélection : garde la couleur d'origine de la classe tant qu'on n'y touche pas
 
-function rendreGenreAccueil() {
-  document.querySelectorAll(".pilule-genre").forEach((bouton) => {
-    bouton.classList.toggle("selectionnee", bouton.dataset.genre === genreChoisiAuDepart);
-  });
-}
 function rendreNuancierAccueil(conteneurId, palette, valeurChoisie) {
   const conteneur = document.getElementById(conteneurId);
   conteneur.innerHTML = palette.map((c) => `
     <button type="button" class="pastille-couleur${c.hex === valeurChoisie ? " selectionnee" : ""}" data-hex="${c.hex}" title="${c.nom}" style="background:${c.hex}"></button>`).join("");
 }
 function rendreAvatarAccueil() {
-  rendreGenreAccueil();
   rendreNuancierAccueil("accueil-nuancier-cheveux", PALETTE_CHEVEUX_CLIENT, couleurCheveuxChoisieAuDepart);
   rendreNuancierAccueil("accueil-nuancier-yeux", PALETTE_YEUX_CLIENT, couleurYeuxChoisieAuDepart);
+  rendreNuancierAccueil("accueil-nuancier-vetements", PALETTE_VETEMENTS_CLIENT, couleurVetementsChoisieAuDepart);
   dessinerApercuAvatarAccueil();
 }
-document.getElementById("accueil-genre").addEventListener("click", (e) => {
-  const bouton = e.target.closest(".pilule-genre");
-  if (!bouton) return;
-  genreChoisiAuDepart = bouton.dataset.genre;
-  rendreAvatarAccueil();
-  validerFormulaireAccueil();
-});
 document.getElementById("accueil-nuancier-cheveux").addEventListener("click", (e) => {
   const bouton = e.target.closest(".pastille-couleur");
   if (!bouton) return;
@@ -7108,6 +7151,14 @@ document.getElementById("accueil-nuancier-yeux").addEventListener("click", (e) =
   const bouton = e.target.closest(".pastille-couleur");
   if (!bouton) return;
   couleurYeuxChoisieAuDepart = bouton.dataset.hex;
+  rendreAvatarAccueil();
+});
+document.getElementById("accueil-nuancier-vetements").addEventListener("click", (e) => {
+  const bouton = e.target.closest(".pastille-couleur");
+  if (!bouton) return;
+  // Reclique sur la couleur déjà choisie : revient à "aucune" (couleur
+  // d'origine) plutôt que de rester bloqué sur un choix.
+  couleurVetementsChoisieAuDepart = bouton.dataset.hex === couleurVetementsChoisieAuDepart ? null : bouton.dataset.hex;
   rendreAvatarAccueil();
 });
 
@@ -7128,12 +7179,14 @@ function dessinerApercuAvatarAccueil() {
   const jeuPourApercu = SPRITES_JOUEURS_ELFE[classePourApercu] || SPRITES_JOUEURS_ELFE.quater;
   const base = jeuPourApercu.idle;
   if (!imagePrete(base)) return;
-  const source = obtenirSpriteRecolore(base, classePourApercu, couleurCheveuxChoisieAuDepart, couleurYeuxChoisieAuDepart);
+  const source = obtenirSpriteRecolore(base, classePourApercu, couleurCheveuxChoisieAuDepart, couleurYeuxChoisieAuDepart, couleurVetementsChoisieAuDepart);
   const largeurNat = source.width, hauteurNat = source.height;
   const echelle = Math.min((canvasApercu.height - 8) / hauteurNat, (canvasApercu.width - 8) / largeurNat);
   const largeur = largeurNat * echelle, hauteur = hauteurNat * echelle;
+  const dx = (canvasApercu.width - largeur) / 2;
+  const dy = canvasApercu.height - hauteur - 4;
   actx.imageSmoothingEnabled = true;
-  actx.drawImage(source, (canvasApercu.width - largeur) / 2, canvasApercu.height - hauteur - 4, largeur, hauteur);
+  actx.drawImage(source, dx, dy, largeur, hauteur);
 }
 function boucleApercuAvatarAccueil() {
   if (document.body.classList.contains("mode-accueil")) {
@@ -7143,10 +7196,10 @@ function boucleApercuAvatarAccueil() {
 }
 boucleApercuAvatarAccueil();
 
-// Écran de création de personnage : pseudo, classe ET genre sont désormais
+// Écran de création de personnage : pseudo ET classe sont désormais
 // TOUJOURS obligatoires (que ce soit le tout premier personnage du compte ou
 // un personnage supplémentaire) — le bouton "Jouer" reste désactivé tant que
-// les trois ne sont pas renseignés. Il n'y a plus de notion de "personnage
+// les deux ne sont pas renseignés. Il n'y a plus de notion de "personnage
 // existant qui peut sauter la classe" ici : un compte avec un personnage
 // existant passe par l'écran de SÉLECTION (#accueil-carte-persos) et
 // n'atteint cette carte que pour en créer un nouveau — voir
@@ -7159,7 +7212,6 @@ function validerFormulaireAccueil() {
   const manques = [];
   if (pseudo.length < 2) manques.push("un pseudo (2 caractères minimum)");
   if (!classeChoisieAuDepart) manques.push("une classe");
-  if (!genreChoisiAuDepart) manques.push("un genre");
 
   if (manques.length > 0) {
     btnJouer.disabled = true;
@@ -7178,9 +7230,9 @@ function validerFormulaireAccueil() {
 // précédemment créé pendant la même visite de l'écran d'accueil).
 function reinitialiserFormulaireCreation() {
   classeChoisieAuDepart = null;
-  genreChoisiAuDepart = null;
   couleurCheveuxChoisieAuDepart = PALETTE_CHEVEUX_CLIENT[0].hex;
   couleurYeuxChoisieAuDepart = PALETTE_YEUX_CLIENT[0].hex;
+  couleurVetementsChoisieAuDepart = null;
   document.getElementById("accueil-pseudo").value = "";
   rendreClassesAccueil();
   rendreAvatarAccueil();
@@ -7193,9 +7245,9 @@ document.getElementById("btn-jouer").addEventListener("click", () => {
   const pseudo = document.getElementById("accueil-pseudo").value.trim();
   if (pseudo) pseudoDesireAuDepart = pseudo;
   const personnalisation = { type: "personnaliser" };
-  if (genreChoisiAuDepart) personnalisation.genre = genreChoisiAuDepart;
   if (couleurCheveuxChoisieAuDepart) personnalisation.couleurCheveux = couleurCheveuxChoisieAuDepart;
   if (couleurYeuxChoisieAuDepart) personnalisation.couleurYeux = couleurYeuxChoisieAuDepart;
+  if (couleurVetementsChoisieAuDepart) personnalisation.couleurVetements = couleurVetementsChoisieAuDepart;
   personnalisationDesireeAuDepart = personnalisation;
   demarrerPartie({ nouveauPersonnage: true, classe: classeChoisieAuDepart });
 });
