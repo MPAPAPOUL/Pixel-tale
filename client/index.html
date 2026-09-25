@@ -41,15 +41,20 @@
   }
   /* --- Plein écran / préparation mobile -------------------------------------
      Le jeu (canvas + TOUTE la surcouche HTML : icônes, modales, barre de
-     sorts...) est conçu pour une résolution interne fixe de 1280×600.
-     Plutôt que de rendre chaque élément en unités relatives (immense
-     chantier vu le nombre de modales déjà écrites en pixels), on garde
-     `.stage-frame` à sa taille native et on l'échelonne tout entier avec un
-     `transform: scale()` calculé en JS (voir redimensionnerScene), à partir
-     du plus petit rapport largeur/hauteur disponible (`.layout` occupe tout
-     le viewport) — jamais rogné, quel que soit le format de l'écran (large
-     et bas sur desktop, étroit et haut sur téléphone en portrait), avec un
-     bandeau de la couleur de fond de part et d'autre plutôt qu'un débordement.
+     sorts...) est conçu pour une hauteur interne fixe de 600 ; la largeur,
+     elle, n'est plus figée à 1280 — voir redimensionnerScene, qui l'élargit
+     dynamiquement (canvas.width + `.stage-frame` width) pour remplir tout
+     le viewport quand il est plus large que le ratio natif 1280:600 (un
+     téléphone en paysage, typiquement), plutôt que de laisser deux bandes
+     vides sur les côtés. Toute la surcouche HTML reste néanmoins pensée en
+     unités relatives au bord qu'elle touche (right/left/top/bottom en
+     pixels, jamais une position calculée à partir d'une largeur totale
+     supposée) : elle s'accommode donc de cette largeur variable sans
+     modification. `.stage-frame` est ensuite échelonné tout entier avec un
+     `transform: scale()` calculé en JS, à partir du plus petit rapport
+     largeur/hauteur disponible (`.layout` occupe tout le viewport) — jamais
+     rogné, avec un bandeau de la couleur de fond en haut/bas si l'écran est
+     au contraire plus haut que large à l'échelle (fenêtre desktop haute).
      `.layout` centre `.stage-frame-wrap` (qui ne fait plus que la taille
      mise à l'échelle) à l'intérieur. */
   .layout {
@@ -94,7 +99,18 @@
     gap: 12px;
   }
   .touch-pad-mouvement { left: max(14px, env(safe-area-inset-left)); }
-  .touch-pad-actions { right: max(14px, env(safe-area-inset-right)); flex-direction: column-reverse; align-items: flex-end; }
+  /* Repositionné juste à gauche du sort "r" de l'arc de cercle (voir
+     .mode-tactile #spell-bar plus bas) plutôt que dans son propre coin —
+     un seul cluster de boutons en bas à droite, l'île de saut ayant été
+     retirée (voir plus haut). Valeurs calculées à la main à partir de la
+     position de "r" dans l'arc : right = 14 (bord du conteneur de sorts,
+     voir .mode-tactile #spell-bar) + 110 (right local de "r") + 60
+     (largeur de "r") + 10 (marge) = 194 ; bottom = 14 (bord du conteneur)
+     + 14 (bottom local de "r") = 28, pour être à la même hauteur que lui. */
+  .touch-pad-actions {
+    right: calc(194px + env(safe-area-inset-right));
+    bottom: calc(28px + env(safe-area-inset-bottom));
+  }
   .touch-bouton {
     width: 60px;
     height: 60px;
@@ -328,19 +344,25 @@
      et contrastée que l'ancienne version translucide claire, pour rester
      lisible par-dessus n'importe quel décor (Vert-Hige comme l'Antre).
      Chaque case est cliquable (voir mettreAJourSortsHUD). */
+  /* Centrée en bas de l'écran (plutôt que casée à droite) — demande
+     explicite pour laisser le champ libre des deux côtés ; le chat est
+     décalé à gauche pour ne pas se chevaucher avec elle (voir
+     .chat-overlay). Fond nettement plus transparent qu'avant (0.92→0.4)
+     pour gêner moins la vue sur le jeu, la bordure dorée/l'ombre suffisent
+     à la garder lisible par-dessus n'importe quel décor. */
   #spell-bar {
     position: absolute;
-    right: 212px;
+    left: 50%;
+    right: auto;
     bottom: 12px;
-    left: auto;
-    transform: scale(0.7);
-    transform-origin: bottom right;
+    transform: translateX(-50%) scale(0.7);
+    transform-origin: bottom center;
     margin-top: 0;
     z-index: 6;
     max-width: 94%;
-    background: linear-gradient(180deg, rgba(58,36,26,0.92) 0%, rgba(30,18,14,0.94) 100%);
+    background: linear-gradient(180deg, rgba(58,36,26,0.4) 0%, rgba(30,18,14,0.45) 100%);
     border: 2px solid #c9a24b;
-    box-shadow: 0 0 0 3px rgba(20,10,5,0.55), 0 8px 20px rgba(0,0,0,0.5), inset 0 0 14px rgba(255,190,110,0.08);
+    box-shadow: 0 0 0 3px rgba(20,10,5,0.4), 0 8px 20px rgba(0,0,0,0.35), inset 0 0 14px rgba(255,190,110,0.06);
     border-radius: 16px;
     padding: 9px 11px 8px;
     backdrop-filter: blur(2px);
@@ -396,22 +418,27 @@
   .spell-slot.indisponible .cout { color: #9d8fc7; }
   .spell-slot.indisponible { opacity: 0.55; }
   /* Sur mobile (voir activerControlesTactiles) : un gros bouton pour le
-     sort "a" (l'attaque de base, la plus utilisée) ancré au coin bas-droit,
-     avec les 3 autres sorts (z/e/r) disposés en arc de cercle proportionnel
-     au-dessus/à gauche de lui — inspiré des jeux d'action mobiles (gros
-     bouton d'attaque + compétences en éventail) plutôt que l'ancienne
-     colonne de bulles identiques à mi-hauteur. Décalé à GAUCHE du pavé
-     d'interaction (.touch-pad-actions, même coin bas-droit, ~74px de
-     large — le saut a été retiré, redondant avec le joystick) pour ne
-     jamais le chevaucher. Même DOM/JS (mettreAJourSortsHUD,
+     sort "a" (l'attaque de base, la plus utilisée) ancré au coin bas-droit
+     DE L'ÉCRAN (right/bottom repris à 14px, comme les autres boutons
+     tactiles), avec les 3 autres sorts (z/e/r) disposés en arc de cercle
+     proportionnel au-dessus/à gauche de lui — inspiré des jeux d'action
+     mobiles (gros bouton d'attaque + compétences en éventail) plutôt que
+     l'ancienne colonne de bulles identiques à mi-hauteur. Le bouton
+     d'interaction (.touch-pad-actions, voir plus haut) est lui repositionné
+     juste à gauche du sort "r" pour former un seul cluster cohérent, plutôt
+     que deux pavés séparés (l'île de saut ayant été retirée, il n'y a plus
+     besoin de lui laisser tout son coin). Même DOM/JS (mettreAJourSortsHUD,
      ordre a/z/e/r toujours identique) : seul le CSS change, aucune logique
      de clic dupliquée. Positions calculées à la main (rayon ≈96px autour du
      gros bouton, angles 100°/140°/180°) plutôt qu'en JS, pour rester un
-     simple re-style comme le reste de ce bloc mobile. */
+     simple re-style comme le reste de ce bloc mobile. Touche clavier ET
+     coût en mana masqués (voir plus bas) : sans objet au doigt, et sans
+     intérêt une fois qu'on connaît ses sorts — l'icône, seule, peut alors
+     remplir tout le cercle. */
   .mode-tactile #spell-bar {
     position: fixed;
     top: auto;
-    right: calc(96px + env(safe-area-inset-right));
+    right: calc(14px + env(safe-area-inset-right));
     bottom: calc(14px + env(safe-area-inset-bottom));
     left: auto;
     transform: none;
@@ -441,7 +468,11 @@
      au coin bas-droit du conteneur. */
   .mode-tactile .spell-slot:nth-child(1) { width: 88px; height: 88px; right: 0; bottom: 0; border-width: 3px; }
   .mode-tactile .spell-slot:nth-child(1) .icone { font-size: 30px; }
-  .mode-tactile .spell-slot:nth-child(1) .icone .icone-img { width: 40px; height: 40px; }
+  /* Icône = 68% du diamètre du bouton, recadrée en cercle (voir la note sur
+     "adapter l'icône au cercle" plus haut) plutôt que le petit carré arrondi
+     du desktop — elle occupe presque tout l'espace laissé libre par le
+     retrait de la touche/du coût en mana. */
+  .mode-tactile .spell-slot:nth-child(1) .icone .icone-img { width: 60px; height: 60px; border-radius: 50%; }
   /* "z"/"e"/"r" : petits, en arc au-dessus/à gauche du gros bouton (rayon
      ≈96px, angles 100°/140°/180° — voir le commentaire plus haut), tous les
      3 de même taille (seul le sort "a" est mis en avant, même l'ultime). */
@@ -451,8 +482,8 @@
   .mode-tactile .spell-slot.ultime { border-color: #d67fff; box-shadow: 0 0 0 2px rgba(214,127,255,0.4), 0 3px 8px rgba(0,0,0,0.35); }
   .mode-tactile .spell-slot .touche { display: none; } /* touche clavier sans objet au doigt */
   .mode-tactile .spell-slot .icone { font-size: 22px; margin-top: 0; }
-  .mode-tactile .spell-slot .icone .icone-img { width: 30px; height: 30px; }
-  .mode-tactile .spell-slot .cout { font-size: 9px; margin-top: 0; }
+  .mode-tactile .spell-slot .icone .icone-img { width: 42px; height: 42px; border-radius: 50%; }
+  .mode-tactile .spell-slot .cout { display: none; } /* coût en mana masqué sur mobile — sans intérêt une fois les sorts connus, laisse l'icône remplir le cercle */
   .spell-slot .voile-cooldown {
     position: absolute;
     left: 0;
@@ -470,9 +501,9 @@
      possible la vue sur l'action tout en restant facile à repérer. */
   .chat-overlay {
     position: absolute;
-    left: 50%;
+    left: 12px;
     bottom: 12px;
-    transform: translateX(-50%);
+    transform: none;
     width: 320px;
     max-width: 60%;
     z-index: 6;
@@ -2371,9 +2402,12 @@
         </div>
       </div>
       <!-- Saut retiré (redondant avec le joystick : axe vertical vers le
-           haut, voir activerJoystickTactile) — ne reste que l'interaction. -->
+           haut, voir activerJoystickTactile) — ne reste que l'interaction.
+           Icône "main qui ramasse" plutôt que la lettre F (qui n'a aucun
+           sens sur un clavier absent) — repositionné juste à gauche du
+           sort "r" de l'arc de cercle, voir .touch-pad-actions. -->
       <div class="touch-pad touch-pad-actions">
-        <button type="button" class="touch-bouton" id="touch-interagir" title="Interagir / ramasser">F</button>
+        <button type="button" class="touch-bouton" id="touch-interagir" title="Interagir / ramasser">🤏</button>
       </div>
     </div>
 
@@ -3366,26 +3400,46 @@ canvas.addEventListener("mouseup", () => { touches.a = false; envoyerInput(); })
 canvas.addEventListener("mouseleave", () => { touches.a = false; envoyerInput(); });
 
 // --- Plein écran responsive (voir la note CSS sur .layout/.stage-frame-wrap)
-// `.stage-frame` garde sa résolution native 1280×600 ; seul un
-// transform:scale() change, calculé à partir du plus petit des deux rapports
+// `.stage-frame` garde sa hauteur native 600, mais sa largeur s'élargit
+// désormais au-delà de 1280 pour épouser le ratio du viewport quand il est
+// plus large (téléphone en paysage) — plus de bandes vides sur les côtés,
+// juste un peu plus de décor visible. Un transform:scale() est ensuite
+// appliqué par-dessus, calculé à partir du plus petit des deux rapports
 // largeur/hauteur DISPONIBLES SUR TOUT LE VIEWPORT (.layout occupe 100vw ×
-// 100dvh) — jamais le seul ratio largeur comme avant le passage en plein
-// écran, sous peine de déborder verticalement sur un écran étroit et haut
-// (téléphone en portrait, le format qui compte le plus pour le portage
-// mobile). `.stage-frame-wrap` est dimensionnée exactement à la taille mise
-// à l'échelle puis centrée par le flex de `.layout` — un bandeau de fond
-// comble le reste plutôt qu'un rognage.
+// 100dvh) — jamais le seul ratio largeur, sous peine de déborder
+// verticalement sur un écran étroit et haut (téléphone en portrait, bloqué
+// de toute façon par l'invite de rotation). `.stage-frame-wrap` est
+// dimensionnée exactement à la taille mise à l'échelle puis centrée par le
+// flex de `.layout` — un bandeau de fond comble le reste (haut/bas) plutôt
+// qu'un rognage.
 function redimensionnerScene() {
   const wrap = document.getElementById("stage-frame-wrap");
   const frame = document.getElementById("stage-frame");
-  if (!wrap || !frame) return;
+  const canvasJeu = document.getElementById("jeu");
+  if (!wrap || !frame || !canvasJeu) return;
   const layout = wrap.parentElement.parentElement; // .stage-frame-wrap > .stage > .layout
   const largeurDispo = layout.clientWidth;
   const hauteurDispo = layout.clientHeight;
-  const echelle = Math.min(largeurDispo / 1280, hauteurDispo / 600);
+  // Hauteur TOUJOURS fixe à 600 ; la largeur, elle, s'élargit pour remplir
+  // tout le viewport quand celui-ci est plus large que le ratio natif
+  // 1280:600 (téléphone en paysage, notamment — c'était le cas qui laissait
+  // deux bandes vides sur les côtés avec un simple scale() à ratio fixe).
+  // Le monde de jeu affiche alors juste un peu plus de décor de chaque
+  // côté (voir toutes les valeurs déjà dynamiques canvas.width/2, etc. côté
+  // rendu, et state.world.width côté caméra) plutôt que d'agrandir le vide.
+  // Sous ce ratio (écran plus haut que large à l'échelle, typiquement une
+  // fenêtre desktop haute), on garde 1280 et le bandeau haut/bas habituel.
+  const hauteurJeu = 600;
+  const largeurNative = 1280;
+  const largeurJeu = Math.max(largeurNative, Math.round(hauteurJeu * (largeurDispo / hauteurDispo)));
+  if (canvasJeu.width !== largeurJeu) canvasJeu.width = largeurJeu;
+  if (canvasJeu.height !== hauteurJeu) canvasJeu.height = hauteurJeu;
+  frame.style.width = `${largeurJeu}px`;
+  frame.style.height = `${hauteurJeu}px`;
+  const echelle = Math.min(largeurDispo / largeurJeu, hauteurDispo / hauteurJeu);
   frame.style.transform = `scale(${echelle})`;
-  wrap.style.width = `${Math.round(1280 * echelle)}px`;
-  wrap.style.height = `${Math.round(600 * echelle)}px`;
+  wrap.style.width = `${Math.round(largeurJeu * echelle)}px`;
+  wrap.style.height = `${Math.round(hauteurJeu * echelle)}px`;
 }
 window.addEventListener("resize", redimensionnerScene);
 window.addEventListener("orientationchange", () => setTimeout(redimensionnerScene, 250));
@@ -7638,6 +7692,9 @@ const PATCHNOTES = [
       "Ajout de cet onglet Patchnote dans les Réglages.",
       "Retrait du bouton de saut sur mobile, redondant avec le joystick (axe vertical vers le haut).",
       "Nouvelles illustrations pour les 4 sorts du Quater (barre de sorts et fiche de personnage).",
+      "Écran de jeu élargi pour remplir toute la largeur du téléphone (fini les bandes sur les côtés).",
+      "Sur PC : barre de sorts centrée en bas et rendue transparente, discussion décalée à gauche.",
+      "Sur mobile : coût en mana masqué et icônes agrandies en cercle sur la barre de sorts, bouton d'interaction (main 🤏) déplacé juste à gauche du sort ultime.",
     ],
   },
 ];
