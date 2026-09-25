@@ -115,6 +115,35 @@
   }
   .touch-bouton.actif { background: radial-gradient(circle at 32% 28%, rgba(255,255,255,0.55) 0%, rgba(20,14,10,0.75) 72%); }
   .touch-bouton-saut { width: 68px; height: 68px; font-size: 26px; }
+  /* Joystick analogique : base fixe + bouton qui suit le doigt dans un rayon
+     limité (voir activerJoystickTactile). Gauche/droite → déplacement,
+     haut/bas → saut/accroupissement (mêmes entrées que le clavier), avec
+     des diagonales qui combinent les deux naturellement. */
+  .touch-joystick {
+    position: relative;
+    width: 108px;
+    height: 108px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 32% 28%, rgba(255,255,255,0.16) 0%, rgba(20,14,10,0.4) 72%);
+    border: 2px solid rgba(255,255,255,0.45);
+    touch-action: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  .touch-joystick-knob {
+    position: absolute;
+    width: 48px;
+    height: 48px;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    background: radial-gradient(circle at 32% 28%, rgba(255,255,255,0.55) 0%, rgba(20,14,10,0.8) 72%);
+    border: 2px solid rgba(255,255,255,0.65);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.35);
+    pointer-events: none;
+  }
+  .touch-joystick.actif .touch-joystick-knob { border-color: rgba(255,214,106,0.85); }
   .donjon-hud {
     font-size: 13px;
     line-height: 1.5;
@@ -358,6 +387,45 @@
   }
   .spell-slot.indisponible .cout { color: #9d8fc7; }
   .spell-slot.indisponible { opacity: 0.55; }
+  /* Sur mobile (voir activerControlesTactiles) : bulles rondes empilées sur
+     le bord droit, à mi-hauteur — inspiré des MMORPG mobiles existants —
+     plutôt que la barre rectangulaire du bas, qui chevaucherait le pavé
+     tactile saut/interaction. Même DOM/JS (mettreAJourSortsHUD), simple
+     re-style : aucune logique de clic à dupliquer. */
+  .mode-tactile #spell-bar {
+    position: fixed;
+    top: 50%;
+    right: max(10px, env(safe-area-inset-right));
+    bottom: auto;
+    left: auto;
+    transform: translateY(-50%);
+    flex-direction: column-reverse;
+    align-items: flex-end;
+    gap: 12px;
+    max-width: none;
+    background: none;
+    border: none;
+    box-shadow: none;
+    padding: 0;
+    backdrop-filter: none;
+  }
+  .mode-tactile .spell-slot {
+    flex: 0 0 auto;
+    width: 56px;
+    height: 56px;
+    min-width: 0;
+    border-radius: 50%;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: radial-gradient(circle at 32% 28%, rgba(90,60,40,0.85) 0%, rgba(30,18,14,0.9) 72%);
+  }
+  .mode-tactile .spell-slot.ultime { width: 66px; height: 66px; }
+  .mode-tactile .spell-slot .touche { display: none; } /* touche clavier sans objet au doigt */
+  .mode-tactile .spell-slot .icone { font-size: 24px; margin-top: 0; }
+  .mode-tactile .spell-slot .cout { font-size: 9px; margin-top: 0; }
   .spell-slot .voile-cooldown {
     position: absolute;
     left: 0;
@@ -1875,10 +1943,10 @@
           <div class="aide-ligne"><span class="aide-touche">F</span><span>Ramasser / interagir</span></div>
           <div class="aide-ligne"><span class="aide-touche">C</span><span>Fiche de personnage</span></div>
           <h3>📱 Tactile</h3>
-          <div class="aide-ligne"><span class="aide-touche">◀ ▶</span><span>Pavé bas gauche : se déplacer</span></div>
+          <div class="aide-ligne"><span class="aide-touche">🕹️</span><span>Joystick bas gauche : se déplacer (haut/bas = sauter/s'accroupir)</span></div>
           <div class="aide-ligne"><span class="aide-touche">⤒</span><span>Pavé bas droit : sauter</span></div>
           <div class="aide-ligne"><span class="aide-touche">F</span><span>Pavé bas droit : ramasser / interagir</span></div>
-          <div class="aide-ligne"><span class="aide-touche">A Z E R</span><span>Barre de sorts en bas de l'écran</span></div>
+          <div class="aide-ligne"><span class="aide-touche">A Z E R</span><span>Bulles de sorts sur le bord droit de l'écran</span></div>
           <h3>🎯 Objectifs</h3>
           <div class="aide-ligne"><span>Vaincs des monstres pour gagner de l'XP et de l'or, équipe-toi via la fiche de personnage (📜), et consulte les quêtes du jour (📋) pour des récompenses garanties.</span></div>
         </div>
@@ -2209,9 +2277,15 @@
          défaut, révélés par activerControlesTactiles si l'appareil a un
          pointeur tactile. Les sorts sont déjà cliquables dans #spell-bar. -->
     <div class="touch-controls">
+      <!-- Joystick analogique (remplace les boutons ◀▶ — demande explicite) :
+           gauche/droite pour se déplacer, haut/bas mappés sur saut/
+           accroupissement pour un vrai ressenti "toutes directions" plutôt
+           qu'un simple pavé gauche-droite. Voir le pilotage tactile plus
+           bas (activerJoystickTactile). -->
       <div class="touch-pad touch-pad-mouvement">
-        <button type="button" class="touch-bouton" id="touch-gauche" title="Gauche">◀</button>
-        <button type="button" class="touch-bouton" id="touch-droite" title="Droite">▶</button>
+        <div class="touch-joystick" id="touch-joystick">
+          <div class="touch-joystick-knob" id="touch-joystick-knob"></div>
+        </div>
       </div>
       <div class="touch-pad touch-pad-actions">
         <button type="button" class="touch-bouton touch-bouton-saut" id="touch-saut" title="Sauter">⤒</button>
@@ -3274,14 +3348,101 @@ function bindBoutonTactile(id, appuyer, relacher) {
   el.addEventListener("mouseup", surRelache);
   el.addEventListener("mouseleave", surRelache);
 }
-bindBoutonTactile("touch-gauche", () => { touches.left = true; envoyerInput(); }, () => { touches.left = false; envoyerInput(); });
-bindBoutonTactile("touch-droite", () => { touches.right = true; envoyerInput(); }, () => { touches.right = false; envoyerInput(); });
 bindBoutonTactile("touch-saut", () => { touches.jump = true; envoyerInput(); }, () => { touches.jump = false; envoyerInput(); });
 bindBoutonTactile(
   "touch-interagir",
   () => { touches.f = true; envoyerInput(); interactionPnjProche(); },
   () => { touches.f = false; envoyerInput(); }
 );
+
+// --- Joystick tactile (remplace les boutons ◀▶) -----------------------
+// Un seul doigt suivi à la fois (identifié par son id — indispensable dès
+// qu'un autre doigt touche l'écran ailleurs, ex. un sort, pendant que le
+// joystick est tenu). Axe horizontal → gauche/droite ; axe vertical →
+// saut/accroupissement (mêmes booléens que le clavier/les autres boutons
+// tactiles), avec une zone morte au centre pour ne pas déclencher un
+// mouvement au moindre tremblement du doigt.
+function activerJoystickTactile() {
+  const base = document.getElementById("touch-joystick");
+  const knob = document.getElementById("touch-joystick-knob");
+  if (!base || !knob) return;
+
+  const RAYON_MAX = 40; // légèrement sous le rayon de la base (54px) pour que le bouton reste visible
+  const ZONE_MORTE = 0.35; // fraction du rayon max avant de déclencher une direction
+  let idDoigt = null;
+
+  function reinitialiser() {
+    idDoigt = null;
+    knob.style.transform = "translate(-50%, -50%)";
+    base.classList.remove("actif");
+    if (touches.left || touches.right || touches.jump || touches.bas) {
+      touches.left = false; touches.right = false; touches.jump = false; touches.bas = false;
+      envoyerInput();
+    }
+  }
+
+  function surDeplacement(x, y) {
+    const rect = base.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    let dx = x - cx;
+    let dy = y - cy;
+    const distance = Math.hypot(dx, dy);
+    const distanceLimitee = Math.min(distance, RAYON_MAX);
+    if (distance > 0) {
+      dx = (dx / distance) * distanceLimitee;
+      dy = (dy / distance) * distanceLimitee;
+    }
+    knob.style.transform = `translate(${dx - 24}px, ${dy - 24}px)`;
+
+    const seuil = RAYON_MAX * ZONE_MORTE;
+    const gauche = dx < -seuil;
+    const droite = dx > seuil;
+    const haut = dy < -seuil; // vers le haut de l'écran = saut
+    const bas = dy > seuil; // vers le bas = accroupissement
+    if (gauche !== touches.left || droite !== touches.right || haut !== touches.jump || bas !== touches.bas) {
+      touches.left = gauche; touches.right = droite; touches.jump = haut; touches.bas = bas;
+      envoyerInput();
+    }
+  }
+
+  base.addEventListener("touchstart", (e) => {
+    e.preventDefault();
+    if (idDoigt !== null) return; // déjà un doigt dessus
+    const t = e.changedTouches[0];
+    idDoigt = t.identifier;
+    base.classList.add("actif");
+    surDeplacement(t.clientX, t.clientY);
+  }, { passive: false });
+  base.addEventListener("touchmove", (e) => {
+    e.preventDefault();
+    for (const t of e.changedTouches) {
+      if (t.identifier === idDoigt) surDeplacement(t.clientX, t.clientY);
+    }
+  }, { passive: false });
+  const finDuToucher = (e) => {
+    for (const t of e.changedTouches) {
+      if (t.identifier === idDoigt) reinitialiser();
+    }
+  };
+  base.addEventListener("touchend", finDuToucher);
+  base.addEventListener("touchcancel", finDuToucher);
+
+  // Souris aussi (pratique pour tester sans appareil tactile sous la main).
+  let sourisEnfoncee = false;
+  base.addEventListener("mousedown", (e) => {
+    sourisEnfoncee = true;
+    base.classList.add("actif");
+    surDeplacement(e.clientX, e.clientY);
+  });
+  document.addEventListener("mousemove", (e) => {
+    if (sourisEnfoncee) surDeplacement(e.clientX, e.clientY);
+  });
+  document.addEventListener("mouseup", () => {
+    if (sourisEnfoncee) { sourisEnfoncee = false; reinitialiser(); }
+  });
+}
+activerJoystickTactile();
 
 // --- Rendu -----------------------------------------------------------------
 
