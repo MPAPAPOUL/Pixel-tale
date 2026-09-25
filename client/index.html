@@ -107,9 +107,15 @@
      voir .mode-tactile #spell-bar) + 110 (right local de "r") + 60
      (largeur de "r") + 10 (marge) = 194 ; bottom = 14 (bord du conteneur)
      + 14 (bottom local de "r") = 28, pour être à la même hauteur que lui. */
+  /* Repositionné après la réduction de 40% de l'arc de sorts (voir
+     .mode-tactile #spell-bar) : le sort "r" scale vers le coin bas-droit
+     (bottom right, ~14px de l'écran), donc son bord gauche remonte à
+     ~14+110*0.6=80px du bord droit ; ce bouton reste à sa taille normale
+     (60px, pas concerné par cette réduction) juste à sa gauche (+10px de
+     marge → right:126) et centré verticalement sur lui. */
   .touch-pad-actions {
-    right: calc(194px + env(safe-area-inset-right));
-    bottom: calc(28px + env(safe-area-inset-bottom));
+    right: calc(126px + env(safe-area-inset-right));
+    bottom: calc(10px + env(safe-area-inset-bottom));
   }
   .touch-bouton {
     width: 60px;
@@ -435,13 +441,21 @@
      coût en mana masqués (voir plus bas) : sans objet au doigt, et sans
      intérêt une fois qu'on connaît ses sorts — l'icône, seule, peut alors
      remplir tout le cercle. */
+  /* Réduit de 40% (demande explicite) via un simple transform:scale(0.6)
+     ancré au même coin (bottom right, là où le conteneur est déjà épinglé)
+     plutôt que de recalculer chaque position d'arc à la main : le coin
+     bas-droit ne bouge pas, tout le reste (gros bouton + arc) rétrécit
+     uniformément vers lui. Voir .touch-pad-actions plus haut, dont la
+     position a été recalculée en conséquence (elle n'est PAS dans ce
+     conteneur donc pas affectée par ce scale). */
   .mode-tactile #spell-bar {
     position: fixed;
     top: auto;
     right: calc(14px + env(safe-area-inset-right));
     bottom: calc(14px + env(safe-area-inset-bottom));
     left: auto;
-    transform: none;
+    transform: scale(0.6);
+    transform-origin: bottom right;
     display: block;
     width: 180px;
     height: 180px;
@@ -6206,11 +6220,27 @@ const ICONES_SORTS_IMG = {
     r: "sprites/icones-sorts/quater/r.png",
   },
 };
+// Variante mobile : illustrations distinctes, déjà recadrées en cercle par
+// leur auteur (voir client/sprites/icones-sorts/quater-mobile/), fournies
+// spécifiquement pour le gros bouton/l'arc de sorts tactile — voir
+// .mode-tactile .spell-slot .icone-img (border-radius:50%). Utilisée à la
+// place de ICONES_SORTS_IMG quand body.mode-tactile est actif ; retombe sur
+// le jeu d'images desktop pour toute classe/touche non couverte ici.
+const ICONES_SORTS_IMG_MOBILE = {
+  quater: {
+    a: "sprites/icones-sorts/quater-mobile/a.png",
+    z: "sprites/icones-sorts/quater-mobile/z.png",
+    e: "sprites/icones-sorts/quater-mobile/e.png",
+    r: "sprites/icones-sorts/quater-mobile/r.png",
+  },
+};
 // Même repli que htmlIconeObjet (voir plus haut) : <img> vers l'illustration
 // si elle existe pour cette classe/touche, sinon l'emoji ; onerror rebascule
 // aussi sur l'emoji si jamais le fichier venait à manquer.
 function htmlIconeSort(classe, touche) {
-  const chemin = (ICONES_SORTS_IMG[classe] || {})[touche];
+  const surMobile = document.body.classList.contains("mode-tactile");
+  const chemin =
+    (surMobile && (ICONES_SORTS_IMG_MOBILE[classe] || {})[touche]) || (ICONES_SORTS_IMG[classe] || {})[touche];
   const emoji = (ICONES_SORTS[classe] || {})[touche] || "❔";
   if (chemin) return `<img class="icone-img" src="${chemin}" alt="" onerror="this.outerHTML='${emoji}';">`;
   return emoji;
@@ -7695,6 +7725,7 @@ const PATCHNOTES = [
       "Écran de jeu élargi pour remplir toute la largeur du téléphone (fini les bandes sur les côtés).",
       "Sur PC : barre de sorts centrée en bas et rendue transparente, discussion décalée à gauche.",
       "Sur mobile : coût en mana masqué et icônes agrandies en cercle sur la barre de sorts, bouton d'interaction (main 🤏) déplacé juste à gauche du sort ultime.",
+      "Nouvelles illustrations mobiles dédiées pour les 4 sorts du Quater, et taille de la barre de sorts mobile réduite de 40%.",
     ],
   },
 ];
