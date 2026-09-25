@@ -302,7 +302,10 @@ const MONSTRES_CONFIG = {
     hpMax: 30,
     degatsContact: 8,
     delaiRespawn: 9,
-    comportement: "patrouille",
+    // Déplacement aléatoire (demande explicite) tant qu'il reste neutre —
+    // redevient une poursuite directe du joueur une fois hostile, voir le
+    // branchement dédié dans simulerMonstres qui passe avant ce comportement.
+    comportement: "erratique",
     neutre: true,
     xp: 7,
   },
@@ -382,8 +385,10 @@ const monstres = [
   creerMonstre("fisselo", PLATEFORMES_VERTHIGE[6]), // plateforme x:1460
   creerMonstre("tiralark", PLATEFORMES_VERTHIGE[5]), // plateforme x:1260
   creerMonstre("tiralark", PLATEFORMES_VERTHIGE[9]), // plateforme x:2080
-  // Gobelin neutre en patrouille au sol (voir MONSTRES_CONFIG.gobelinNeutre)
-  // — un par zone, voir aussi genererZoneBiome pour les biomes.
+  // Gobelins neutres au sol, déplacement aléatoire (voir
+  // MONSTRES_CONFIG.gobelinNeutre) — deux par zone (demande explicite),
+  // voir aussi genererZoneBiome pour les biomes.
+  creerMonstre("gobelinNeutre", PLATEFORMES_VERTHIGE[0]),
   creerMonstre("gobelinNeutre", PLATEFORMES_VERTHIGE[0]),
 ];
 
@@ -1757,8 +1762,10 @@ function genererZoneBiome(biome, indexSeed) {
     const plateforme = plateformesMelangees[i % plateformesMelangees.length] || plateformes[0];
     zone.monstres.push(creerMonstre(biome.typeMonstre, plateforme));
   }
-  // Gobelin neutre en patrouille au sol, un par biome — voir
-  // MONSTRES_CONFIG.gobelinNeutre (dispatché "entre toutes les maps").
+  // Gobelins neutres au sol, déplacement aléatoire — deux par biome (demande
+  // explicite), voir MONSTRES_CONFIG.gobelinNeutre (dispatché "entre toutes
+  // les maps").
+  zone.monstres.push(creerMonstre("gobelinNeutre", plateformes[0]));
   zone.monstres.push(creerMonstre("gobelinNeutre", plateformes[0]));
   return zone;
 }
@@ -3529,11 +3536,13 @@ function construireEtatPourJoueur(p, classement) {
         hauteur: cfg.hauteur,
         x: m.x,
         y: m.y,
-        // cfg.tir peut désormais exister hors du comportement "tireur" (voir
-        // le crachat de Fisselo) : on utilise alors aussi m.facing, mis à
-        // jour vers la cible au moment du tir (voir simulerTirsMonstresZone),
-        // plutôt que la direction de déplacement erratique du moment.
-        facing: cfg.comportement === "tireur" || cfg.tir ? m.facing : m.vx >= 0 ? 1 : -1,
+        // "tireur" (immobile, ex. Tiralark) n'a que m.facing (mis à jour au
+        // tir, voir simulerTirsMonstresZone) comme indication de direction.
+        // Tout le reste (y compris Fisselo, qui a `cfg.tir` mais continue de
+        // se déplacer, voir simulerMonstres) doit suivre son déplacement
+        // réel (m.vx) pour que le sprite se retourne bien dans les deux sens
+        // — sans ça il restait figé dans la direction de son dernier tir.
+        facing: cfg.comportement === "tireur" ? m.facing : m.vx >= 0 ? 1 : -1,
         hp: m.hp,
         hpMax: m.hpMax,
         morte: m.morte,
