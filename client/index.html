@@ -114,7 +114,6 @@
     padding: 0;
   }
   .touch-bouton.actif { background: radial-gradient(circle at 32% 28%, rgba(255,255,255,0.55) 0%, rgba(20,14,10,0.75) 72%); }
-  .touch-bouton-saut { width: 68px; height: 68px; font-size: 26px; }
   /* Joystick analogique : base fixe + bouton qui suit le doigt dans un rayon
      limité (voir activerJoystickTactile). Gauche/droite → déplacement,
      haut/bas → saut/accroupissement (mêmes entrées que le clavier), avec
@@ -393,8 +392,9 @@
      au-dessus/à gauche de lui — inspiré des jeux d'action mobiles (gros
      bouton d'attaque + compétences en éventail) plutôt que l'ancienne
      colonne de bulles identiques à mi-hauteur. Décalé à GAUCHE du pavé
-     saut/interaction (.touch-pad-actions, même coin bas-droit, ~82px de
-     large) pour ne jamais le chevaucher. Même DOM/JS (mettreAJourSortsHUD,
+     d'interaction (.touch-pad-actions, même coin bas-droit, ~74px de
+     large — le saut a été retiré, redondant avec le joystick) pour ne
+     jamais le chevaucher. Même DOM/JS (mettreAJourSortsHUD,
      ordre a/z/e/r toujours identique) : seul le CSS change, aucune logique
      de clic dupliquée. Positions calculées à la main (rayon ≈96px autour du
      gros bouton, angles 100°/140°/180°) plutôt qu'en JS, pour rester un
@@ -2358,8 +2358,9 @@
           <div class="touch-joystick-knob" id="touch-joystick-knob"></div>
         </div>
       </div>
+      <!-- Saut retiré (redondant avec le joystick : axe vertical vers le
+           haut, voir activerJoystickTactile) — ne reste que l'interaction. -->
       <div class="touch-pad touch-pad-actions">
-        <button type="button" class="touch-bouton touch-bouton-saut" id="touch-saut" title="Sauter">⤒</button>
         <button type="button" class="touch-bouton" id="touch-interagir" title="Interagir / ramasser">F</button>
       </div>
     </div>
@@ -3433,7 +3434,6 @@ function bindBoutonTactile(id, appuyer, relacher) {
   el.addEventListener("mouseup", surRelache);
   el.addEventListener("mouseleave", surRelache);
 }
-bindBoutonTactile("touch-saut", () => { touches.jump = true; envoyerInput(); }, () => { touches.jump = false; envoyerInput(); });
 bindBoutonTactile(
   "touch-interagir",
   () => { touches.f = true; envoyerInput(); interactionPnjProche(); },
@@ -7605,6 +7605,7 @@ const PATCHNOTES = [
       "Sorts en étant accroupi : la hauteur de lancer (mêlée, projectiles, zone) suit maintenant le personnage accroupi au lieu de partir de la hauteur debout.",
       "HUD des sorts sur mobile agrandi et recentré en bas à droite de l'écran : un gros bouton pour l'attaque de base entouré des 3 autres sorts en arc de cercle.",
       "Ajout de cet onglet Patchnote dans les Réglages.",
+      "Retrait du bouton de saut sur mobile, redondant avec le joystick (axe vertical vers le haut).",
     ],
   },
 ];
