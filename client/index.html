@@ -102,19 +102,15 @@
   /* Repositionné juste à gauche du sort "r" de l'arc de cercle (voir
      .mode-tactile #spell-bar plus bas) plutôt que dans son propre coin —
      un seul cluster de boutons en bas à droite, l'île de saut ayant été
-     retirée (voir plus haut). Valeurs calculées à la main à partir de la
-     position de "r" dans l'arc : right = 14 (bord du conteneur de sorts,
-     voir .mode-tactile #spell-bar) + 110 (right local de "r") + 60
-     (largeur de "r") + 10 (marge) = 194 ; bottom = 14 (bord du conteneur)
-     + 14 (bottom local de "r") = 28, pour être à la même hauteur que lui. */
-  /* Repositionné après la réduction de 40% de l'arc de sorts (voir
-     .mode-tactile #spell-bar) : le sort "r" scale vers le coin bas-droit
-     (bottom right, ~14px de l'écran), donc son bord gauche remonte à
-     ~14+110*0.6=80px du bord droit ; ce bouton reste à sa taille normale
-     (60px, pas concerné par cette réduction) juste à sa gauche (+10px de
-     marge → right:126) et centré verticalement sur lui. */
+     retirée (voir plus haut). Ce bouton n'est PAS concerné par la
+     réduction de 40% ni le décalage à 3px de l'arc de sorts (il garde sa
+     taille normale, 60px) : sa position est recalculée à la main à partir
+     de celle, réduite, du sort "r" — bord gauche de "r" à 105px du bord
+     de l'écran (3px de conteneur + 110px de position locale × 0.6 de
+     réduction) + 10px de marge = right:115 ; bottom:10 pour rester centré
+     verticalement sur "r" une fois réduit. */
   .touch-pad-actions {
-    right: calc(126px + env(safe-area-inset-right));
+    right: calc(115px + env(safe-area-inset-right));
     bottom: calc(10px + env(safe-area-inset-bottom));
   }
   .touch-bouton {
@@ -451,7 +447,7 @@
   .mode-tactile #spell-bar {
     position: fixed;
     top: auto;
-    right: calc(14px + env(safe-area-inset-right));
+    right: calc(3px + env(safe-area-inset-right));
     bottom: calc(14px + env(safe-area-inset-bottom));
     left: auto;
     transform: scale(0.6);
