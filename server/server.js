@@ -212,13 +212,13 @@ const MONSTRES_CONFIG = {
   troubalourd: {
     label: "Troubalourd",
     couleur: "#8a5b3f",
-    // Sprite remplacé par le Chief Goblin (asset fourni). Hitbox de la
-    // taille du joueur (demande explicite) : hauteur = JOUEUR_HAUTEUR,
-    // largeur recalculée sur le ratio moyen idle/walk/attack du nouveau
-    // sprite (≈0.69). Ancrage aux pieds inchangé (voir creerMonstre,
-    // y = plateforme.y - hauteur).
-    largeur: 71,
-    hauteur: JOUEUR_HAUTEUR,
+    // Sprite remplacé par le Chief Goblin (asset fourni). Hitbox réduite de
+    // 50% par rapport à la taille du joueur (demande explicite : la taille
+    // 1:1 précédente était trop grande) — ratio largeur/hauteur (≈0.69)
+    // toujours celui du sprite. Ancrage aux pieds inchangé (voir
+    // creerMonstre, y = plateforme.y - hauteur).
+    largeur: 36,
+    hauteur: Math.round(JOUEUR_HAUTEUR / 2),
     vitesse: 55,
     hpMax: 40,
     degatsContact: 10,
@@ -237,12 +237,11 @@ const MONSTRES_CONFIG = {
     couleur: "#d99a3f",
     // Sprite ET hitbox remplacés par le Female Goblin (asset fourni,
     // demande explicite) ; l'ancien doublement de hitbox (hitboxLargeur/
-    // hitboxHauteur) n'a plus lieu d'être. Hitbox de la taille du joueur
-    // (demande explicite, voir Troubalourd ci-dessus) : hauteur =
-    // JOUEUR_HAUTEUR, largeur recalculée sur le ratio moyen du nouveau
-    // sprite (≈0.83).
-    largeur: 85,
-    hauteur: JOUEUR_HAUTEUR,
+    // hitboxHauteur) n'a plus lieu d'être. Réduite de 50% par rapport à la
+    // taille du joueur (demande explicite, voir Troubalourd ci-dessus) —
+    // ratio largeur/hauteur (≈0.83) toujours celui du sprite.
+    largeur: 43,
+    hauteur: Math.round(JOUEUR_HAUTEUR / 2),
     vitesse: 140, // rapide et erratique
     hpMax: 14,
     degatsContact: 5,
@@ -294,11 +293,11 @@ const MONSTRES_CONFIG = {
   gobelinNeutre: {
     label: "Gobelin",
     couleur: "#5a8a4f",
-    // Hitbox de la taille du joueur (demande explicite, voir Troubalourd/
-    // Fisselo plus haut) : hauteur = JOUEUR_HAUTEUR, largeur recalculée sur
-    // le ratio moyen du sprite Male Goblin (≈0.70).
-    largeur: 72,
-    hauteur: JOUEUR_HAUTEUR,
+    // Réduite de 50% par rapport à la taille du joueur (demande explicite,
+    // voir Troubalourd/Fisselo plus haut) — ratio largeur/hauteur (≈0.70)
+    // toujours celui du sprite Male Goblin.
+    largeur: 36,
+    hauteur: Math.round(JOUEUR_HAUTEUR / 2),
     vitesse: 45,
     hpMax: 30,
     degatsContact: 8,
