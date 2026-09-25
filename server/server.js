@@ -212,32 +212,47 @@ const MONSTRES_CONFIG = {
   troubalourd: {
     label: "Troubalourd",
     couleur: "#8a5b3f",
-    // Sprite remplacé par le Chief Goblin (asset fourni) — hitbox INCHANGÉE
-    // (demande explicite portait uniquement sur le sprite pour celui-ci,
-    // contrairement à Fisselo ci-dessous), ratio ≈1.13, était 44, trop étroit.
-    largeur: 59,
-    hauteur: 52,
+    // Sprite remplacé par le Chief Goblin (asset fourni). Hitbox de la
+    // taille du joueur (demande explicite) : hauteur = JOUEUR_HAUTEUR,
+    // largeur recalculée sur le ratio moyen idle/walk/attack du nouveau
+    // sprite (≈0.69). Ancrage aux pieds inchangé (voir creerMonstre,
+    // y = plateforme.y - hauteur).
+    largeur: 71,
+    hauteur: JOUEUR_HAUTEUR,
     vitesse: 55,
     hpMax: 40,
     degatsContact: 10,
     delaiRespawn: 8,
     comportement: "patrouille",
+    // Fait tomber la foudre sur la position du joueur (demande explicite) —
+    // même mécanique de zone télégraphiée que Sire-Hano/Dragon Noir
+    // (voir simulerFoudreMonstresZone), mais portée par un monstre COMMUN
+    // (pas une entité de boss unique) : `aoeEnAttente`/`cooldownFoudre`
+    // vivent directement sur l'objet monstre (voir creerMonstre).
+    foudre: { degats: 18, cooldown: 5, rayon: 70, telegraphe: 1, porteeMax: 450 },
     xp: 8,
   },
   fisselo: {
     label: "Fisselo",
     couleur: "#d99a3f",
     // Sprite ET hitbox remplacés par le Female Goblin (asset fourni,
-    // demande explicite) — ratio recalculé sur le nouveau sprite recadré
-    // (≈0.79) ; l'ancien doublement de hitbox (hitboxLargeur/hitboxHauteur)
-    // n'a plus lieu d'être, le nouveau sprite n'étant plus minuscule.
-    largeur: 40,
-    hauteur: 50,
+    // demande explicite) ; l'ancien doublement de hitbox (hitboxLargeur/
+    // hitboxHauteur) n'a plus lieu d'être. Hitbox de la taille du joueur
+    // (demande explicite, voir Troubalourd ci-dessus) : hauteur =
+    // JOUEUR_HAUTEUR, largeur recalculée sur le ratio moyen du nouveau
+    // sprite (≈0.83).
+    largeur: 85,
+    hauteur: JOUEUR_HAUTEUR,
     vitesse: 140, // rapide et erratique
     hpMax: 14,
     degatsContact: 5,
     delaiRespawn: 6,
     comportement: "erratique",
+    // Crachat à distance (demande explicite) — même mécanique que le tir de
+    // Tiralark (voir simulerTirsMonstresZone, désormais gérée par la
+    // présence de `tir` plutôt que par `comportement === "tireur"`), donc
+    // Fisselo continue son mouvement erratique tout en tirant.
+    tir: { degats: 6, cooldown: 2.2, vitesse: 280, rayon: 6, porteeMax: 400, couleur: "#8fbf4f", effet: "crachat" },
     xp: 4,
   },
   tiralark: {
@@ -279,8 +294,11 @@ const MONSTRES_CONFIG = {
   gobelinNeutre: {
     label: "Gobelin",
     couleur: "#5a8a4f",
-    largeur: 37,
-    hauteur: 56,
+    // Hitbox de la taille du joueur (demande explicite, voir Troubalourd/
+    // Fisselo plus haut) : hauteur = JOUEUR_HAUTEUR, largeur recalculée sur
+    // le ratio moyen du sprite Male Goblin (≈0.70).
+    largeur: 72,
+    hauteur: JOUEUR_HAUTEUR,
     vitesse: 45,
     hpMax: 30,
     degatsContact: 8,
@@ -334,10 +352,19 @@ function creerMonstre(type, plateforme) {
   if (cfg.comportement === "erratique") {
     monstre.prochainChangement = 0.3 + Math.random() * 0.6;
   }
-  if (cfg.comportement === "tireur") {
-    // Décalage initial aléatoire pour que plusieurs Tiralark ne tirent pas
-    // exactement en même temps.
+  if (cfg.tir) {
+    // Décalage initial aléatoire pour que plusieurs monstres du même type ne
+    // tirent pas exactement en même temps. `cfg.tir` peut désormais exister
+    // sur un comportement autre que "tireur" (voir Fisselo/crachat) : le
+    // monstre continue alors son mouvement normal tout en tirant.
     monstre.cooldownTir = Math.random() * cfg.tir.cooldown;
+  }
+  if (cfg.foudre) {
+    // Zone télégraphiée au sol (voir simulerFoudreMonstresZone) — même
+    // décalage initial que cooldownTir, `aoeEnAttente` reste `null` tant
+    // qu'aucune frappe n'est en préparation.
+    monstre.cooldownFoudre = Math.random() * cfg.foudre.cooldown;
+    monstre.aoeEnAttente = null;
   }
 
   // Position de réapparition : pour "patrouille"/"erratique" c'est le bord
@@ -2434,6 +2461,30 @@ function simulerMonstres(dtSecondes) {
       if (m.morte) continue;
       const cfg = MONSTRES_CONFIG[m.type];
 
+      // Gobelin neutre devenu hostile (voir infligerDegatsMonstre) : quitte
+      // sa simple patrouille pour foncer sur le joueur le plus proche, sans
+      // se limiter à ses bornes de patrouille d'origine (demande explicite
+      // — "il ne reste plus passif jusqu'au contact"). Redevient une simple
+      // patrouille s'il perd sa cible (aucun joueur vivant dans la zone).
+      if (cfg.neutre && m.hostile) {
+        let cible = null;
+        let distanceMin = Infinity;
+        for (const p of players.values()) {
+          if (!p.alive || p.zone !== zone.id) continue;
+          const distance = Math.abs(p.x + JOUEUR_LARGEUR / 2 - (m.x + cfg.largeur / 2));
+          if (distance < distanceMin) {
+            distanceMin = distance;
+            cible = p;
+          }
+        }
+        if (cible) {
+          const direction = cible.x + JOUEUR_LARGEUR / 2 < m.x + cfg.largeur / 2 ? -1 : 1;
+          m.vx = cfg.vitesse * direction;
+          m.x = Math.max(0, Math.min(zone.largeur - cfg.largeur, m.x + m.vx * dtSecondes));
+        }
+        continue;
+      }
+
       if (cfg.comportement === "patrouille") {
         m.x += m.vx * dtSecondes;
         if (m.x < m.borneGauche) {
@@ -2916,6 +2967,7 @@ function simulerCombat(dtSecondes) {
   for (const zone of toutesLesZones()) {
     simulerProjectilesJoueursZone(zone, dtSecondes);
     simulerTirsMonstresZone(zone, dtSecondes);
+    simulerFoudreMonstresZone(zone, dtSecondes);
     simulerProjectilesMonstresZone(zone, dtSecondes);
     simulerContactsMonstresZone(zone, dtSecondes);
     simulerRespawnMonstresZone(zone, dtSecondes);
@@ -2984,13 +3036,16 @@ function simulerProjectilesJoueursZone(zone, dtSecondes) {
   }
 }
 
-// Tir des Tiralark (uniquement présents à Vert-Hige) : cherchent un joueur
-// vivant de la MÊME zone, à peu près à leur hauteur et à portée.
+// Tir à distance : cherche un joueur vivant de la MÊME zone, à peu près à
+// la hauteur du monstre et à portée. À l'origine réservé au comportement
+// "tireur" (Tiralark, immobile) ; piloté par la seule présence de `cfg.tir`
+// depuis l'ajout du crachat de Fisselo (voir MONSTRES_CONFIG), qui continue
+// lui son mouvement erratique normal (voir simulerMonstres) tout en tirant.
 function simulerTirsMonstresZone(zone, dtSecondes) {
   for (const m of zone.monstres) {
     if (m.morte) continue;
     const cfgMonstre = MONSTRES_CONFIG[m.type];
-    if (cfgMonstre.comportement !== "tireur") continue;
+    if (!cfgMonstre.tir) continue;
 
     if (m.cooldownTir > 0) {
       m.cooldownTir = Math.max(0, m.cooldownTir - dtSecondes);
@@ -3014,7 +3069,8 @@ function simulerTirsMonstresZone(zone, dtSecondes) {
       m.facing = direction;
       zone.projectilesMonstres.push({
         id: prochainProjectileMonstreId++,
-        couleur: cfgMonstre.couleur,
+        couleur: cfgMonstre.tir.couleur || cfgMonstre.couleur,
+        effet: cfgMonstre.tir.effet || null,
         x: m.x + (direction >= 0 ? cfgMonstre.largeur : 0),
         y: m.y + cfgMonstre.hauteur / 2,
         vx: cfgMonstre.tir.vitesse * direction,
@@ -3025,6 +3081,65 @@ function simulerTirsMonstresZone(zone, dtSecondes) {
       });
       m.cooldownTir = cfgMonstre.tir.cooldown;
       m.attaqueAnimRestant = 0.25;
+    }
+  }
+}
+
+// Foudre de zone (Troubalourd/Chief Goblin, demande explicite) : même
+// mécanique de zone télégraphiée au sol que Sire-Hano/Dragon Noir
+// (aoeEnAttente, voir simulerUneEntiteSireHano) mais portée par un monstre
+// COMMUN plutôt qu'une entité de boss unique — `aoeEnAttente`/
+// `cooldownFoudre` vivent directement sur l'objet monstre (voir
+// creerMonstre). Cible la position du joueur au moment du déclenchement,
+// pas de suivi pendant le télégraphe (comme Sire-Hano) : le joueur peut
+// s'écarter avant l'impact.
+function simulerFoudreMonstresZone(zone, dtSecondes) {
+  for (const m of zone.monstres) {
+    if (m.morte) continue;
+    const cfg = MONSTRES_CONFIG[m.type];
+    if (!cfg.foudre) continue;
+
+    if (m.aoeEnAttente) {
+      m.aoeEnAttente.tempsRestant -= dtSecondes;
+      if (m.aoeEnAttente.tempsRestant <= 0) {
+        const zoneAoe = m.aoeEnAttente;
+        for (const p of players.values()) {
+          if (!p.alive || p.zone !== zone.id) continue;
+          const distance = Math.hypot(p.x + JOUEUR_LARGEUR / 2 - zoneAoe.x, p.y + JOUEUR_HAUTEUR / 2 - zoneAoe.y);
+          if (distance <= zoneAoe.rayon) infligerDegatsJoueur(p, zoneAoe.degats, zoneAoe.x);
+        }
+        zone.effets.push({ id: prochainEffetId++, x: zoneAoe.x, y: zoneAoe.y, rayon: zoneAoe.rayon, couleur: "#f0d95a", vie: 0.3, vieMax: 0.3 });
+        m.aoeEnAttente = null;
+      }
+      continue;
+    }
+
+    if (m.cooldownFoudre > 0) {
+      m.cooldownFoudre = Math.max(0, m.cooldownFoudre - dtSecondes);
+      continue;
+    }
+
+    let cible = null;
+    let distanceMin = Infinity;
+    for (const p of players.values()) {
+      if (!p.alive || p.zone !== zone.id) continue;
+      const distance = Math.abs(p.x + JOUEUR_LARGEUR / 2 - (m.x + cfg.largeur / 2));
+      if (distance <= cfg.foudre.porteeMax && distance < distanceMin) {
+        distanceMin = distance;
+        cible = p;
+      }
+    }
+
+    if (cible) {
+      m.aoeEnAttente = {
+        x: cible.x + JOUEUR_LARGEUR / 2,
+        y: cible.y + JOUEUR_HAUTEUR / 2,
+        rayon: cfg.foudre.rayon,
+        degats: cfg.foudre.degats,
+        tempsRestant: cfg.foudre.telegraphe,
+        telegrapheMax: cfg.foudre.telegraphe,
+      };
+      m.cooldownFoudre = cfg.foudre.cooldown;
     }
   }
 }
@@ -3415,12 +3530,28 @@ function construireEtatPourJoueur(p, classement) {
         hauteur: cfg.hauteur,
         x: m.x,
         y: m.y,
-        facing: cfg.comportement === "tireur" ? m.facing : m.vx >= 0 ? 1 : -1,
+        // cfg.tir peut désormais exister hors du comportement "tireur" (voir
+        // le crachat de Fisselo) : on utilise alors aussi m.facing, mis à
+        // jour vers la cible au moment du tir (voir simulerTirsMonstresZone),
+        // plutôt que la direction de déplacement erratique du moment.
+        facing: cfg.comportement === "tireur" || cfg.tir ? m.facing : m.vx >= 0 ? 1 : -1,
         hp: m.hp,
         hpMax: m.hpMax,
         morte: m.morte,
         enMouvement: Math.abs(m.vx) > 1,
         attaque: m.attaqueAnimRestant > 0,
+        // Foudre du Chief Goblin (voir simulerFoudreMonstresZone) : cercle
+        // d'avertissement au sol pendant le télégraphe, même format que les
+        // boss (state.dragon.aoeEnAttente etc.) — voir dessinerTelegrapheAoe
+        // côté client, qui boucle aussi sur state.monsters désormais.
+        aoeEnAttente: m.aoeEnAttente
+          ? {
+              x: m.aoeEnAttente.x,
+              y: m.aoeEnAttente.y,
+              rayon: m.aoeEnAttente.rayon,
+              progression: 1 - m.aoeEnAttente.tempsRestant / m.aoeEnAttente.telegrapheMax,
+            }
+          : null,
       };
     }),
     projectilesMonstres: zone.projectilesMonstres.map((proj) => ({

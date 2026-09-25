@@ -5433,6 +5433,12 @@ function dessinerTelegrapheAoe() {
   // Le Chevalier Noir télégraphie une colonne verticale (voir `colonne` ci-
   // dessous), rendue à part de la boucle circulaire générique.
   if (state.chevalierNoir && state.chevalierNoir.aoeEnAttente) zonesActives.push(state.chevalierNoir.aoeEnAttente);
+  // Foudre du Chief Goblin (Troubalourd, voir simulerFoudreMonstresZone
+  // côté serveur) — même cercle d'avertissement générique, porté par un
+  // monstre commun plutôt qu'un boss unique.
+  for (const m of state.monsters || []) {
+    if (m.aoeEnAttente) zonesActives.push(m.aoeEnAttente);
+  }
 
   for (const zone of zonesActives) {
     if (zone.colonne) {
@@ -7874,7 +7880,10 @@ const PATCHNOTES = [
       "La hitbox du personnage (celle que visent les monstres) est réduite de moitié en étant accroupi.",
       "Vert-Hige : 30% des plateformes retirées, celles qui restent sont deux fois plus grandes.",
       "Nouveau monstre neutre : un gobelin en patrouille au sol sur chaque zone (Vert-Hige et tous les biomes), inoffensif tant qu'on ne l'attaque pas.",
-      "Troubalourd et Fisselo ont un nouveau sprite (et une nouvelle hitbox pour Fisselo).",
+      "Troubalourd et Fisselo ont un nouveau sprite (et une nouvelle hitbox pour Fisselo) ; les 3 monstres gobelins sont maintenant de la taille du joueur.",
+      "Le gobelin neutre fonce désormais sur le joueur dès qu'il est attaqué, au lieu de rester passif jusqu'au contact.",
+      "Fisselo (Female Goblin) crache un projectile à distance.",
+      "Troubalourd (Chief Goblin) fait tomber la foudre sur la position du joueur, avec un court délai pour s'écarter.",
     ],
   },
   {
