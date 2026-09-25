@@ -1174,6 +1174,17 @@
     cursor: pointer;
   }
   .btn-point-plus:disabled { opacity: 0.3; cursor: default; }
+  /* Fenêtre de choix libre du nombre de points (clic droit sur un "+", voir
+     ouvrirChoixPoints) — même famille visuelle que les autres petites
+     modales de confirmation (.modale-fantasy de base). */
+  .modale-choix-points p { font-size: 13px; color: #cfc3ef; margin: 0 0 14px; }
+  .modale-choix-points input[type="range"] { width: 100%; margin: 4px 0 10px; accent-color: var(--gold); }
+  .modale-choix-points .choix-points-valeur {
+    font-family: "Baloo 2", sans-serif;
+    font-weight: 700;
+    color: var(--gold);
+    margin-bottom: 16px;
+  }
   .perso-sorts { display: flex; flex-direction: column; gap: 5px; }
   .perso-sorts .sort-ligne {
     display: flex;
@@ -2382,6 +2393,22 @@
         </div>
       </div>
 
+      <!-- Choix libre du nombre de points d'attribut à investir (clic droit
+           sur un bouton "+" de la fiche personnage) — alternative au clic
+           simple (+1) et au Shift+clic (+10), voir ouvrirChoixPoints. -->
+      <div class="modale-overlay masque" id="modale-choix-points">
+        <div class="modale-fantasy modale-choix-points">
+          <h2>Répartir des points</h2>
+          <p id="choix-points-attribut-label"></p>
+          <input type="range" id="choix-points-slider" min="1" max="1" value="1">
+          <div class="choix-points-valeur"><span id="choix-points-valeur-texte">1</span> point(s)</div>
+          <div class="modale-actions">
+            <button type="button" class="btn-modale btn-neutre" id="btn-choix-points-annuler">Annuler</button>
+            <button type="button" class="btn-modale btn-succes" id="btn-choix-points-confirmer">Confirmer</button>
+          </div>
+        </div>
+      </div>
+
       <!-- Confirmation avant une sortie volontaire du donjon (icône de
            porte), pour éviter un clic accidentel en plein combat. -->
       <div class="modale-overlay masque" id="modale-confirmer-sortie">
@@ -3037,6 +3064,13 @@ const SPRITES_MONSTRES = {
     walk: chargerImage("sprites/minotaure/walk.png"),
     attack: chargerImage("sprites/minotaure/attack.png"),
     ko: chargerImage("sprites/minotaure/ko.png"),
+  },
+  // Gobelin neutre en patrouille au sol (voir MONSTRES_CONFIG.gobelinNeutre
+  // côté serveur) — sprite Male Goblin (asset fourni).
+  gobelinNeutre: {
+    idle: chargerImage("sprites/gobelin-neutre/idle.png"),
+    walk: chargerImage("sprites/gobelin-neutre/walk.png"),
+    attack: chargerImage("sprites/gobelin-neutre/attack.png"),
   },
 };
 
@@ -6471,6 +6505,41 @@ document.getElementById("btn-defaite-reessayer").addEventListener("click", () =>
   envoyer({ type: "reessayerDonjon" });
 });
 
+// --- Choix libre du nombre de points d'attribut (clic droit sur un "+") ---
+// Alternative au clic simple (+1) et au Shift+clic (+10, voir la mise en
+// place des boutons dans mettreAJourFichePersonnage) pour investir un
+// nombre précis de points d'un coup, plafonné aux points disponibles.
+function ouvrirChoixPoints(attribut) {
+  const pointsDispo = (state.perso && state.perso.pointsDisponibles) || 0;
+  if (pointsDispo <= 0) return;
+  const modale = document.getElementById("modale-choix-points");
+  modale.dataset.attribut = attribut;
+  const slider = document.getElementById("choix-points-slider");
+  slider.max = pointsDispo;
+  slider.value = pointsDispo; // par défaut : tout miser d'un coup, ajustable ensuite
+  document.getElementById("choix-points-valeur-texte").textContent = slider.value;
+  const info = LABELS_ATTRIBUTS[attribut];
+  document.getElementById("choix-points-attribut-label").textContent =
+    `${info ? info.emoji + " " + info.label : attribut} — ${pointsDispo} point${pointsDispo > 1 ? "s" : ""} disponible${pointsDispo > 1 ? "s" : ""}`;
+  modale.classList.remove("masque");
+}
+document.getElementById("choix-points-slider").addEventListener("input", (e) => {
+  document.getElementById("choix-points-valeur-texte").textContent = e.target.value;
+});
+function fermerChoixPoints() {
+  document.getElementById("modale-choix-points").classList.add("masque");
+}
+document.getElementById("btn-choix-points-annuler").addEventListener("click", fermerChoixPoints);
+document.getElementById("btn-choix-points-confirmer").addEventListener("click", () => {
+  const attribut = document.getElementById("modale-choix-points").dataset.attribut;
+  const montant = parseInt(document.getElementById("choix-points-slider").value, 10) || 1;
+  envoyer({ type: "assignerPoint", attribut, montant });
+  fermerChoixPoints();
+});
+document.getElementById("modale-choix-points").addEventListener("click", (e) => {
+  if (e.target.id === "modale-choix-points") fermerChoixPoints();
+});
+
 // --- Or, nom de zone, téléporteur, boutique -------------------------------
 
 function mettreAJourOr() {
@@ -7177,13 +7246,20 @@ function mettreAJourFichePersonnage() {
         ([cle, info]) => `
         <div class="attribut repartissable">
           <span class="valeur">${attrs[cle] || 0}</span>${info.emoji} ${info.label}
-          <button type="button" class="btn-point-plus" data-attribut="${cle}" title="Ajouter un point"${pointsDispo > 0 ? "" : " disabled"}>+</button>
+          <button type="button" class="btn-point-plus" data-attribut="${cle}" title="+1 · Shift+clic = +10 · Clic droit = choisir"${pointsDispo > 0 ? "" : " disabled"}>+</button>
         </div>`
       )
       .join("");
     for (const btn of document.getElementById("perso-attributs").querySelectorAll(".btn-point-plus")) {
-      btn.addEventListener("click", () => {
-        envoyer({ type: "assignerPoint", attribut: btn.dataset.attribut });
+      // Clic simple = +1, Shift+clic = +10 (plafonné aux points restants
+      // par le serveur de toute façon, voir le handler "assignerPoint").
+      btn.addEventListener("click", (e) => {
+        envoyer({ type: "assignerPoint", attribut: btn.dataset.attribut, montant: e.shiftKey ? 10 : 1 });
+      });
+      // Clic droit = fenêtre de choix libre du nombre de points à investir.
+      btn.addEventListener("contextmenu", (e) => {
+        e.preventDefault();
+        ouvrirChoixPoints(btn.dataset.attribut);
       });
     }
   }
@@ -7790,6 +7866,17 @@ initialiserEcranAccueil();
 // Réglages — l'historique démarre à ce patch (0.2.0) : les mises à jour
 // suivantes s'ajouteront en tête de PATCHNOTES au fil du temps.
 const PATCHNOTES = [
+  {
+    version: "0.3.0",
+    date: "25/09/2026",
+    changements: [
+      "Nouveau : Shift+clic sur un bouton \"+\" d'attribut ajoute 10 points d'un coup ; clic droit ouvre une fenêtre pour choisir un nombre précis, plafonné aux points disponibles.",
+      "La hitbox du personnage (celle que visent les monstres) est réduite de moitié en étant accroupi.",
+      "Vert-Hige : 30% des plateformes retirées, celles qui restent sont deux fois plus grandes.",
+      "Nouveau monstre neutre : un gobelin en patrouille au sol sur chaque zone (Vert-Hige et tous les biomes), inoffensif tant qu'on ne l'attaque pas.",
+      "Troubalourd et Fisselo ont un nouveau sprite (et une nouvelle hitbox pour Fisselo).",
+    ],
+  },
   {
     version: "0.2.0",
     date: "25/09/2026",

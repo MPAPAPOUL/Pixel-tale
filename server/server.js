@@ -55,6 +55,12 @@ const JOUEUR_HAUTEUR = 103;
 // p.accroupi ? 0.62 : 1"), sans quoi les sorts partiraient d'une hauteur qui
 // ne correspond plus au personnage affiché à l'écran.
 const FACTEUR_HAUTEUR_ACCROUPI = 0.62;
+// Hitbox DÉFENSIVE (celle que les monstres/boss visent pour toucher le
+// joueur, voir hurtboxJoueur) réduite de moitié à l'accroupissement — demande
+// explicite, distincte de FACTEUR_HAUTEUR_ACCROUPI ci-dessus qui ne pilote
+// que l'origine des SORTS du joueur (et le squash visuel du sprite) : les
+// deux réductions sont volontairement différentes (0.62 vs 0.5).
+const FACTEUR_HAUTEUR_ACCROUPI_HURTBOX = 0.5;
 
 const GRAVITE = 1800; // px/s²
 const VITESSE_DEPLACEMENT = 230; // px/s
@@ -69,21 +75,26 @@ const HP_REGEN_PAR_SECONDE = 2; // régénération de vie passive de base (PV/s)
 // peut pas tomber dans le vide. Les autres forment le relief à explorer.
 // Écarts calibrés pour la physique actuelle (saut ≈ 110px de haut,
 // ≈ 160px de large en vol) — à retoucher au playtest si besoin.
+// Retrait de 30% des plateformes (13 → 9, celles retirées n'étaient
+// référencées par aucun monstre, voir `monstres` plus bas) et largeur de
+// chacune des 9 restantes doublée (+100%) — demande explicite pour une île
+// moins encombrée mais avec des surfaces d'atterrissage bien plus
+// généreuses. Hauteurs (y) inchangées pour garder le même rythme de saut ;
+// les recouvrements en x entre plateformes voisines (à des hauteurs
+// différentes) sont volontaires — même principe que l'ancienne "tour"
+// (x1260 y400/y290), du relief en plusieurs strates plutôt qu'un simple
+// chemin linéaire.
 const PLATEFORMES_VERTHIGE = [
   { x: 0, y: 600, width: MONDE_LARGEUR_VERTHIGE, height: 40 }, // sol
-  { x: 60, y: 480, width: 120, height: 24 },
-  { x: 260, y: 420, width: 140, height: 24 },
-  { x: 460, y: 500, width: 160, height: 24 },
-  { x: 680, y: 420, width: 120, height: 24 },
-  { x: 860, y: 340, width: 140, height: 24 },
-  { x: 1060, y: 460, width: 160, height: 24 },
-  { x: 1260, y: 400, width: 120, height: 24 },
-  { x: 1260, y: 290, width: 120, height: 24 }, // tour au-dessus de la précédente
-  { x: 1460, y: 520, width: 180, height: 24 },
-  { x: 1700, y: 430, width: 120, height: 24 },
-  { x: 1880, y: 350, width: 140, height: 24 },
-  { x: 2080, y: 470, width: 160, height: 24 },
-  { x: 2280, y: 560, width: 100, height: 24 },
+  { x: 260, y: 420, width: 280, height: 24 },
+  { x: 460, y: 500, width: 320, height: 24 },
+  { x: 860, y: 340, width: 280, height: 24 },
+  { x: 1060, y: 460, width: 320, height: 24 },
+  { x: 1260, y: 400, width: 240, height: 24 },
+  { x: 1460, y: 520, width: 360, height: 24 },
+  { x: 1700, y: 430, width: 240, height: 24 },
+  { x: 1880, y: 350, width: 280, height: 24 },
+  { x: 2080, y: 470, width: 320, height: 24 },
 ];
 
 // Arène de l'Antre du Sire-Hano — map à part entière, coordonnées locales
@@ -201,7 +212,10 @@ const MONSTRES_CONFIG = {
   troubalourd: {
     label: "Troubalourd",
     couleur: "#8a5b3f",
-    largeur: 59, // sprite large et trapu (ratio moyen ≈1.13) — était 44, trop étroit
+    // Sprite remplacé par le Chief Goblin (asset fourni) — hitbox INCHANGÉE
+    // (demande explicite portait uniquement sur le sprite pour celui-ci,
+    // contrairement à Fisselo ci-dessous), ratio ≈1.13, était 44, trop étroit.
+    largeur: 59,
     hauteur: 52,
     vitesse: 55,
     hpMax: 40,
@@ -213,10 +227,12 @@ const MONSTRES_CONFIG = {
   fisselo: {
     label: "Fisselo",
     couleur: "#d99a3f",
-    largeur: 20, // sprite plus haut que large (ratio moyen ≈0.78) — était 26 (carré)
-    hauteur: 26,
-    hitboxLargeur: 40, // zone de collision doublée (voir hitboxMonstre) — le sprite garde sa taille ci-dessus, trop petit pour viser vu sa vitesse erratique
-    hitboxHauteur: 52,
+    // Sprite ET hitbox remplacés par le Female Goblin (asset fourni,
+    // demande explicite) — ratio recalculé sur le nouveau sprite recadré
+    // (≈0.79) ; l'ancien doublement de hitbox (hitboxLargeur/hitboxHauteur)
+    // n'a plus lieu d'être, le nouveau sprite n'étant plus minuscule.
+    largeur: 40,
+    hauteur: 50,
     vitesse: 140, // rapide et erratique
     hpMax: 14,
     degatsContact: 5,
@@ -253,6 +269,26 @@ const MONSTRES_CONFIG = {
     comportement: "patrouille",
     xp: 18,
   },
+  // Gobelin neutre : patrouille au sol de chaque zone (Vert-Hige + tous les
+  // biomes, voir MONSTRES_GOBELIN_NEUTRE plus bas) sans jamais attaquer de
+  // lui-même — `neutre: true` désarme les dégâts de contact (voir
+  // simulerContactsMonstresZone) tant qu'il n'a pas encaissé de coup
+  // (m.hostile, mis à jour dans infligerDegatsMonstre). Devient un monstre
+  // "normal" (dégâts de contact actifs) dès qu'un joueur l'attaque, jusqu'à
+  // sa mort/réapparition. Sprite Male Goblin (asset fourni), ratio ≈0.65.
+  gobelinNeutre: {
+    label: "Gobelin",
+    couleur: "#5a8a4f",
+    largeur: 37,
+    hauteur: 56,
+    vitesse: 45,
+    hpMax: 30,
+    degatsContact: 8,
+    delaiRespawn: 9,
+    comportement: "patrouille",
+    neutre: true,
+    xp: 7,
+  },
 };
 
 // Compteur global : garantit un id UNIQUE par monstre. L'ancien id dérivé de
@@ -282,6 +318,11 @@ function creerMonstre(type, plateforme) {
     morte: false,
     respawnRestant: 0,
     attaqueAnimRestant: 0, // fenêtre pendant laquelle le client affiche le sprite d'attaque
+    // Voir MONSTRES_CONFIG[type].neutre (gobelin neutre) : reste `false`
+    // (pas de dégâts de contact, voir simulerContactsMonstresZone) tant
+    // qu'aucun joueur ne l'a frappé (voir infligerDegatsMonstre). Sans
+    // effet pour les autres types, toujours agressifs.
+    hostile: !cfg.neutre,
   };
 
   if (cfg.comportement === "patrouille" || cfg.comportement === "erratique") {
@@ -309,12 +350,15 @@ function creerMonstre(type, plateforme) {
 
 // Six monstres : deux de chaque espèce, sur des plateformes différentes.
 const monstres = [
-  creerMonstre("troubalourd", PLATEFORMES_VERTHIGE[5]), // plateforme x:860
-  creerMonstre("troubalourd", PLATEFORMES_VERTHIGE[10]), // plateforme x:1700
-  creerMonstre("fisselo", PLATEFORMES_VERTHIGE[2]), // plateforme x:260
-  creerMonstre("fisselo", PLATEFORMES_VERTHIGE[9]), // plateforme x:1460
-  creerMonstre("tiralark", PLATEFORMES_VERTHIGE[7]), // plateforme x:1260
-  creerMonstre("tiralark", PLATEFORMES_VERTHIGE[12]), // plateforme x:2080
+  creerMonstre("troubalourd", PLATEFORMES_VERTHIGE[3]), // plateforme x:860
+  creerMonstre("troubalourd", PLATEFORMES_VERTHIGE[7]), // plateforme x:1700
+  creerMonstre("fisselo", PLATEFORMES_VERTHIGE[1]), // plateforme x:260
+  creerMonstre("fisselo", PLATEFORMES_VERTHIGE[6]), // plateforme x:1460
+  creerMonstre("tiralark", PLATEFORMES_VERTHIGE[5]), // plateforme x:1260
+  creerMonstre("tiralark", PLATEFORMES_VERTHIGE[9]), // plateforme x:2080
+  // Gobelin neutre en patrouille au sol (voir MONSTRES_CONFIG.gobelinNeutre)
+  // — un par zone, voir aussi genererZoneBiome pour les biomes.
+  creerMonstre("gobelinNeutre", PLATEFORMES_VERTHIGE[0]),
 ];
 
 // ---------------------------------------------------------------------------
@@ -1255,7 +1299,8 @@ function simulerDragonNoir(dtSecondes) {
   if (dragon.cooldowns.griffe <= 0 && distanceCible <= DRAGON_NOIR_ATTAQUES.griffe.portee) {
     const attaque = DRAGON_NOIR_ATTAQUES.griffe;
     const zoneX = dragon.facing >= 0 ? dragon.x + dragon.largeur : dragon.x - attaque.portee;
-    if (rectanglesSeChevauchent(zoneX, dragon.y, attaque.portee, dragon.hauteur, cible.x, cible.y, JOUEUR_LARGEUR, JOUEUR_HAUTEUR)) {
+    const hbCible = hurtboxJoueur(cible);
+    if (rectanglesSeChevauchent(zoneX, dragon.y, attaque.portee, dragon.hauteur, cible.x, hbCible.y, JOUEUR_LARGEUR, hbCible.hauteur)) {
       infligerDegatsJoueur(cible, Math.round(attaque.degats * multiplicateur), centreDragon);
     }
     dragon.cooldowns.griffe = attaque.cooldown * cadence;
@@ -1686,6 +1731,9 @@ function genererZoneBiome(biome, indexSeed) {
     const plateforme = plateformesMelangees[i % plateformesMelangees.length] || plateformes[0];
     zone.monstres.push(creerMonstre(biome.typeMonstre, plateforme));
   }
+  // Gobelin neutre en patrouille au sol, un par biome — voir
+  // MONSTRES_CONFIG.gobelinNeutre (dispatché "entre toutes les maps").
+  zone.monstres.push(creerMonstre("gobelinNeutre", plateformes[0]));
   return zone;
 }
 
@@ -2019,7 +2067,8 @@ function simulerChevalierNoir(dtSecondes) {
   if (cn.cooldowns.tranchant <= 0 && distanceCible <= CHEVALIER_NOIR_ATTAQUES.tranchant.portee) {
     const attaque = CHEVALIER_NOIR_ATTAQUES.tranchant;
     const zoneX = cn.facing >= 0 ? cn.x + cn.largeur : cn.x - attaque.portee;
-    if (rectanglesSeChevauchent(zoneX, cn.y, attaque.portee, cn.hauteur, cible.x, cible.y, JOUEUR_LARGEUR, JOUEUR_HAUTEUR)) {
+    const hbCible = hurtboxJoueur(cible);
+    if (rectanglesSeChevauchent(zoneX, cn.y, attaque.portee, cn.hauteur, cible.x, hbCible.y, JOUEUR_LARGEUR, hbCible.hauteur)) {
       infligerDegatsJoueur(cible, attaque.degats, centreCn);
     }
     cn.cooldowns.tranchant = attaque.cooldown;
@@ -2483,6 +2532,7 @@ function sireHanoEstCiblable(zone) {
 
 function infligerDegatsMonstre(zone, m, degats, joueurId) {
   if (m.morte) return;
+  m.hostile = true; // un gobelin neutre (voir MONSTRES_CONFIG.gobelinNeutre) devient hostile dès qu'un joueur le frappe, sans effet sur les autres types (déjà hostiles)
   m.hp = Math.max(0, m.hp - degats);
   if (m.hp === 0) {
     m.morte = true;
@@ -2606,6 +2656,7 @@ function respawnMonstre(m) {
   const cfg = MONSTRES_CONFIG[m.type];
   m.hp = cfg.hpMax;
   m.morte = false;
+  m.hostile = !cfg.neutre; // redevient neutre à la réapparition (voir creerMonstre)
   // Remet le monstre à sa position de départ plutôt qu'à "borneGauche", qui
   // n'existe que pour les comportements "patrouille"/"erratique" — un
   // Tiralark ("tireur") n'en a pas, et se retrouvait avec une position
@@ -2630,6 +2681,16 @@ function hitboxAttaqueJoueur(p) {
   if (!p.accroupi) return { y: p.y, hauteur: JOUEUR_HAUTEUR };
   const hauteur = Math.round(JOUEUR_HAUTEUR * FACTEUR_HAUTEUR_ACCROUPI);
   return { y: p.y + JOUEUR_HAUTEUR - hauteur, hauteur }; // ancré aux pieds, comme le squash du sprite
+}
+
+// Hitbox DÉFENSIVE du joueur (celle utilisée par les attaques de monstres/
+// boss/projectiles ennemis pour savoir s'il est touché) — réduite de moitié
+// à l'accroupissement, ancrée aux pieds comme hitboxAttaqueJoueur ci-dessus,
+// mais avec son propre facteur (voir FACTEUR_HAUTEUR_ACCROUPI_HURTBOX).
+function hurtboxJoueur(p) {
+  if (!p.accroupi) return { y: p.y, hauteur: JOUEUR_HAUTEUR };
+  const hauteur = Math.round(JOUEUR_HAUTEUR * FACTEUR_HAUTEUR_ACCROUPI_HURTBOX);
+  return { y: p.y + JOUEUR_HAUTEUR - hauteur, hauteur };
 }
 
 // `degats` est déjà le montant EFFECTIF (niveau + arme équipée pris en
@@ -2980,7 +3041,8 @@ function simulerProjectilesMonstresZone(zone, dtSecondes) {
     let aTouche = false;
     for (const p of players.values()) {
       if (!p.alive || p.zone !== zone.id) continue;
-      if (cercleRectangleSeChevauchent(proj.x, proj.y, proj.rayon, p.x, p.y, JOUEUR_LARGEUR, JOUEUR_HAUTEUR)) {
+      const hbP = hurtboxJoueur(p);
+      if (cercleRectangleSeChevauchent(proj.x, proj.y, proj.rayon, p.x, hbP.y, JOUEUR_LARGEUR, hbP.hauteur)) {
         infligerDegatsJoueur(p, proj.degats, proj.x);
         aTouche = true;
         break;
@@ -3016,11 +3078,12 @@ function simulerProjectilesMonstresZone(zone, dtSecondes) {
 // aux monstres et joueurs de la même zone.
 function simulerContactsMonstresZone(zone, dtSecondes) {
   for (const m of zone.monstres) {
-    if (m.morte) continue;
+    if (m.morte || !m.hostile) continue; // gobelin neutre pas encore attaqué (voir MONSTRES_CONFIG.gobelinNeutre) : aucun dégât de contact
     const cfgMonstre = MONSTRES_CONFIG[m.type];
     for (const p of players.values()) {
       if (!p.alive || p.zone !== zone.id) continue;
-      if (rectanglesSeChevauchent(p.x, p.y, JOUEUR_LARGEUR, JOUEUR_HAUTEUR, m.x, m.y, cfgMonstre.largeur, cfgMonstre.hauteur)) {
+      const hbP = hurtboxJoueur(p);
+      if (rectanglesSeChevauchent(p.x, hbP.y, JOUEUR_LARGEUR, hbP.hauteur, m.x, m.y, cfgMonstre.largeur, cfgMonstre.hauteur)) {
         if (infligerDegatsJoueur(p, cfgMonstre.degatsContact, m.x + cfgMonstre.largeur / 2)) {
           m.attaqueAnimRestant = 0.25;
         }
@@ -3140,7 +3203,8 @@ function simulerUneEntiteSireHano(instance, entite, dtSecondes) {
   if (entite.cooldowns.melee <= 0 && distanceCible <= SIRE_HANO_ATTAQUES.melee.portee) {
     const attaque = SIRE_HANO_ATTAQUES.melee;
     const zoneX = entite.facing >= 0 ? entite.x + entite.largeur : entite.x - attaque.portee;
-    if (rectanglesSeChevauchent(zoneX, entite.y, attaque.portee, entite.hauteur, cible.x, cible.y, JOUEUR_LARGEUR, JOUEUR_HAUTEUR)) {
+    const hbCible = hurtboxJoueur(cible);
+    if (rectanglesSeChevauchent(zoneX, entite.y, attaque.portee, entite.hauteur, cible.x, hbCible.y, JOUEUR_LARGEUR, hbCible.hauteur)) {
       infligerDegatsJoueur(cible, attaque.degats, centreBoss);
     }
     entite.cooldowns.melee = attaque.cooldown;
@@ -3885,14 +3949,19 @@ wss.on("connection", (ws, req) => {
         joueur.titreActif = titre;
       }
     } else if (message.type === "assignerPoint") {
-      // Fiche de personnage : dépense d'un point de caractéristique
-      // disponible (+5 par niveau, voir gainerXp) sur l'un des 4
-      // attributs classiques. Ignoré silencieusement si l'attribut est
-      // invalide ou s'il ne reste aucun point à dépenser.
+      // Fiche de personnage : dépense de point(s) de caractéristique
+      // disponible(s) (+5 par niveau, voir gainerXp) sur l'un des 4
+      // attributs classiques. `montant` optionnel (Shift+clic = 10, fenêtre
+      // de choix = valeur libre côté client) — 1 par défaut si absent/
+      // invalide, jamais fait confiance au-delà de ce qui est réellement
+      // disponible (Math.min) ni négatif/non entier (Math.floor + max 1).
       const attribut = ["force", "agilite", "intelligence", "vitalite"].includes(message.attribut) ? message.attribut : null;
-      if (attribut && (joueur.pointsDisponibles || 0) > 0) {
-        joueur.pointsDisponibles -= 1;
-        joueur.statsAlouees[attribut] = (joueur.statsAlouees[attribut] || 0) + 1;
+      const pointsDispo = joueur.pointsDisponibles || 0;
+      const montant = Math.max(1, Math.floor(Number(message.montant) || 1));
+      if (attribut && pointsDispo > 0) {
+        const applique = Math.min(montant, pointsDispo);
+        joueur.pointsDisponibles -= applique;
+        joueur.statsAlouees[attribut] = (joueur.statsAlouees[attribut] || 0) + applique;
         recalculerStatsEquipement(joueur);
       }
     } else if (message.type === "teleporter") {
