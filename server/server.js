@@ -50,6 +50,11 @@ const JOUEUR_LARGEUR = 36;
 // le personnage visible, sans changer sa taille à l'écran (voir la
 // réduction correspondante du facteur d'échelle côté client).
 const JOUEUR_HAUTEUR = 103;
+// Facteur d'aplatissement vertical à l'accroupissement — DOIT rester égal au
+// squashY du sprite côté client (voir dessinerJoueurs, "const squashY =
+// p.accroupi ? 0.62 : 1"), sans quoi les sorts partiraient d'une hauteur qui
+// ne correspond plus au personnage affiché à l'écran.
+const FACTEUR_HAUTEUR_ACCROUPI = 0.62;
 
 const GRAVITE = 1800; // px/s²
 const VITESSE_DEPLACEMENT = 230; // px/s
@@ -2612,17 +2617,33 @@ function respawnMonstre(m) {
   }
 }
 
+// Hauteur/origine Y à utiliser pour un sort lancé par `p`, accordée à son
+// hitbox accroupie plutôt qu'à sa hauteur debout — sans ça, un sort lancé en
+// étant accroupi partirait toujours du torse du personnage DEBOUT, très
+// visiblement décalé par rapport au sprite aplati affiché à l'écran (voir
+// FACTEUR_HAUTEUR_ACCROUPI). Ne touche PAS au hurtbox du joueur lui-même
+// (les dégâts subis restent sur toute sa hauteur, voir le commentaire sur
+// p.accroupi dans simulerPhysique : intentionnellement pas de hitbox
+// réduite pour encaisser les coups) — uniquement la hauteur depuis laquelle
+// SES PROPRES sorts partent.
+function hitboxAttaqueJoueur(p) {
+  if (!p.accroupi) return { y: p.y, hauteur: JOUEUR_HAUTEUR };
+  const hauteur = Math.round(JOUEUR_HAUTEUR * FACTEUR_HAUTEUR_ACCROUPI);
+  return { y: p.y + JOUEUR_HAUTEUR - hauteur, hauteur }; // ancré aux pieds, comme le squash du sprite
+}
+
 // `degats` est déjà le montant EFFECTIF (niveau + arme équipée pris en
 // compte par l'appelant, voir declencherAttaque) — le projectile le
 // transporte tel quel jusqu'à l'impact.
 function creerProjectile(p, attaque, degats) {
+  const hb = hitboxAttaqueJoueur(p);
   return {
     id: prochainProjectileId++,
     proprietaireId: p.id,
     couleur: p.couleur,
     effet: attaque.effet || "orbe", // pilote le rendu visuel côté client (voir dessinerProjectiles)
     x: p.x + (p.facing >= 0 ? JOUEUR_LARGEUR : 0),
-    y: p.y + JOUEUR_HAUTEUR / 2 + (attaque.decalageY || 0),
+    y: hb.y + hb.hauteur / 2 + (attaque.decalageY || 0),
     vx: attaque.vitesse * p.facing,
     degats,
     rayon: attaque.rayon,
@@ -2647,31 +2668,32 @@ function declencherAttaque(p, zone, touche) {
 
   if (attaque.type === "melee") {
     const zoneX = p.facing >= 0 ? p.x + JOUEUR_LARGEUR : p.x - attaque.portee;
+    const hb = hitboxAttaqueJoueur(p);
     for (const m of zone.monstres) {
       if (m.morte) continue;
       const cfgMonstre = MONSTRES_CONFIG[m.type];
-      const hb = hitboxMonstre(m, cfgMonstre);
-      if (rectanglesSeChevauchent(zoneX, p.y, attaque.portee, JOUEUR_HAUTEUR, hb.x, hb.y, hb.largeur, hb.hauteur)) {
+      const hbMonstre = hitboxMonstre(m, cfgMonstre);
+      if (rectanglesSeChevauchent(zoneX, hb.y, attaque.portee, hb.hauteur, hbMonstre.x, hbMonstre.y, hbMonstre.largeur, hbMonstre.hauteur)) {
         infligerDegatsMonstre(zone, m, degats, p.id);
       }
     }
     if (sireHanoEstCiblable(zone)) {
       for (const entite of zone.sireHano.entites) {
         const hbEntite = hitboxEntiteSireHano(entite);
-        if (rectanglesSeChevauchent(zoneX, p.y, attaque.portee, JOUEUR_HAUTEUR, hbEntite.x, hbEntite.y, hbEntite.largeur, hbEntite.hauteur)) {
+        if (rectanglesSeChevauchent(zoneX, hb.y, attaque.portee, hb.hauteur, hbEntite.x, hbEntite.y, hbEntite.largeur, hbEntite.hauteur)) {
           infligerDegatsSireHano(zone, entite, degats, p.id);
         }
       }
     }
     if (dragonNoirEstCiblable(zone)) {
       const dragon = zone.dragonNoir;
-      if (rectanglesSeChevauchent(zoneX, p.y, attaque.portee, JOUEUR_HAUTEUR, dragon.x, dragon.y, dragon.largeur, dragon.hauteur)) {
+      if (rectanglesSeChevauchent(zoneX, hb.y, attaque.portee, hb.hauteur, dragon.x, dragon.y, dragon.largeur, dragon.hauteur)) {
         infligerDegatsDragonNoir(zone, degats, p.id);
       }
     }
     if (chevalierNoirEstCiblable(zone)) {
       const cn = zone.chevalierNoir;
-      if (rectanglesSeChevauchent(zoneX, p.y, attaque.portee, JOUEUR_HAUTEUR, cn.x, cn.y, cn.largeur, cn.hauteur)) {
+      if (rectanglesSeChevauchent(zoneX, hb.y, attaque.portee, hb.hauteur, cn.x, cn.y, cn.largeur, cn.hauteur)) {
         infligerDegatsChevalierNoir(zone, degats, p.id);
       }
     }
@@ -2691,8 +2713,9 @@ function declencherAttaque(p, zone, touche) {
     p.dashDegats = degats;
     p.dashDejaTouches = [];
   } else if (attaque.type === "aoe") {
+    const hbAoe = hitboxAttaqueJoueur(p);
     const centreX = p.x + JOUEUR_LARGEUR / 2 + attaque.portee * p.facing;
-    const centreY = p.y + JOUEUR_HAUTEUR / 2;
+    const centreY = hbAoe.y + hbAoe.hauteur / 2;
     for (const m of zone.monstres) {
       if (m.morte) continue;
       const cfgMonstre = MONSTRES_CONFIG[m.type];

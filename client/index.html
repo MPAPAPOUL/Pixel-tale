@@ -387,21 +387,28 @@
   }
   .spell-slot.indisponible .cout { color: #9d8fc7; }
   .spell-slot.indisponible { opacity: 0.55; }
-  /* Sur mobile (voir activerControlesTactiles) : bulles rondes empilées sur
-     le bord droit, à mi-hauteur — inspiré des MMORPG mobiles existants —
-     plutôt que la barre rectangulaire du bas, qui chevaucherait le pavé
-     tactile saut/interaction. Même DOM/JS (mettreAJourSortsHUD), simple
-     re-style : aucune logique de clic à dupliquer. */
+  /* Sur mobile (voir activerControlesTactiles) : un gros bouton pour le
+     sort "a" (l'attaque de base, la plus utilisée) ancré au coin bas-droit,
+     avec les 3 autres sorts (z/e/r) disposés en arc de cercle proportionnel
+     au-dessus/à gauche de lui — inspiré des jeux d'action mobiles (gros
+     bouton d'attaque + compétences en éventail) plutôt que l'ancienne
+     colonne de bulles identiques à mi-hauteur. Décalé à GAUCHE du pavé
+     saut/interaction (.touch-pad-actions, même coin bas-droit, ~82px de
+     large) pour ne jamais le chevaucher. Même DOM/JS (mettreAJourSortsHUD,
+     ordre a/z/e/r toujours identique) : seul le CSS change, aucune logique
+     de clic dupliquée. Positions calculées à la main (rayon ≈96px autour du
+     gros bouton, angles 100°/140°/180°) plutôt qu'en JS, pour rester un
+     simple re-style comme le reste de ce bloc mobile. */
   .mode-tactile #spell-bar {
     position: fixed;
-    top: 50%;
-    right: max(10px, env(safe-area-inset-right));
-    bottom: auto;
+    top: auto;
+    right: calc(96px + env(safe-area-inset-right));
+    bottom: calc(14px + env(safe-area-inset-bottom));
     left: auto;
-    transform: translateY(-50%);
-    flex-direction: column-reverse;
-    align-items: flex-end;
-    gap: 12px;
+    transform: none;
+    display: block;
+    width: 180px;
+    height: 180px;
     max-width: none;
     background: none;
     border: none;
@@ -410,9 +417,8 @@
     backdrop-filter: none;
   }
   .mode-tactile .spell-slot {
-    flex: 0 0 auto;
-    width: 56px;
-    height: 56px;
+    position: absolute;
+    flex: none;
     min-width: 0;
     border-radius: 50%;
     padding: 0;
@@ -422,9 +428,19 @@
     justify-content: center;
     background: radial-gradient(circle at 32% 28%, rgba(90,60,40,0.85) 0%, rgba(30,18,14,0.9) 72%);
   }
-  .mode-tactile .spell-slot.ultime { width: 66px; height: 66px; }
+  /* "a" (1er sort du DOM, voir mettreAJourSortsHUD) : le gros bouton, ancré
+     au coin bas-droit du conteneur. */
+  .mode-tactile .spell-slot:nth-child(1) { width: 88px; height: 88px; right: 0; bottom: 0; border-width: 3px; }
+  .mode-tactile .spell-slot:nth-child(1) .icone { font-size: 30px; }
+  /* "z"/"e"/"r" : petits, en arc au-dessus/à gauche du gros bouton (rayon
+     ≈96px, angles 100°/140°/180° — voir le commentaire plus haut), tous les
+     3 de même taille (seul le sort "a" est mis en avant, même l'ultime). */
+  .mode-tactile .spell-slot:nth-child(2) { width: 60px; height: 60px; right: 31px; bottom: 109px; }
+  .mode-tactile .spell-slot:nth-child(3) { width: 60px; height: 60px; right: 88px; bottom: 76px; }
+  .mode-tactile .spell-slot:nth-child(4) { width: 60px; height: 60px; right: 110px; bottom: 14px; }
+  .mode-tactile .spell-slot.ultime { border-color: #d67fff; box-shadow: 0 0 0 2px rgba(214,127,255,0.4), 0 3px 8px rgba(0,0,0,0.35); }
   .mode-tactile .spell-slot .touche { display: none; } /* touche clavier sans objet au doigt */
-  .mode-tactile .spell-slot .icone { font-size: 24px; margin-top: 0; }
+  .mode-tactile .spell-slot .icone { font-size: 22px; margin-top: 0; }
   .mode-tactile .spell-slot .cout { font-size: 9px; margin-top: 0; }
   .spell-slot .voile-cooldown {
     position: absolute;
@@ -1818,6 +1834,13 @@
     font-size: 12px;
     color: #f0d9a0;
   }
+  .modale-fantasy.modale-reglages {
+    width: min(92%, 440px);
+    max-height: 82%;
+    overflow-y: auto;
+    text-align: left;
+  }
+  .modale-reglages h2 { text-align: center; }
   .modale-reglages .reglage-ligne { margin-bottom: 16px; }
   .modale-reglages label { display: block; font-size: 12px; color: #cfc3ef; margin-bottom: 6px; }
   .modale-reglages .rename-row-reglages { display: flex; gap: 8px; }
@@ -1828,6 +1851,45 @@
     padding: 8px 10px;
     font-size: 13px;
   }
+  /* Onglets Réglages / Patchnote — même look que .perso-onglets (fiche
+     personnage) mais classes dédiées pour rester lisible indépendamment de
+     cette autre modale. Voir afficherOngletReglages. */
+  .reglages-onglets {
+    display: flex;
+    gap: 6px;
+    margin: 0 0 16px;
+  }
+  .reglages-onglet-btn {
+    flex: 1;
+    padding: 7px 8px;
+    border-radius: 10px;
+    background: rgba(255,255,255,0.06);
+    border: 2px solid rgba(230,190,255,0.25);
+    color: #cfc3ef;
+    font-family: "Baloo 2", sans-serif;
+    font-weight: 700;
+    font-size: 13px;
+  }
+  .reglages-onglet-btn.actif {
+    background: linear-gradient(180deg, rgba(201,162,75,0.35) 0%, rgba(201,162,75,0.12) 100%);
+    border-color: var(--gold);
+    color: #fff;
+  }
+  .reglages-onglet-panneau.masque { display: none; }
+  .patchnote-version {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    margin: 0 0 8px;
+  }
+  .patchnote-version .numero {
+    font-family: "Baloo 2", sans-serif;
+    font-size: 15px;
+    color: #f0d9a0;
+  }
+  .patchnote-version .date { font-size: 11px; color: var(--text-dim); }
+  .patchnote-entree { margin: 0 0 20px; }
+  .patchnote-liste { margin: 0; padding-left: 18px; font-size: 12.5px; color: #e6dcff; line-height: 1.6; }
 </style>
 </head>
 <body class="mode-accueil">
@@ -2027,20 +2089,29 @@
         <div class="modale-fantasy modale-reglages">
           <button type="button" class="btn-fermer-modale" id="btn-fermer-reglages" title="Fermer">✕</button>
           <h2>Réglages</h2>
-          <div class="reglage-ligne">
-            <label for="reglages-pseudo">Renommer ton personnage</label>
-            <div class="rename-row-reglages">
-              <input type="text" id="reglages-pseudo" maxlength="20" placeholder="Nouveau nom...">
-              <button type="button" id="btn-reglages-renommer">OK</button>
+          <div class="reglages-onglets">
+            <button type="button" class="reglages-onglet-btn actif" id="onglet-btn-reglages-options" data-onglet="options">Réglages</button>
+            <button type="button" class="reglages-onglet-btn" id="onglet-btn-reglages-patchnote" data-onglet="patchnote">Patchnote</button>
+          </div>
+          <div class="reglages-onglet-panneau" id="reglages-panneau-options">
+            <div class="reglage-ligne">
+              <label for="reglages-pseudo">Renommer ton personnage</label>
+              <div class="rename-row-reglages">
+                <input type="text" id="reglages-pseudo" maxlength="20" placeholder="Nouveau nom...">
+                <button type="button" id="btn-reglages-renommer">OK</button>
+              </div>
+            </div>
+            <div class="reglage-ligne">
+              <label>Aide</label>
+              <button type="button" class="btn-modale btn-neutre" id="btn-reglages-revoir-accueil-jeu">Revoir le message d'accueil</button>
+            </div>
+            <div class="reglage-ligne">
+              <label>Session</label>
+              <button type="button" class="btn-modale btn-danger" id="btn-retour-accueil">⟵ Retour à l'accueil</button>
             </div>
           </div>
-          <div class="reglage-ligne">
-            <label>Aide</label>
-            <button type="button" class="btn-modale btn-neutre" id="btn-reglages-revoir-accueil-jeu">Revoir le message d'accueil</button>
-          </div>
-          <div class="reglage-ligne">
-            <label>Session</label>
-            <button type="button" class="btn-modale btn-danger" id="btn-retour-accueil">⟵ Retour à l'accueil</button>
+          <div class="reglages-onglet-panneau masque" id="reglages-panneau-patchnote">
+            <div id="patchnote-liste"></div>
           </div>
         </div>
       </div>
@@ -3316,7 +3387,21 @@ redimensionnerScene();
 // saut et interaction (F).
 function activerControlesTactiles() {
   const tactile = window.matchMedia("(pointer: coarse)").matches || navigator.maxTouchPoints > 0 || "ontouchstart" in window;
-  if (tactile) document.body.classList.add("mode-tactile");
+  if (!tactile) return;
+  document.body.classList.add("mode-tactile");
+  // #spell-bar vit normalement DANS #stage-frame (mis à l'échelle 0.7 en
+  // desktop, voir la règle #spell-bar) — un ancêtre avec `transform` sert de
+  // containing block à `position: fixed`, ce qui casserait le
+  // positionnement en arc de cercle pensé pour le VRAI viewport (voir
+  // .mode-tactile #spell-bar). On le sort donc du DOM de #stage-frame, comme
+  // .touch-controls (voir le commentaire au-dessus de cette dernière), en le
+  // plaçant juste à côté d'elle — même id, donc mettreAJourSortsHUD continue
+  // de le retrouver sans rien changer.
+  const barre = document.getElementById("spell-bar");
+  const controles = document.querySelector(".touch-controls");
+  if (barre && controles && controles.parentElement) {
+    controles.parentElement.insertBefore(barre, controles);
+  }
 }
 activerControlesTactiles();
 
@@ -7507,10 +7592,48 @@ async function initialiserEcranAccueil() {
 }
 initialiserEcranAccueil();
 
+// --- Patchnote ------------------------------------------------------------
+// Historique des changements, affiché dans l'onglet "Patchnote" des
+// Réglages — l'historique démarre à ce patch (0.2.0) : les mises à jour
+// suivantes s'ajouteront en tête de PATCHNOTES au fil du temps.
+const PATCHNOTES = [
+  {
+    version: "0.2.0",
+    date: "25/09/2026",
+    changements: [
+      "Nouveau : Potion de niveau dans la boutique à gemmes (1 pièce d'or, +10 niveaux instantanés).",
+      "Sorts en étant accroupi : la hauteur de lancer (mêlée, projectiles, zone) suit maintenant le personnage accroupi au lieu de partir de la hauteur debout.",
+      "HUD des sorts sur mobile agrandi et recentré en bas à droite de l'écran : un gros bouton pour l'attaque de base entouré des 3 autres sorts en arc de cercle.",
+      "Ajout de cet onglet Patchnote dans les Réglages.",
+    ],
+  },
+];
+function remplirPatchnote() {
+  const conteneur = document.getElementById("patchnote-liste");
+  conteneur.innerHTML = PATCHNOTES.map(
+    (entree) => `
+    <div class="patchnote-entree">
+      <div class="patchnote-version"><span class="numero">v${entree.version}</span><span class="date">${entree.date}</span></div>
+      <ul class="patchnote-liste">${entree.changements.map((c) => `<li>${c}</li>`).join("")}</ul>
+    </div>`
+  ).join("");
+}
+remplirPatchnote();
+
 // --- Réglages (accessibles depuis l'accueil ET en jeu) ------------------
+function afficherOngletReglages(onglet) {
+  document.getElementById("reglages-panneau-options").classList.toggle("masque", onglet !== "options");
+  document.getElementById("reglages-panneau-patchnote").classList.toggle("masque", onglet !== "patchnote");
+  document.getElementById("onglet-btn-reglages-options").classList.toggle("actif", onglet === "options");
+  document.getElementById("onglet-btn-reglages-patchnote").classList.toggle("actif", onglet === "patchnote");
+}
+document.getElementById("onglet-btn-reglages-options").addEventListener("click", () => afficherOngletReglages("options"));
+document.getElementById("onglet-btn-reglages-patchnote").addEventListener("click", () => afficherOngletReglages("patchnote"));
+
 function ouvrirReglages() {
   const soi = state && state.players && state.players.find((p) => p.id === selfId);
   document.getElementById("reglages-pseudo").value = soi ? soi.pseudo : "";
+  afficherOngletReglages("options"); // toujours rouvrir sur l'onglet principal
   document.getElementById("modale-reglages").classList.remove("masque");
 }
 function fermerReglages() {
