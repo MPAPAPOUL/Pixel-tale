@@ -673,6 +673,8 @@
     border: 1px solid var(--hairline);
   }
   .destination-carte.ici { opacity: 0.55; }
+  .destination-carte.verrouillee { opacity: 0.6; border-color: var(--text-dim); }
+  .destination-carte.verrouillee .destination-niveau { color: #c1502e; }
   .destination-infos { display: flex; flex-direction: column; gap: 2px; }
   .destination-nom { font-family: "Baloo 2", sans-serif; font-size: 14.5px; color: #f0d9a0; }
   .destination-blurb { font-size: 11.5px; color: #cfc3ef; line-height: 1.35; }
@@ -1584,7 +1586,18 @@
   .classement-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
   .classement-infos { flex: 1; min-width: 0; }
   .classement-pseudo { font-size: 13.5px; color: #f2ecff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .classement-titre { font-size: 10.5px; color: #ffd76a; font-style: italic; }
+  .classement-titre {
+    display: inline-block;
+    font-size: 10.5px;
+    font-weight: 700;
+    color: #ffd76a;
+    font-style: italic;
+    padding: 1px 7px;
+    margin-top: 1px;
+    background: rgba(255,214,106,0.12);
+    border: 1px solid rgba(255,214,106,0.4);
+    border-radius: 999px;
+  }
   .classement-niveau { font-size: 12px; color: #9d8fc7; flex-shrink: 0; }
 
   .modale-fantasy.modale-quetes {
@@ -4133,6 +4146,32 @@ function dessinerBanniereTexte(centreX, yBase, lignes) {
   ctx.restore();
 }
 
+// Titre équipé au-dessus d'un joueur (voir dessinerJoueurs) : un petit
+// fanion doré avec des ornements ✦ de chaque côté du texte plutôt que de
+// simples guillemets, plus un léger halo pour rester lisible sur un décor
+// clair — demande explicite (les titres passaient inaperçus). Volontairement
+// plus léger que dessinerBanniereTexte (pas de pointes/rectangle arrondi) :
+// dessiné à chaque frame pour chaque joueur titré, donc aussi bon marché que
+// possible.
+function dessinerBanniereTitre(titre, centreX, y) {
+  ctx.save();
+  ctx.textAlign = "center";
+  ctx.font = "700 11px 'Baloo 2', sans-serif";
+  const texte = `✦ ${titre} ✦`;
+  const largeurTexte = ctx.measureText(texte).width;
+
+  // Halo/plaque discrète derrière le texte pour le contraste.
+  ctx.fillStyle = "rgba(20,14,10,0.55)";
+  arrondiRect(centreX - largeurTexte / 2 - 6, y - 12, largeurTexte + 12, 16, 8);
+  ctx.fill();
+
+  ctx.fillStyle = "rgba(10,8,6,0.6)";
+  ctx.fillText(texte, centreX + 1, y + 1);
+  ctx.fillStyle = "#ffd76a";
+  ctx.fillText(texte, centreX, y);
+  ctx.restore();
+}
+
 function dessinerPorteDonjon() {
   const donjonState = state.donjon;
   if (!donjonState) return;
@@ -5701,11 +5740,11 @@ function dessinerJoueurs() {
 
     // Titre (haut fait équipé), juste au-dessus du pseudo — voir
     // verifierHautsFaits côté serveur / le panneau "Hauts faits" côté client.
+    // Fanion doré + petits ornements de part et d'autre du texte plutôt que
+    // de simples guillemets, pour rester lisible même sur un décor clair
+    // (demande explicite : les titres passaient inaperçus).
     if (p.titre) {
-      ctx.fillStyle = "#ffd76a";
-      ctx.font = "italic 600 10px 'Work Sans', sans-serif";
-      ctx.textAlign = "center";
-      ctx.fillText(`« ${p.titre} »`, p.x + LARGEUR / 2, p.y - 45);
+      dessinerBanniereTitre(p.titre, p.x + LARGEUR / 2, p.y - 45);
     }
 
     // Pseudo au-dessus des barres
@@ -6072,17 +6111,19 @@ function mettreAJourTeleporteur() {
   const conteneur = document.getElementById("liste-destinations");
   const destinations = state.destinations || [];
   const ici = state.zoneActuelle && state.zoneActuelle.id;
+  const niveauJoueur = (state.perso && state.perso.niveau) || 1;
   conteneur.innerHTML = destinations
     .map((d) => {
       const estIci = d.id === ici;
+      const verrouille = !estIci && niveauJoueur < d.niveauRequis;
       return `
-        <div class="destination-carte${estIci ? " ici" : ""}">
+        <div class="destination-carte${estIci ? " ici" : ""}${verrouille ? " verrouillee" : ""}">
           <div class="destination-infos">
             <span class="destination-nom">${d.nom}</span>
             <span class="destination-blurb">${d.blurb}</span>
-            <span class="destination-niveau">Niveau des lieux : ${d.niveau}</span>
+            <span class="destination-niveau">Niveau des lieux : ${d.niveau}${d.niveauRequis > 1 ? ` · Requiert niveau ${d.niveauRequis}` : ""}</span>
           </div>
-          <button type="button" class="btn-voyager" data-destination="${d.id}" ${estIci ? "disabled" : ""}>${estIci ? "Ici" : "Voyager"}</button>
+          <button type="button" class="btn-voyager" data-destination="${d.id}" ${estIci || verrouille ? "disabled" : ""}>${estIci ? "Ici" : verrouille ? `🔒 Nv.${d.niveauRequis}` : "Voyager"}</button>
         </div>`;
     })
     .join("");
@@ -7744,7 +7785,7 @@ function rendreListeClassement(classement, monRang) {
     const rang = i + 1;
     const ligne = document.createElement("div");
     ligne.className = "classement-ligne" + (j.id === selfId ? " moi" : "");
-    const titre = j.titre ? `<div class="classement-titre">« ${escapeHtml(j.titre)} »</div>` : "";
+    const titre = j.titre ? `<div class="classement-titre">✦ ${escapeHtml(j.titre)} ✦</div>` : "";
     ligne.innerHTML = `
       <div class="classement-rang">${MEDAILLES_RANG[rang] || rang}</div>
       <div class="classement-dot" style="background:${j.couleur}"></div>

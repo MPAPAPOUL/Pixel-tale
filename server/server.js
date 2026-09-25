@@ -405,7 +405,7 @@ function essayerDropArme(zone, x, y) {
 // infligerDegatsSireHano), pour que le butin soit vraiment partagé entre
 // tous les participants plutôt que ramassé par le premier arrivé sur
 // place.
-const CHANCE_DROP_PIECE_LEGENDAIRE = 0.05; // 5% par pièce, indépendamment
+const CHANCE_DROP_PIECE_LEGENDAIRE = 0.15; // 15% par pièce (boost, était 5%), indépendamment
 const BUNDLE_ACCESSOIRES_LEGENDAIRES = [
   "armureLegendaire",
   "casqueLegendaire",
@@ -696,7 +696,13 @@ function xpRequisPourNiveau(niveau) {
 }
 
 const XP_SIRE_HANO_ENTITE = 15; // par réplique tuée, quelle que soit la phase
-const XP_SIRE_HANO_VICTOIRE = 100; // bonus unique à la victoire finale, pour le joueur du coup de grâce
+// Récompense de victoire sur les 3 boss du monde (Sire-Hano, Dragon Noir,
+// Chevalier Noir) — même XP fixe et même bonus d'or garanti pour les trois,
+// demande explicite (boost) : avant, XP variable (100/260/220) et pas d'or
+// du tout sur le coup de grâce.
+const XP_VICTOIRE_BOSS_MONDE = 666;
+const OR_VICTOIRE_BOSS_MONDE = 100;
+const XP_SIRE_HANO_VICTOIRE = XP_VICTOIRE_BOSS_MONDE; // bonus unique à la victoire finale, pour le joueur du coup de grâce
 
 // Gemmes (voir le commentaire sur `gemmes` dans creerJoueur) : monnaie rare,
 // pas de drop au sol comme l'équipement — auto-collectées comme l'or, mais
@@ -879,9 +885,29 @@ const HAUTS_FAITS = [
   { id: "fortune", nom: "Petite Fortune", titre: "Fortuné", description: "Amasser 1000 pièces d'or au total.", cible: 1000, stat: "orGagneTotal" },
   { id: "vainqueur-sire-hano", nom: "Bourreau de l'Antre", titre: "Bourreau de Sire-Hano", description: "Vaincre Sire-Hano.", cible: 1, stat: "sireHanoVaincus" },
   { id: "fleau-antre", nom: "Fléau de l'Antre", titre: "Fléau de l'Antre", description: "Vaincre Sire-Hano 10 fois.", cible: 10, stat: "sireHanoVaincus" },
+  // Un titre par boss du monde vaincu (demande explicite) — même principe
+  // que vainqueur-sire-hano ci-dessus, sur les deux compteurs ajoutés dans
+  // statsVie pour l'occasion (voir creerJoueur).
+  { id: "vainqueur-dragon-noir", nom: "Écailles du Dragon", titre: "Tueur du Dragon Noir", description: "Vaincre le Dragon Noir.", cible: 1, stat: "dragonNoirVaincus" },
+  { id: "vainqueur-chevalier-noir", nom: "Heaume Brisé", titre: "Vainqueur du Chevalier Noir", description: "Vaincre le Chevalier Noir.", cible: 1, stat: "chevalierNoirVaincus" },
   { id: "devoue", nom: "Serviteur Dévoué", titre: "Dévoué", description: "Réclamer 20 quêtes journalières.", cible: 20, stat: "questesReclamees" },
   { id: "eclatant", nom: "Éclat Légendaire", titre: "Éclatant", description: "Équiper un objet légendaire.", cible: 1, stat: "equipementLegendaire" },
   { id: "collectionneur-gemmes", nom: "Collectionneur de Gemmes", titre: "Gemmologue", description: "Amasser 50 gemmes au total.", cible: 50, stat: "gemmesGagneesTotal" },
+  // Un titre par zone débloquée (demande explicite) — même compteur "niveau"
+  // que veteran/heros/legende ci-dessus, aux mêmes paliers que le gate
+  // d'accès du téléporteur (voir DESTINATIONS_TELEPORTEUR/niveauRequis) :
+  // le titre se débloque exactement au niveau où la zone devient
+  // accessible. Vert-Hige (niveau 1, zone de départ) n'a pas d'entrée ici,
+  // rien à "débloquer".
+  { id: "zone-estenoise", nom: "Bienvenue à Estenoise", titre: "Voyageur d'Estenoise-les-Brumes", description: "Débloquer Estenoise-les-Brumes (niveau 4).", cible: 4, stat: "niveau" },
+  { id: "zone-cretes-ambre", nom: "Sur les Crêtes", titre: "Arpenteur des Crêtes d'Ambre", description: "Débloquer les Crêtes d'Ambre (niveau 7).", cible: 7, stat: "niveau" },
+  { id: "zone-marais-de-suin", nom: "Bottes Boueuses", titre: "Marcheur du Marais de Suin", description: "Débloquer le Marais de Suin (niveau 10).", cible: 10, stat: "niveau" },
+  { id: "zone-foret-chuchote", nom: "Voix dans les Bois", titre: "Auditeur de la Forêt Chuchote", description: "Débloquer la Forêt Chuchote (niveau 13).", cible: 13, stat: "niveau" },
+  { id: "zone-pics-verglaces", nom: "Souffle Glacé", titre: "Grimpeur des Pics Verglacés", description: "Débloquer les Pics Verglacés (niveau 16).", cible: 16, stat: "niveau" },
+  { id: "zone-dunes-cendrees", nom: "Vent de Cendre", titre: "Nomade des Dunes Cendrées", description: "Débloquer les Dunes Cendrées (niveau 19).", cible: 19, stat: "niveau" },
+  { id: "zone-abysses-luisantes", nom: "Lueur des Profondeurs", titre: "Plongeur des Abysses Luisantes", description: "Débloquer les Abysses Luisantes (niveau 22).", cible: 22, stat: "niveau" },
+  { id: "zone-jardins-petrifies", nom: "Pierre et Racine", titre: "Jardinier Pétrifié", description: "Débloquer les Jardins Pétrifiés (niveau 25).", cible: 25, stat: "niveau" },
+  { id: "zone-couronne-orage", nom: "Au Sommet du Monde", titre: "Seigneur de la Couronne d'Orage", description: "Débloquer la Couronne d'Orage (niveau 28).", cible: 28, stat: "niveau" },
 ];
 
 // `statOuNiveau` : la plupart des hauts faits regardent p.statsVie[stat],
@@ -1116,9 +1142,12 @@ function infligerDegatsDragonNoir(zone, degats, joueurId) {
     dragon.respawnRestant = DRAGON_NOIR_DELAI_RESPAWN;
     const joueur = players.get(joueurId);
     if (joueur) {
-      gainerXp(joueur, 260); // récompense d'XP fixe, indépendante du coup de grâce précis
+      gainerXp(joueur, XP_VICTOIRE_BOSS_MONDE); // récompense d'XP fixe, indépendante du coup de grâce précis
+      joueur.or = (joueur.or || 0) + OR_VICTOIRE_BOSS_MONDE;
+      joueur.statsVie.orGagneTotal += OR_VICTOIRE_BOSS_MONDE;
       joueur.gemmes = (joueur.gemmes || 0) + GEMMES_VICTOIRE_DRAGON_NOIR;
       joueur.statsVie.gemmesGagneesTotal += GEMMES_VICTOIRE_DRAGON_NOIR;
+      joueur.statsVie.dragonNoirVaincus++;
       verifierHautsFaits(joueur);
     }
     // Même chances de drop légendaire que Sire-Hano, partagées entre tous
@@ -1724,6 +1753,12 @@ BIOMES_DEFINITION.forEach((biome, i) => ZONES_PERSISTANTES.set(biome.id, generer
 
 // Liste envoyée telle quelle au client pour peupler l'onglet téléporteur
 // (haut droit de l'écran) — statique après le démarrage du serveur.
+// `niveau` reste le niveau des MONSTRES de la région (voir l'échelle de
+// stats dans BIOMES_DEFINITION/MONSTRES_CONFIG, inchangé) ; `niveauRequis`
+// est un gate d'accès SÉPARÉ et bien plus permissif, +3 par zone dans
+// l'ordre de la liste (demande explicite) — vérifié dans le handler du
+// message "teleporter" ci-dessous.
+const NIVEAU_REQUIS_PALIER = 3;
 const DESTINATIONS_TELEPORTEUR = [
   { id: ZONE_VERTHIGE, nom: zoneVerthige.nom, blurb: zoneVerthige.blurb, niveau: 1 },
   { id: "village", nom: ZONES_PERSISTANTES.get("village").nom, blurb: ZONES_PERSISTANTES.get("village").blurb, niveau: 1 },
@@ -1731,7 +1766,7 @@ const DESTINATIONS_TELEPORTEUR = [
   // La Salle du Trône n'apparaît PAS ici : contrairement aux biomes, elle ne
   // se rejoint que par sa porte (voir plus bas), pas par le réseau de
   // téléporteurs — cohérent avec le fait que l'entrée s'y paie.
-];
+].map((destination, index) => ({ ...destination, niveauRequis: 1 + index * NIVEAU_REQUIS_PALIER }));
 
 // ---------------------------------------------------------------------------
 // Donjon : Salle du Trône (Crêtes d'Ambre) — entrée payante, pas de fragments
@@ -1871,9 +1906,12 @@ function infligerDegatsChevalierNoir(zone, degats, joueurId) {
     cn.respawnRestant = CHEVALIER_NOIR_DELAI_RESPAWN;
     const joueur = players.get(joueurId);
     if (joueur) {
-      gainerXp(joueur, 220);
+      gainerXp(joueur, XP_VICTOIRE_BOSS_MONDE);
+      joueur.or = (joueur.or || 0) + OR_VICTOIRE_BOSS_MONDE;
+      joueur.statsVie.orGagneTotal += OR_VICTOIRE_BOSS_MONDE;
       joueur.gemmes = (joueur.gemmes || 0) + GEMMES_VICTOIRE_CHEVALIER_NOIR;
       joueur.statsVie.gemmesGagneesTotal += GEMMES_VICTOIRE_CHEVALIER_NOIR;
+      joueur.statsVie.chevalierNoirVaincus++;
       verifierHautsFaits(joueur);
     }
     // Même mécanique de drop légendaire que les deux autres boss.
@@ -2144,7 +2182,7 @@ function creerJoueur() {
     // Compteurs CUMULATIFS (jamais remis à zéro, contrairement à la
     // progression des quêtes journalières) — servent uniquement de
     // conditions aux hauts faits, voir verifierHautsFaits plus bas.
-    statsVie: { monstresTues: 0, orGagneTotal: 0, questesReclamees: 0, sireHanoVaincus: 0, gemmesGagneesTotal: 0 },
+    statsVie: { monstresTues: 0, orGagneTotal: 0, questesReclamees: 0, sireHanoVaincus: 0, dragonNoirVaincus: 0, chevalierNoirVaincus: 0, gemmesGagneesTotal: 0 },
     // Hauts faits débloqués (tableau d'ids, voir HAUTS_FAITS) + titre
     // actuellement affiché sous le pseudo (doit être l'un des hauts faits
     // débloqués, ou null) — voir verifierHautsFaits / message "definirTitre".
@@ -2488,6 +2526,8 @@ function infligerDegatsSireHano(zone, entite, degats, joueurId) {
     // joueur qui vient d'achever la toute dernière réplique.
     if (joueur) {
       gainerXp(joueur, XP_SIRE_HANO_VICTOIRE);
+      joueur.or = (joueur.or || 0) + OR_VICTOIRE_BOSS_MONDE;
+      joueur.statsVie.orGagneTotal += OR_VICTOIRE_BOSS_MONDE;
       joueur.statsVie.sireHanoVaincus++;
       joueur.gemmes = (joueur.gemmes || 0) + GEMMES_VICTOIRE_SIRE_HANO;
       joueur.statsVie.gemmesGagneesTotal += GEMMES_VICTOIRE_SIRE_HANO;
@@ -3827,7 +3867,9 @@ wss.on("connection", (ws, req) => {
       const destination = String(message.destination || "");
       const estValide = destination === ZONE_VERTHIGE || ZONES_PERSISTANTES.has(destination);
       const zoneCourante = zoneDeJoueur(joueur).type;
-      if (estValide && zoneCourante !== "donjon" && zoneCourante !== "salle-trone" && joueur.alive) {
+      const infosDestination = DESTINATIONS_TELEPORTEUR.find((d) => d.id === destination);
+      const niveauSuffisant = !infosDestination || (joueur.niveau || 1) >= infosDestination.niveauRequis;
+      if (estValide && zoneCourante !== "donjon" && zoneCourante !== "salle-trone" && joueur.alive && niveauSuffisant) {
         teleporterVers(joueur, destination);
       }
     } else if (message.type === "acheter") {
