@@ -1929,6 +1929,30 @@
     color: #fff;
   }
   .reglages-onglet-panneau.masque { display: none; }
+  /* Choix du schéma de contrôles clavier (voir definirSchemaControles) —
+     mêmes couleurs que .reglages-onglet-btn mais empilés verticalement
+     (labels plus longs) plutôt que côte à côte. */
+  .reglages-schema-controles {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .reglages-schema-btn {
+    padding: 8px 10px;
+    border-radius: 10px;
+    background: rgba(255,255,255,0.06);
+    border: 2px solid rgba(230,190,255,0.25);
+    color: #cfc3ef;
+    font-family: "Baloo 2", sans-serif;
+    font-weight: 700;
+    font-size: 12.5px;
+    text-align: left;
+  }
+  .reglages-schema-btn.actif {
+    background: linear-gradient(180deg, rgba(201,162,75,0.35) 0%, rgba(201,162,75,0.12) 100%);
+    border-color: var(--gold);
+    color: #fff;
+  }
   .patchnote-version {
     display: flex;
     align-items: baseline;
@@ -2152,6 +2176,13 @@
               <div class="rename-row-reglages">
                 <input type="text" id="reglages-pseudo" maxlength="20" placeholder="Nouveau nom...">
                 <button type="button" id="btn-reglages-renommer">OK</button>
+              </div>
+            </div>
+            <div class="reglage-ligne">
+              <label>Contrôles clavier</label>
+              <div class="reglages-schema-controles" id="reglages-schema-controles">
+                <button type="button" class="reglages-schema-btn" data-schema="fleches">Actuel — flèches directionnelles, sorts sur A/Z/E/R</button>
+                <button type="button" class="reglages-schema-btn" data-schema="zqsd">ZQSD pour se déplacer, sorts sur 1/2/3/4</button>
               </div>
             </div>
             <div class="reglage-ligne">
@@ -3330,20 +3361,69 @@ function envoyerInput() {
   envoyer({ type: "input", ...touches });
 }
 
-// Déplacement : UNIQUEMENT les flèches directionnelles, pour ne jamais
-// entrer en conflit avec les touches de sorts (peu importe la classe ou
-// la disposition clavier de la personne).
+// Déplacement : UNIQUEMENT les flèches directionnelles par défaut, pour ne
+// jamais entrer en conflit avec les touches de sorts (peu importe la classe
+// ou la disposition clavier de la personne).
 const TOUCHES_GAUCHE = ["ArrowLeft"];
 const TOUCHES_DROITE = ["ArrowRight"];
 const TOUCHES_SAUT = ["ArrowUp", " "];
 const TOUCHES_BAS = ["ArrowDown"];
 
-// Sorts : capturés par e.code (position physique de la touche), pour
-// retrouver A/Z/E/R aux mêmes emplacements qu'en haut à gauche d'un
-// clavier AZERTY, quelle que soit la disposition réelle de la personne.
-// Le déplacement n'utilisant plus aucune lettre, il n'y a plus aucun
-// risque de conflit avec ces touches.
+// Sorts (schéma par défaut) : capturés par e.code (position physique de la
+// touche), pour retrouver A/Z/E/R aux mêmes emplacements qu'en haut à
+// gauche d'un clavier AZERTY, quelle que soit la disposition réelle de la
+// personne. Le déplacement n'utilisant plus aucune lettre, il n'y a plus
+// aucun risque de conflit avec ces touches.
 const CODE_VERS_SORT = { KeyQ: "a", KeyW: "z", KeyE: "e", KeyR: "r" };
+
+// Schéma alternatif (choix dans Réglages, voir SCHEMAS_CONTROLES/
+// definirSchemaControles) : déplacement sur Z/Q/S/D — mêmes touches
+// PHYSIQUES que W/A/S/D (e.code, indépendant de la disposition, comme
+// CODE_VERS_SORT ci-dessus) — et sorts basculés sur 1/2/3/4 puisque Z/Q ne
+// sont alors plus libres pour eux.
+const CODE_VERS_SORT_ZQSD = { Digit1: "a", Digit2: "z", Digit3: "e", Digit4: "r" };
+
+// Choix persistant (localStorage, purement client — aucun besoin de le
+// connaître côté serveur, seul `touches` compte pour lui) : "fleches"
+// (historique/par défaut) ou "zqsd". Voir definirSchemaControles, appelé
+// depuis Réglages (#reglages-schema-controles).
+let schemaControles = "fleches";
+try {
+  if (localStorage.getItem("rb_schema_controles_v1") === "zqsd") schemaControles = "zqsd";
+} catch {}
+
+function definirSchemaControles(schema) {
+  schemaControles = schema === "zqsd" ? "zqsd" : "fleches";
+  try { localStorage.setItem("rb_schema_controles_v1", schemaControles); } catch {}
+  // Relâche tout ce qui pouvait être maintenu enfoncé avec l'ancien schéma,
+  // sans quoi un mouvement/sort resterait bloqué "actif" côté serveur si le
+  // joueur change de schéma une touche encore appuyée.
+  touches.left = touches.right = touches.jump = touches.bas = false;
+  touches.a = touches.z = touches.e = touches.r = false;
+  envoyerInput();
+}
+
+// Regroupe les vérifications du schéma actif pour garder keydown/keyup
+// identiques quel que soit le choix — évite de dupliquer toute la logique
+// de changement/preventDefault pour chaque schéma.
+function schemaActif() {
+  if (schemaControles === "zqsd") {
+    return {
+      gauche: (e) => e.code === "KeyA",
+      droite: (e) => e.code === "KeyD",
+      saut: (e) => e.code === "KeyW" || e.key === " ",
+      bas: (e) => e.code === "KeyS",
+      sorts: CODE_VERS_SORT_ZQSD,
+    };
+  }
+  return {
+    gauche: (e) => TOUCHES_GAUCHE.includes(e.key),
+    droite: (e) => TOUCHES_DROITE.includes(e.key),
+    saut: (e) => TOUCHES_SAUT.includes(e.key),
+    bas: (e) => TOUCHES_BAS.includes(e.key),
+    sorts: CODE_VERS_SORT,
+  };
+}
 
 // Quand le focus est sur un champ texte (chat, pseudo...), les touches
 // tapées ne doivent piloter ni le déplacement ni les sorts.
@@ -3354,13 +3434,14 @@ function saisieTexteActive() {
 
 document.addEventListener("keydown", (e) => {
   if (saisieTexteActive()) return;
+  const schema = schemaActif();
   let changement = false;
-  if (TOUCHES_GAUCHE.includes(e.key) && !touches.left) { touches.left = true; changement = true; e.preventDefault(); }
-  if (TOUCHES_DROITE.includes(e.key) && !touches.right) { touches.right = true; changement = true; e.preventDefault(); }
-  if (TOUCHES_SAUT.includes(e.key) && !touches.jump) { touches.jump = true; changement = true; e.preventDefault(); }
-  if (TOUCHES_BAS.includes(e.key) && !touches.bas) { touches.bas = true; changement = true; e.preventDefault(); }
+  if (schema.gauche(e) && !touches.left) { touches.left = true; changement = true; e.preventDefault(); }
+  if (schema.droite(e) && !touches.right) { touches.right = true; changement = true; e.preventDefault(); }
+  if (schema.saut(e) && !touches.jump) { touches.jump = true; changement = true; e.preventDefault(); }
+  if (schema.bas(e) && !touches.bas) { touches.bas = true; changement = true; e.preventDefault(); }
 
-  const sort = CODE_VERS_SORT[e.code];
+  const sort = schema.sorts[e.code];
   if (sort && !touches[sort]) { touches[sort] = true; changement = true; }
 
   // Ramassage du butin au sol : touche F (position physique), validé et
@@ -3372,13 +3453,14 @@ document.addEventListener("keydown", (e) => {
 
 document.addEventListener("keyup", (e) => {
   if (saisieTexteActive()) return;
+  const schema = schemaActif();
   let changement = false;
-  if (TOUCHES_GAUCHE.includes(e.key) && touches.left) { touches.left = false; changement = true; }
-  if (TOUCHES_DROITE.includes(e.key) && touches.right) { touches.right = false; changement = true; }
-  if (TOUCHES_SAUT.includes(e.key) && touches.jump) { touches.jump = false; changement = true; }
-  if (TOUCHES_BAS.includes(e.key) && touches.bas) { touches.bas = false; changement = true; }
+  if (schema.gauche(e) && touches.left) { touches.left = false; changement = true; }
+  if (schema.droite(e) && touches.right) { touches.right = false; changement = true; }
+  if (schema.saut(e) && touches.jump) { touches.jump = false; changement = true; }
+  if (schema.bas(e) && touches.bas) { touches.bas = false; changement = true; }
 
-  const sort = CODE_VERS_SORT[e.code];
+  const sort = schema.sorts[e.code];
   if (sort && touches[sort]) { touches[sort] = false; changement = true; }
 
   if (e.code === "KeyF" && touches.f) { touches.f = false; changement = true; }
@@ -7722,6 +7804,7 @@ const PATCHNOTES = [
       "Sur PC : barre de sorts centrée en bas et rendue transparente, discussion décalée à gauche.",
       "Sur mobile : coût en mana masqué et icônes agrandies en cercle sur la barre de sorts, bouton d'interaction (main 🤏) déplacé juste à gauche du sort ultime.",
       "Nouvelles illustrations mobiles dédiées pour les 4 sorts du Quater, et taille de la barre de sorts mobile réduite de 40%.",
+      "Ajout d'un choix de schéma de contrôles dans les Réglages : le clavier actuel (flèches + sorts sur A/Z/E/R), ou ZQSD pour se déplacer avec les sorts sur 1/2/3/4.",
     ],
   },
 ];
@@ -7747,9 +7830,24 @@ function afficherOngletReglages(onglet) {
 document.getElementById("onglet-btn-reglages-options").addEventListener("click", () => afficherOngletReglages("options"));
 document.getElementById("onglet-btn-reglages-patchnote").addEventListener("click", () => afficherOngletReglages("patchnote"));
 
+// Reflète `schemaControles` (voir definirSchemaControles) sur les deux
+// boutons de choix — appelé à l'ouverture de la modale et à chaque clic.
+function mettreAJourAffichageSchemaControles() {
+  for (const btn of document.querySelectorAll(".reglages-schema-btn")) {
+    btn.classList.toggle("actif", btn.dataset.schema === schemaControles);
+  }
+}
+document.getElementById("reglages-schema-controles").addEventListener("click", (e) => {
+  const btn = e.target.closest(".reglages-schema-btn");
+  if (!btn) return;
+  definirSchemaControles(btn.dataset.schema);
+  mettreAJourAffichageSchemaControles();
+});
+
 function ouvrirReglages() {
   const soi = state && state.players && state.players.find((p) => p.id === selfId);
   document.getElementById("reglages-pseudo").value = soi ? soi.pseudo : "";
+  mettreAJourAffichageSchemaControles();
   afficherOngletReglages("options"); // toujours rouvrir sur l'onglet principal
   document.getElementById("modale-reglages").classList.remove("masque");
 }
