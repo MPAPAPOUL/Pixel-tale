@@ -718,6 +718,13 @@ const GEMMES_VICTOIRE_CHEVALIER_NOIR = 8; // même palier de récompense que le 
 // clés que TYPES_ARMES côté client (revalidées ici, jamais fait confiance
 // au prix envoyé par le client). Le mythique reste volontairement absent
 // de cette liste : encore exclusif au coup de grâce sur Sire-Hano.
+// `monnaie`/`niveaux` absents = offre d'équipement classique payée en gemmes
+// (voir le handler "acheter_gemme" plus bas). "potionNiveau" est la seule
+// exception : payée en OR (1 pièce, demande explicite), pas en gemmes, et ne
+// remplit pas l'inventaire mais ajoute directement des niveaux (voir
+// ajouterNiveaux) — reste dans "la boutique à gemmes" (même modale/icône)
+// simplement parce qu'aucune autre boutique n'est accessible partout comme
+// celle-ci.
 const BOUTIQUE_GEMMES = [
   { item: "epeeLegendaire", prix: 35 },
   { item: "arcLegendaire", prix: 35 },
@@ -728,6 +735,7 @@ const BOUTIQUE_GEMMES = [
   { item: "anneauLegendaire", prix: 25 },
   { item: "bottesLegendaire", prix: 25 },
   { item: "braceletLegendaire", prix: 25 },
+  { item: "potionNiveau", prix: 1, monnaie: "or", niveaux: 10 },
 ];
 
 function gainerXp(p, montant) {
@@ -754,6 +762,21 @@ function gainerXp(p, montant) {
     p.derniereMonteeDeNiveau = { niveau: p.niveau, expire: Date.now() + 4000 };
     incrementerQuete(p, "monter_niveau", niveauxGagnes);
   }
+}
+
+// Ajoute directement des niveaux sans passer par l'XP (potion de la boutique
+// à gemmes, voir BOUTIQUE_GEMMES "potionNiveau") — mêmes effets de bord
+// qu'une montée de niveau normale (points de caractéristique, PV/Mana
+// recalculés et remplis, toast, progression de la quête "monter_niveau").
+function ajouterNiveaux(p, n) {
+  if (!n || n <= 0) return;
+  p.niveau += n;
+  p.pointsDisponibles = (p.pointsDisponibles || 0) + 5 * n;
+  recalculerStatsEquipement(p);
+  p.hp = p.hpMax;
+  p.mana = p.manaMax;
+  p.derniereMonteeDeNiveau = { niveau: p.niveau, expire: Date.now() + 4000 };
+  incrementerQuete(p, "monter_niveau", n);
 }
 
 // ---------------------------------------------------------------------------
@@ -3885,10 +3908,19 @@ wss.on("connection", (ws, req) => {
     } else if (message.type === "acheter_gemme") {
       // Boutique à gemmes : accessible partout, pas besoin d'un PNJ — voir
       // BOUTIQUE_GEMMES. Même principe de validation entièrement serveur.
+      // La monnaie ("gemmes" par défaut, "or" pour potionNiveau) et l'effet
+      // (ajout à l'inventaire, ou niveaux directement) dépendent de l'offre.
       const offre = BOUTIQUE_GEMMES.find((o) => o.item === message.item);
-      if (offre && (joueur.gemmes || 0) >= offre.prix) {
-        joueur.gemmes -= offre.prix;
-        joueur.inventaire[offre.item] = (joueur.inventaire[offre.item] || 0) + 1;
+      if (offre) {
+        const monnaie = offre.monnaie === "or" ? "or" : "gemmes";
+        if ((joueur[monnaie] || 0) >= offre.prix) {
+          joueur[monnaie] -= offre.prix;
+          if (offre.niveaux) {
+            ajouterNiveaux(joueur, offre.niveaux);
+          } else {
+            joueur.inventaire[offre.item] = (joueur.inventaire[offre.item] || 0) + 1;
+          }
+        }
       }
     } else if (message.type === "quete_reclamer") {
       // Panneau de quêtes journalières : réclame la récompense d'une quête

@@ -6419,18 +6419,27 @@ const BOUTIQUE_GEMMES_CLIENT = [
   { item: "anneauLegendaire", prix: 25 },
   { item: "bottesLegendaire", prix: 25 },
   { item: "braceletLegendaire", prix: 25 },
+  // Payée en OR (pas en gemmes) et n'existe pas dans TYPES_ARMES (ce n'est
+  // pas un équipement) — label/emoji/description fournis directement ici,
+  // voir mettreAJourBoutiqueGemmes ci-dessous pour le repli sur ces champs
+  // quand TYPES_ARMES[item] est absent.
+  { item: "potionNiveau", prix: 1, monnaie: "or", label: "Potion de niveau", emoji: "🧪", description: "Ajoute instantanément 10 niveaux." },
 ];
 
 function mettreAJourBoutiqueGemmes() {
   const conteneur = document.getElementById("liste-boutique-gemmes");
   const gemmes = state.gemmes || 0;
+  const or = state.or || 0;
   conteneur.innerHTML = BOUTIQUE_GEMMES_CLIENT
     .map((offre) => {
-      const abordable = gemmes >= offre.prix;
+      const enOr = offre.monnaie === "or";
+      const abordable = (enOr ? or : gemmes) >= offre.prix;
       const info = TYPES_ARMES[offre.item];
+      const icone = info ? htmlIconeObjet(info, "icone-inline") : (offre.emoji || "❔");
+      const label = info ? info.label : offre.label || offre.item;
       return `
         <div class="boutique-ligne" data-item="${offre.item}">
-          <span>${info ? htmlIconeObjet(info, "icone-inline") : "❔"} ${info ? info.label : offre.item} — 💎${offre.prix}</span>
+          <span>${icone} ${label} — ${enOr ? "🪙" : "💎"}${offre.prix}</span>
           <button type="button" class="btn-acheter" data-item="${offre.item}" ${abordable ? "" : "disabled"}>Acheter</button>
         </div>`;
     })
@@ -6446,7 +6455,7 @@ function mettreAJourBoutiqueGemmes() {
   listeEl.addEventListener("mouseover", (e) => {
     const ligneEl = e.target.closest(".boutique-ligne[data-item]");
     if (!ligneEl) return;
-    const info = TYPES_ARMES[ligneEl.dataset.item];
+    const info = TYPES_ARMES[ligneEl.dataset.item] || BOUTIQUE_GEMMES_CLIENT.find((o) => o.item === ligneEl.dataset.item);
     if (!info) return;
     tooltipEl.innerHTML = `<span class="nom">${info.label}</span><span class="desc">${info.description || ""}</span>`;
     tooltipEl.classList.toggle("legendaire", !!info.legendaire);
