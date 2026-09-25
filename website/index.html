@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Les Royaumes Brisés — RPG multijoueur en navigateur</title>
+<meta name="description" content="Les Royaumes Brisés (Vert-Hige) : un RPG-platformer multijoueur en temps réel jouable dans le navigateur. 3 classes, un monde à explorer, des boss épiques. Téléchargez le serveur et jouez entre amis.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚔️</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&family=Work+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #241733;
+    --bg-2: #150d21;
+    --gold: #f0d9a0;
+    --gold-deep: #c9a24b;
+    --purple: #7a5cc9;
+    --purple-soft: rgba(150,110,255,0.18);
+    --text: #efe9ff;
+    --text-dim: #b7a9d6;
+    --card: rgba(255,255,255,0.05);
+    --hairline: rgba(230,190,255,0.18);
+    --radius: 18px;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    font-family: "Work Sans", sans-serif;
+    color: var(--text);
+    background: linear-gradient(180deg, var(--bg) 0%, var(--bg-2) 100%);
+    overflow-x: hidden;
+  }
+  h1, h2, h3, .logo { font-family: "Baloo 2", sans-serif; }
+  a { color: inherit; }
+  img { max-width: 100%; display: block; }
+
+  /* --- Fond décoratif : lueurs floues façon ciel d'île céleste --- */
+  .glow {
+    position: fixed;
+    border-radius: 50%;
+    filter: blur(90px);
+    opacity: 0.35;
+    z-index: 0;
+    pointer-events: none;
+  }
+  .glow-1 { width: 500px; height: 500px; background: #7a5cc9; top: -150px; left: -100px; }
+  .glow-2 { width: 600px; height: 600px; background: #c9a24b; top: 20%; right: -200px; opacity: 0.18; }
+  .glow-3 { width: 450px; height: 450px; background: #5a3fae; bottom: -150px; left: 30%; opacity: 0.25; }
+
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 0 24px; position: relative; z-index: 1; }
+
+  /* --- Navigation --- */
+  header {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    backdrop-filter: blur(10px);
+    background: rgba(21,13,33,0.72);
+    border-bottom: 1px solid var(--hairline);
+  }
+  nav.wrap { display: flex; align-items: center; justify-content: space-between; padding: 14px 24px; }
+  .logo { font-weight: 800; font-size: 20px; color: var(--gold); letter-spacing: 0.3px; display: flex; align-items: center; gap: 8px; }
+  .logo span.emoji { font-size: 22px; }
+  .navlinks { display: flex; gap: 26px; font-size: 14.5px; font-weight: 600; }
+  .navlinks a { text-decoration: none; color: var(--text-dim); transition: color 0.15s; }
+  .navlinks a:hover { color: var(--gold); }
+  .nav-cta {
+    padding: 8px 16px;
+    border-radius: 999px;
+    background: linear-gradient(180deg, var(--gold) 0%, var(--gold-deep) 100%);
+    color: #241733 !important;
+    font-weight: 700;
+    text-decoration: none;
+    font-size: 14px;
+    white-space: nowrap;
+  }
+
+  /* --- Hero --- */
+  .hero { padding: 90px 24px 70px; text-align: center; position: relative; }
+  .hero .kicker {
+    display: inline-block;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--gold);
+    background: var(--purple-soft);
+    border: 1px solid var(--hairline);
+    padding: 6px 16px;
+    border-radius: 999px;
+    margin-bottom: 22px;
+  }
+  .hero h1 {
+    font-size: clamp(38px, 6vw, 64px);
+    line-height: 1.08;
+    margin: 0 0 18px;
+    background: linear-gradient(180deg, #fff 0%, var(--gold) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    text-shadow: 0 2px 24px rgba(240,217,160,0.25);
+  }
+  .hero p.tagline {
+    font-size: clamp(16px, 2.2vw, 19px);
+    color: var(--text-dim);
+    max-width: 640px;
+    margin: 0 auto 34px;
+    line-height: 1.6;
+  }
+  .cta-row { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; margin-bottom: 56px; }
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    padding: 14px 28px;
+    border-radius: 999px;
+    font-weight: 700;
+    font-size: 15.5px;
+    text-decoration: none;
+    border: 2px solid transparent;
+    transition: transform 0.15s, filter 0.15s;
+  }
+  .btn:hover { transform: translateY(-2px); filter: brightness(1.08); }
+  .btn-primary { background: linear-gradient(180deg, var(--gold) 0%, var(--gold-deep) 100%); color: #241733; box-shadow: 0 8px 24px rgba(201,162,75,0.35); }
+  .btn-secondary { background: rgba(255,255,255,0.06); color: var(--text); border-color: var(--hairline); }
+
+  .hero-cast {
+    display: flex;
+    justify-content: center;
+    align-items: flex-end;
+    gap: clamp(10px, 4vw, 40px);
+    margin-top: 10px;
+  }
+  .hero-cast img {
+    height: clamp(120px, 18vw, 220px);
+    width: auto;
+    filter: drop-shadow(0 14px 20px rgba(0,0,0,0.45));
+  }
+  .hero-cast img:nth-child(2) { height: clamp(140px, 20vw, 250px); }
+
+  /* --- Sections génériques --- */
+  section { padding: 80px 24px; position: relative; }
+  .section-head { text-align: center; max-width: 640px; margin: 0 auto 48px; }
+  .section-head .kicker-small {
+    display: block;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    color: var(--purple);
+    margin-bottom: 10px;
+  }
+  .section-head h2 { font-size: clamp(28px, 4vw, 38px); margin: 0 0 14px; color: #fff; }
+  .section-head p { color: var(--text-dim); font-size: 16px; line-height: 1.6; margin: 0; }
+
+  /* --- Classes --- */
+  .classes-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+  .class-card {
+    background: var(--card);
+    border: 1px solid var(--hairline);
+    border-radius: var(--radius);
+    padding: 28px 22px 26px;
+    text-align: center;
+    transition: transform 0.2s, border-color 0.2s;
+  }
+  .class-card:hover { transform: translateY(-6px); border-color: var(--gold-deep); }
+  .class-card img { height: 150px; margin: 0 auto 18px; filter: drop-shadow(0 10px 14px rgba(0,0,0,0.4)); }
+  .class-card h3 { font-size: 21px; margin: 0 0 4px; color: var(--gold); }
+  .class-card .role { font-size: 13px; color: var(--text-dim); font-weight: 600; margin-bottom: 14px; }
+  .class-card p.desc { font-size: 14.5px; color: var(--text-dim); line-height: 1.55; margin: 0 0 16px; }
+  .spell-tags { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+  .spell-tags span {
+    font-size: 12px;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid var(--hairline);
+    padding: 4px 10px;
+    border-radius: 999px;
+    color: var(--text);
+  }
+
+  /* --- Univers / boss --- */
+  .lore-block { display: grid; grid-template-columns: 1.1fr 1fr; gap: 48px; align-items: center; }
+  .lore-text h3 { font-size: 24px; color: #fff; margin: 0 0 14px; }
+  .lore-text p { color: var(--text-dim); line-height: 1.7; margin: 0 0 14px; font-size: 15.5px; }
+  .lore-text ul { margin: 0; padding-left: 20px; color: var(--text-dim); line-height: 1.9; font-size: 15px; }
+  .lore-text ul li strong { color: var(--gold); }
+  .boss-gallery { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+  .boss-card {
+    background: var(--card);
+    border: 1px solid var(--hairline);
+    border-radius: 14px;
+    padding: 16px 8px;
+    text-align: center;
+  }
+  .boss-card img { height: 76px; margin: 0 auto 10px; }
+  .boss-card span { font-size: 12.5px; font-weight: 600; color: var(--text-dim); }
+
+  /* --- Fonctionnalités --- */
+  .features-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+  .feature {
+    background: var(--card);
+    border: 1px solid var(--hairline);
+    border-radius: 14px;
+    padding: 22px 20px;
+  }
+  .feature .icon { font-size: 26px; margin-bottom: 12px; display: block; }
+  .feature h4 { margin: 0 0 8px; font-size: 16px; color: #fff; }
+  .feature p { margin: 0; font-size: 14px; color: var(--text-dim); line-height: 1.55; }
+
+  /* --- Ennemis --- */
+  .enemy-row { display: flex; gap: 18px; justify-content: center; flex-wrap: wrap; }
+  .enemy-chip {
+    background: var(--card);
+    border: 1px solid var(--hairline);
+    border-radius: 14px;
+    padding: 14px;
+    width: 140px;
+    text-align: center;
+  }
+  .enemy-chip img { height: 90px; margin: 0 auto 8px; }
+  .enemy-chip span { font-size: 12.5px; color: var(--text-dim); font-weight: 600; }
+
+  /* --- Téléchargement --- */
+  .download-card {
+    background: linear-gradient(160deg, rgba(150,110,255,0.14) 0%, rgba(201,162,75,0.08) 100%);
+    border: 1px solid var(--hairline);
+    border-radius: 24px;
+    padding: 48px;
+    display: grid;
+    grid-template-columns: 1.1fr 1fr;
+    gap: 40px;
+    align-items: center;
+  }
+  .download-card h2 { font-size: 30px; margin: 0 0 14px; color: #fff; }
+  .download-card p { color: var(--text-dim); line-height: 1.6; margin: 0 0 22px; font-size: 15.5px; }
+  .requirements { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 26px; }
+  .requirements span {
+    font-size: 12.5px;
+    background: rgba(255,255,255,0.07);
+    border: 1px solid var(--hairline);
+    padding: 5px 12px;
+    border-radius: 999px;
+    color: var(--text);
+  }
+  .terminal {
+    background: #0f0a19;
+    border: 1px solid var(--hairline);
+    border-radius: 14px;
+    padding: 20px 22px;
+    font-family: "Courier New", monospace;
+    font-size: 13.5px;
+    line-height: 2;
+    color: #b9f2c0;
+    overflow-x: auto;
+  }
+  .terminal .cmt { color: var(--text-dim); }
+  .terminal .prompt { color: var(--gold); }
+
+  /* --- Footer --- */
+  footer { padding: 44px 24px 36px; border-top: 1px solid var(--hairline); text-align: center; }
+  footer p { color: var(--text-dim); font-size: 13.5px; margin: 6px 0; }
+  footer a { color: var(--gold); text-decoration: none; }
+  footer a:hover { text-decoration: underline; }
+
+  /* --- Responsive --- */
+  @media (max-width: 860px) {
+    .navlinks { display: none; }
+    .classes-grid { grid-template-columns: 1fr; }
+    .lore-block { grid-template-columns: 1fr; }
+    .boss-gallery { grid-template-columns: repeat(3, 1fr); }
+    .features-grid { grid-template-columns: repeat(2, 1fr); }
+    .download-card { grid-template-columns: 1fr; padding: 32px 24px; }
+  }
+  @media (max-width: 520px) {
+    .features-grid { grid-template-columns: 1fr; }
+    .boss-gallery { grid-template-columns: 1fr 1fr; }
+    .hero { padding: 70px 18px 50px; }
+    section { padding: 56px 18px; }
+    .logo { font-size: 16px; }
+    nav.wrap { padding: 12px 18px; gap: 10px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="glow glow-1"></div>
+<div class="glow glow-2"></div>
+<div class="glow glow-3"></div>
+
+<header>
+  <nav class="wrap">
+    <div class="logo"><span class="emoji">⚔️</span> Les Royaumes Brisés</div>
+    <div class="navlinks">
+      <a href="#classes">Classes</a>
+      <a href="#univers">Univers</a>
+      <a href="#fonctionnalites">Fonctionnalités</a>
+      <a href="#telecharger">Télécharger</a>
+    </div>
+    <a class="nav-cta" href="#telecharger">Télécharger</a>
+  </nav>
+</header>
+
+<section class="hero">
+  <div class="wrap">
+    <span class="kicker">RPG · Multijoueur · Gratuit &amp; open-source</span>
+    <h1>Un monde brisé attend<br>ses héros.</h1>
+    <p class="tagline">
+      Les Royaumes Brisés (Vert-Hige) est un RPG-platformer multijoueur en
+      temps réel, jouable directement dans le navigateur. Choisis ta
+      classe, explore une île et ses régions lointaines, et affronte des
+      boss redoutables — seul ou avec tes amis.
+    </p>
+    <div class="cta-row">
+      <a class="btn btn-primary" href="#telecharger">⬇ Télécharger le jeu</a>
+      <a class="btn btn-secondary" href="https://github.com/MPAPAPOUL/Pixel-tale" target="_blank" rel="noopener">Voir le code source</a>
+    </div>
+    <div class="hero-cast">
+      <img src="assets/img/hero-quater.png" alt="Quater, l'archer" loading="lazy">
+      <img src="assets/img/hero-krix.png" alt="Krix, le mage" loading="lazy">
+      <img src="assets/img/hero-dorken.png" alt="Dorken, le guerrier" loading="lazy">
+    </div>
+  </div>
+</section>
+
+<section id="classes">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="kicker-small">Trois façons de jouer</span>
+      <h2>Choisis ta classe</h2>
+      <p>Chaque classe a 3 sorts de base et un ultime dévastateur, avec sa
+        propre réserve de mana et sa propre façon d'aborder le combat.</p>
+    </div>
+    <div class="classes-grid">
+      <div class="class-card">
+        <img src="assets/img/hero-dorken.png" alt="Dorken">
+        <h3>Dorken</h3>
+        <div class="role">Guerrier au corps-à-corps</div>
+        <p class="desc">Robuste et agressif : fonce sur l'ennemi avec sa
+          Charge et écrase tout autour de lui avec son Cri de guerre.</p>
+        <div class="spell-tags">
+          <span>Coup d'épée</span><span>Frappe lourde</span><span>Charge</span><span>Cri de guerre</span>
+        </div>
+      </div>
+      <div class="class-card">
+        <img src="assets/img/hero-quater.png" alt="Quater">
+        <h3>Quater</h3>
+        <div class="role">Archer à distance</div>
+        <p class="desc">Enchaîne les tirs — dont un qui transperce plusieurs
+          cibles — et arrose la zone avec sa Volée de flèches.</p>
+        <div class="spell-tags">
+          <span>Tir rapide</span><span>Tir puissant</span><span>Tir perçant</span><span>Volée de flèches</span>
+        </div>
+      </div>
+      <div class="class-card">
+        <img src="assets/img/hero-krix.png" alt="Krix">
+        <h3>Krix</h3>
+        <div class="role">Mage dévastateur</div>
+        <p class="desc">Fragile mais redoutable : jongle entre projectiles
+          élémentaires et fait exploser une zone entière avec son ultime.</p>
+        <div class="spell-tags">
+          <span>Griffe arcane</span><span>Éclair</span><span>Boule de feu</span><span>Explosion arcanique</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="univers">
+  <div class="wrap">
+    <div class="lore-block">
+      <div class="lore-text">
+        <span class="kicker-small">Un monde à explorer</span>
+        <h3>De Vert-Hige aux confins des Royaumes</h3>
+        <p>
+          Pars de <strong>Vert-Hige</strong>, l'île de départ, puis
+          débloque un réseau de téléporteurs vers huit régions de plus en
+          plus dangereuses — des Crêtes d'Ambre à la Couronne d'Orage —
+          chacune avec son ambiance, ses monstres et son palier
+          d'équipement. Fais une pause à <strong>Estenoise-les-Brumes</strong>,
+          le village neutre, pour commercer et discuter.
+        </p>
+        <ul>
+          <li><strong>Progression</strong> : niveaux, XP, points de
+            caractéristique à répartir librement (force, agilité,
+            intelligence, vitalité)</li>
+          <li><strong>Équipement</strong> : armes et armures légendaires
+            (et un set mythique) à looter ou à obtenir contre des gemmes</li>
+          <li><strong>Quêtes journalières</strong> et <strong>hauts
+            faits</strong> à débloquer, avec des titres à afficher fièrement</li>
+          <li><strong>Trois boss</strong> avec leurs propres mécaniques :
+            phases, zones télégraphiées, volées de projectiles</li>
+        </ul>
+      </div>
+      <div class="boss-gallery">
+        <div class="boss-card">
+          <img src="assets/img/boss-sirehano.png" alt="Sire-Hano">
+          <span>Sire-Hano</span>
+        </div>
+        <div class="boss-card">
+          <img src="assets/img/boss-dragonnoir.png" alt="Dragon Noir">
+          <span>Dragon Noir</span>
+        </div>
+        <div class="boss-card">
+          <img src="assets/img/boss-chevaliernoir.png" alt="Chevalier Noir">
+          <span>Chevalier Noir</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="bestiaire">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="kicker-small">Sur ta route</span>
+      <h2>Un bestiaire varié</h2>
+      <p>Des patrouilleurs neutres qu'il vaut mieux ne pas provoquer, aux
+        tireurs à distance et aux brutes de mêlée.</p>
+    </div>
+    <div class="enemy-row">
+      <div class="enemy-chip"><img src="assets/img/enemy-goblin-chief.png" alt="Gobelin chef"><span>Gobelin chef</span></div>
+      <div class="enemy-chip"><img src="assets/img/enemy-goblin-female.png" alt="Gobelin éclaireuse"><span>Éclaireuse</span></div>
+      <div class="enemy-chip"><img src="assets/img/enemy-goblin-male.png" alt="Gobelin neutre"><span>Gobelin neutre</span></div>
+      <div class="enemy-chip"><img src="assets/img/enemy-minotaure.png" alt="Minotaure"><span>Minotaure</span></div>
+    </div>
+  </div>
+</section>
+
+<section id="fonctionnalites">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="kicker-small">Sous le capot</span>
+      <h2>Fait pour jouer ensemble</h2>
+      <p>Un serveur Node.js fait autorité sur toute la partie — physique,
+        combat, progression — pour une expérience juste et sans triche.</p>
+    </div>
+    <div class="features-grid">
+      <div class="feature"><span class="icon">🌐</span><h4>Multijoueur en temps réel</h4><p>Tout le monde partage le même monde, la même économie, le même chat — via WebSocket, sans rechargement de page.</p></div>
+      <div class="feature"><span class="icon">🎮</span><h4>Jouable partout</h4><p>Clavier (flèches ou ZQSD, au choix) sur PC, joystick tactile et HUD adapté sur mobile.</p></div>
+      <div class="feature"><span class="icon">🛡️</span><h4>Serveur autoritaire</h4><p>Le client n'envoie que ses intentions ; toute la logique de jeu — dégâts, loot, déplacements — est validée côté serveur.</p></div>
+      <div class="feature"><span class="icon">💬</span><h4>Chat &amp; personnalisation</h4><p>Discussion de zone en direct, et un personnage personnalisable (cheveux, yeux, vêtements).</p></div>
+      <div class="feature"><span class="icon">🏆</span><h4>Classement &amp; hauts faits</h4><p>Un classement des joueurs et des hauts faits à débloquer, avec des titres à exhiber au-dessus de son personnage.</p></div>
+      <div class="feature"><span class="icon">🧩</span><h4>Open-source</h4><p>Tout le code (serveur et client) est disponible sur GitHub — libre à toi de l'héberger, le modifier ou contribuer.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="telecharger">
+  <div class="wrap">
+    <div class="download-card">
+      <div>
+        <h2>Lance ton propre serveur</h2>
+        <p>
+          Les Royaumes Brisés s'auto-héberge : télécharge le projet,
+          installe les dépendances, et lance le serveur. Ouvre ensuite
+          l'adresse affichée dans plusieurs onglets (ou partage-la sur ton
+          réseau) pour jouer à plusieurs.
+        </p>
+        <div class="requirements">
+          <span>Node.js 18+</span>
+          <span>npm</span>
+          <span>Windows / macOS / Linux</span>
+        </div>
+        <div class="cta-row" style="justify-content:flex-start; margin-bottom:0;">
+          <a class="btn btn-primary" href="https://github.com/MPAPAPOUL/Pixel-tale/archive/refs/heads/main.zip">⬇ Télécharger le .zip</a>
+          <a class="btn btn-secondary" href="https://github.com/MPAPAPOUL/Pixel-tale" target="_blank" rel="noopener">Voir sur GitHub</a>
+        </div>
+      </div>
+      <div class="terminal">
+        <div><span class="cmt"># Décompresse l'archive, puis :</span></div>
+        <div><span class="prompt">$</span> cd Pixel-tale-main</div>
+        <div><span class="prompt">$</span> npm install</div>
+        <div><span class="prompt">$</span> npm start</div>
+        <div><span class="cmt"># → http://localhost:3000</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <p>Les Royaumes Brisés — un projet personnel, en développement actif.</p>
+  <p><a href="https://github.com/MPAPAPOUL/Pixel-tale" target="_blank" rel="noopener">Code source sur GitHub</a></p>
+</footer>
+
+</body>
+</html>
