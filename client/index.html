@@ -638,6 +638,26 @@
     filter: drop-shadow(0 0 4px rgba(255,180,90,0.5));
   }
 
+  /* --- Annonce serveur (bandeau d'alerte, ex: redémarrage imminent) ------ */
+  .annonce-serveur {
+    position: absolute;
+    top: 14px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 15;
+    max-width: min(90%, 560px);
+    padding: 10px 20px;
+    background: linear-gradient(180deg, #e0a952 0%, #b0763a 100%);
+    border: 2px solid #ffe9c2;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.5), inset 0 0 10px rgba(255,220,150,0.25);
+    border-radius: 14px;
+    color: #241505;
+    font-weight: 700;
+    font-size: 13.5px;
+    text-align: center;
+    text-shadow: 0 1px 0 rgba(255,255,255,0.25);
+  }
+
   /* --- Modales fantasy (confirmation de sortie / écran de défaite) ------- */
   .modale-overlay {
     position: absolute;
@@ -697,6 +717,64 @@
   .btn-neutre {
     background: linear-gradient(180deg, #9d8fc7 0%, #6a5b96 100%);
     border-color: #e6dcff;
+  }
+
+  /* --- Compte joueur (lier email/mot de passe, se connecter ailleurs) --- */
+  .lien-compte-joueur {
+    display: block;
+    margin: 12px auto 0;
+    background: none;
+    border: none;
+    color: #cfc3ef;
+    font-size: 12.5px;
+    text-decoration: underline;
+    cursor: pointer;
+    padding: 4px;
+  }
+  .lien-compte-joueur:hover { color: #f0d9a0; }
+  .modale-fantasy.modale-compte-joueur { width: min(92%, 360px); text-align: left; }
+  .modale-compte-joueur h2 { text-align: center; }
+  .compte-joueur-onglets {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+  .compte-joueur-onglet {
+    flex: 1;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 10px;
+    padding: 8px 6px;
+    font-size: 12.5px;
+    color: #cfc3ef;
+    cursor: pointer;
+  }
+  .compte-joueur-onglet.actif {
+    background: linear-gradient(180deg, #9d8fc7 0%, #6a5b96 100%);
+    border-color: #e6dcff;
+    color: #fff;
+  }
+  .compte-joueur-texte {
+    font-size: 12.5px;
+    color: #cfc3ef;
+    line-height: 1.5;
+    margin: 0 0 12px;
+  }
+  #compte-joueur-email, #compte-joueur-motdepasse {
+    width: 100%;
+    box-sizing: border-box;
+    margin: 0 0 10px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    border: 1px solid rgba(255,255,255,0.2);
+    background: rgba(0,0,0,0.25);
+    color: #fff;
+    font-size: 13.5px;
+  }
+  .compte-joueur-succes {
+    font-size: 12.5px;
+    color: #7fe08a;
+    margin: -4px 0 10px;
   }
 
   /* --- Icône fiche de personnage (haut gauche, toujours visible) --------- */
@@ -2014,6 +2092,7 @@
     <div class="accueil-actions">
       <button type="button" class="btn-jouer" id="btn-nouveau-perso">+ Nouveau personnage</button>
     </div>
+    <button type="button" class="lien-compte-joueur" id="btn-ouvrir-compte-persos">🔑 Compte joueur</button>
   </div>
 
   <div class="accueil-carte" id="accueil-carte-creation">
@@ -2049,6 +2128,36 @@
       <button type="button" class="btn-jouer" id="btn-jouer">Jouer</button>
       <button type="button" class="btn-modale btn-neutre" id="btn-accueil-reglages" style="flex:0 0 auto;">⚙️ Réglages</button>
     </div>
+    <button type="button" class="lien-compte-joueur" id="btn-ouvrir-compte-creation">🔑 Compte joueur</button>
+  </div>
+
+  <!-- Compte joueur : lier un email + mot de passe au jeton actuel (pour le
+       retrouver depuis un autre appareil), ou se connecter avec un compte
+       déjà lié ailleurs — voir obtenirJetonJoueur (le jeton reste la seule
+       clé de la progression sauvegardée, email/mot de passe ne servent qu'à
+       le retrouver). -->
+  <div class="modale-overlay masque" id="modale-compte-joueur">
+    <div class="modale-fantasy modale-compte-joueur">
+      <button type="button" class="btn-fermer-modale" id="btn-fermer-compte-joueur" title="Fermer">✕</button>
+      <div class="compte-joueur-onglets">
+        <button type="button" class="compte-joueur-onglet actif" id="onglet-compte-lier" data-onglet="lier">Lier cet appareil</button>
+        <button type="button" class="compte-joueur-onglet" id="onglet-compte-connexion" data-onglet="connexion">Se connecter</button>
+      </div>
+      <p class="compte-joueur-texte" id="compte-joueur-lier-texte">
+        Associe un email et un mot de passe à ta progression actuelle, pour
+        pouvoir la retrouver sur un autre appareil ou navigateur.
+      </p>
+      <p class="compte-joueur-texte masque" id="compte-joueur-connexion-texte">
+        Retrouve la progression déjà liée à un email sur cet appareil.
+      </p>
+      <input type="email" id="compte-joueur-email" placeholder="Email" autocomplete="email">
+      <input type="password" id="compte-joueur-motdepasse" placeholder="Mot de passe (8 caractères min.)" autocomplete="current-password">
+      <p class="accueil-erreur masque" id="compte-joueur-erreur"></p>
+      <p class="compte-joueur-succes masque" id="compte-joueur-succes"></p>
+      <div class="modale-actions">
+        <button type="button" class="btn-modale btn-succes" id="btn-compte-valider">Lier cet appareil</button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -2057,6 +2166,15 @@
     <div class="stage-frame-wrap" id="stage-frame-wrap">
     <div class="stage-frame" id="stage-frame">
       <canvas id="jeu" width="1280" height="600"></canvas>
+
+      <!-- Annonce serveur (ex: "redémarrage dans 1 minute") — diffusée à
+           tout le monde via {type:"annonce"}, voir gererMessageServeur et
+           afficherAnnonceServeur. Bandeau en haut de l'écran, bien plus
+           visible qu'une simple bulle de chat, avec sa propre couleur
+           d'alerte. Se cache seule après ANNONCE_DUREE_MS. -->
+      <div class="annonce-serveur masque" id="annonce-serveur">
+        <span id="annonce-serveur-texte"></span>
+      </div>
 
       <!-- Icône de sortie du donjon : uniquement visible dans l'Antre du
            Sire-Hano, en haut à droite de l'écran. Un clic ouvre une
@@ -3375,7 +3493,22 @@ function gererMessageServeur(event) {
     const pseudo = pseudoDe(msg.id);
     bulles.set(msg.id, { texte: msg.texte, expire: Date.now() + DUREE_BULLE_CHAT });
     ajouterLigneChat(pseudo, msg.texte);
+  } else if (msg.type === "annonce") {
+    afficherAnnonceServeur(msg.texte);
   }
+}
+
+// Bandeau d'annonce serveur (ex: "redémarrage dans 1 minute") — voir
+// #annonce-serveur. Un nouveau message remplace et relance le minuteur
+// d'affichage plutôt que de s'empiler.
+const ANNONCE_DUREE_MS = 8000;
+let annonceServeurTimeoutId = null;
+function afficherAnnonceServeur(texte) {
+  const bandeau = document.getElementById("annonce-serveur");
+  document.getElementById("annonce-serveur-texte").textContent = texte;
+  bandeau.classList.remove("masque");
+  if (annonceServeurTimeoutId) clearTimeout(annonceServeurTimeoutId);
+  annonceServeurTimeoutId = setTimeout(() => bandeau.classList.add("masque"), ANNONCE_DUREE_MS);
 }
 // La connexion n'est ouverte qu'au clic sur "Jouer" de l'écran d'accueil
 // (voir plus bas, section "Écran d'accueil"), pas au chargement de la page.
@@ -7866,6 +7999,83 @@ async function initialiserEcranAccueil() {
   }
 }
 initialiserEcranAccueil();
+
+// --- Compte joueur (lier email/mot de passe, ou se connecter ailleurs) ----
+// Deux onglets dans la même modale : "lier" associe email+mot de passe au
+// jeton courant (POST /api/compte/lier) ; "connexion" retrouve le jeton
+// d'un compte déjà lié depuis un autre appareil (POST /api/compte/connexion)
+// puis remplace le jeton local et recharge la page pour repartir sur la
+// bonne progression.
+let ongletCompteActif = "lier";
+
+function ouvrirModaleCompte() {
+  document.getElementById("compte-joueur-erreur").classList.add("masque");
+  document.getElementById("compte-joueur-succes").classList.add("masque");
+  document.getElementById("compte-joueur-email").value = "";
+  document.getElementById("compte-joueur-motdepasse").value = "";
+  document.getElementById("modale-compte-joueur").classList.remove("masque");
+}
+document.getElementById("btn-ouvrir-compte-persos").addEventListener("click", ouvrirModaleCompte);
+document.getElementById("btn-ouvrir-compte-creation").addEventListener("click", ouvrirModaleCompte);
+document.getElementById("btn-fermer-compte-joueur").addEventListener("click", () => {
+  document.getElementById("modale-compte-joueur").classList.add("masque");
+});
+document.getElementById("modale-compte-joueur").addEventListener("click", (e) => {
+  if (e.target.id === "modale-compte-joueur") document.getElementById("modale-compte-joueur").classList.add("masque");
+});
+
+function basculerOngletCompte(onglet) {
+  ongletCompteActif = onglet;
+  document.getElementById("onglet-compte-lier").classList.toggle("actif", onglet === "lier");
+  document.getElementById("onglet-compte-connexion").classList.toggle("actif", onglet === "connexion");
+  document.getElementById("compte-joueur-lier-texte").classList.toggle("masque", onglet !== "lier");
+  document.getElementById("compte-joueur-connexion-texte").classList.toggle("masque", onglet !== "connexion");
+  document.getElementById("btn-compte-valider").textContent = onglet === "lier" ? "Lier cet appareil" : "Se connecter";
+  document.getElementById("compte-joueur-erreur").classList.add("masque");
+  document.getElementById("compte-joueur-succes").classList.add("masque");
+}
+document.getElementById("onglet-compte-lier").addEventListener("click", () => basculerOngletCompte("lier"));
+document.getElementById("onglet-compte-connexion").addEventListener("click", () => basculerOngletCompte("connexion"));
+
+document.getElementById("btn-compte-valider").addEventListener("click", async () => {
+  const email = document.getElementById("compte-joueur-email").value.trim();
+  const motDePasse = document.getElementById("compte-joueur-motdepasse").value;
+  const erreurEl = document.getElementById("compte-joueur-erreur");
+  const succesEl = document.getElementById("compte-joueur-succes");
+  erreurEl.classList.add("masque");
+  succesEl.classList.add("masque");
+
+  const route = ongletCompteActif === "lier" ? "/api/compte/lier" : "/api/compte/connexion";
+  const corps = ongletCompteActif === "lier" ? { jeton: jetonJoueur, email, motDePasse } : { email, motDePasse };
+
+  try {
+    const reponse = await fetch(route, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(corps),
+    });
+    const donnees = await reponse.json();
+    if (!reponse.ok) {
+      erreurEl.textContent = donnees.erreur || "Une erreur est survenue.";
+      erreurEl.classList.remove("masque");
+      return;
+    }
+    if (ongletCompteActif === "lier") {
+      succesEl.textContent = "Compte lié ! Tu peux maintenant te connecter avec cet email sur un autre appareil.";
+      succesEl.classList.remove("masque");
+    } else {
+      // Remplace le jeton local par celui du compte retrouvé, puis recharge
+      // pour repartir avec la bonne progression (personnages, etc.).
+      try { localStorage.setItem("rb_jeton_v2", donnees.jeton); } catch {}
+      succesEl.textContent = "Connecté ! Rechargement...";
+      succesEl.classList.remove("masque");
+      setTimeout(() => location.reload(), 600);
+    }
+  } catch {
+    erreurEl.textContent = "Impossible de contacter le serveur.";
+    erreurEl.classList.remove("masque");
+  }
+});
 
 // --- Patchnote ------------------------------------------------------------
 // Historique des changements, affiché dans l'onglet "Patchnote" des

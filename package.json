@@ -1,1 +1,42 @@
-{"name": "royaumes-brises-web", "version": "1.0.0", "description": "Les Royaumes Brises - Vert-Hige prototype", "main": "server/server.js", "scripts": {"start": "node server/server.js"}, "dependencies": {"ws": "^8.18.0"}, "engines": {"node": ">=18"}}
+{
+  "name": "royaumes-brises-web",
+  "version": "1.0.0",
+  "description": "Les Royaumes Brises - Vert-Hige prototype",
+  "main": "electron/main.js",
+  "scripts": {
+    "start": "node server/server.js",
+    "start:loop": "powershell -ExecutionPolicy Bypass -File scripts/lancer-serveur.ps1",
+    "electron:start": "electron .",
+    "dist:win": "electron-builder --win"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "electron": "^44.4.5",
+    "electron-builder": "^26.15.3"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "build": {
+    "appId": "fr.pixelfe.royaumesbrises",
+    "productName": "Les Royaumes Brises",
+    "asar": false,
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "electron/**/*",
+      "server/**/*",
+      "client/**/*",
+      "package.json",
+      "!server/data/**/*"
+    ],
+    "extraResources": [],
+    "win": {
+      "target": "dir"
+    }
+  }
+}

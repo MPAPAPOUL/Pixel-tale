@@ -13,6 +13,7 @@ const http = require("http");
 const fs = require("fs");
 const path = require("path");
 const { URL } = require("url");
+const bcrypt = require("bcryptjs");
 const { WebSocketServer } = require("ws");
 
 // process.env.PORT : hébergeurs comme Glitch/Render/Railway imposent leur
@@ -3784,6 +3785,58 @@ chargerComptes();
 
 const MAX_PERSONNAGES_PAR_COMPTE = 3;
 
+// ---------------------------------------------------------------------------
+// Récupération de compte par email (facultative, en plus du jeton
+// localStorage) — nécessaire dès qu'un joueur peut payer pour quelque chose
+// (gemmes/skins) : sans ça, vider son cache ou changer d'appareil ferait
+// perdre l'accès à un achat sans aucun recours. Le jeton reste la SEULE clé
+// de stockage de la progression (comptes[jeton]) ; email/motDePasseHache ne
+// sont que des champs optionnels ajoutés à ce même compte, utilisés
+// uniquement pour retrouver LE jeton depuis un autre navigateur.
+// ---------------------------------------------------------------------------
+const REGEX_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function trouverJetonParEmail(email) {
+  const emailNormalise = String(email).trim().toLowerCase();
+  for (const [jeton, compte] of Object.entries(comptes)) {
+    if (compte && compte.email === emailNormalise) return jeton;
+  }
+  return null;
+}
+
+// Lit le corps d'une requête HTTP et le parse en JSON — pas de framework
+// (http natif), donc pas de req.body tout prêt. Limite de taille pour éviter
+// qu'un client malveillant n'envoie un corps énorme et sature la mémoire.
+const TAILLE_MAX_CORPS = 10 * 1024;
+function lireCorpsJSON(req) {
+  return new Promise((resolve, reject) => {
+    let corps = "";
+    let tropGrand = false;
+    req.on("data", (morceau) => {
+      corps += morceau;
+      if (corps.length > TAILLE_MAX_CORPS) {
+        tropGrand = true;
+        reject(new Error("Corps de requête trop volumineux"));
+        req.destroy();
+      }
+    });
+    req.on("end", () => {
+      if (tropGrand) return;
+      try {
+        resolve(corps ? JSON.parse(corps) : {});
+      } catch {
+        reject(new Error("JSON invalide"));
+      }
+    });
+    req.on("error", reject);
+  });
+}
+
+function repondreJSON(res, statut, donnees) {
+  res.writeHead(statut, { "Content-Type": "application/json; charset=utf-8" });
+  res.end(JSON.stringify(donnees));
+}
+
 // Résumé public d'un personnage (utilisé par l'écran de sélection, jamais la
 // progression complète) — voir la route GET /api/personnages plus bas.
 function resumePersonnage(p) {
@@ -4220,6 +4273,63 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  // Lie un email + mot de passe au compte (jeton) actuel — permet de le
+  // retrouver plus tard depuis un autre appareil/navigateur via
+  // /api/compte/connexion. Un compte ne peut être lié qu'à un seul email à
+  // la fois (pas d'écrasement silencieux d'un lien existant).
+  if (req.method === "POST" && req.url === "/api/compte/lier") {
+    lireCorpsJSON(req)
+      .then(async (corps) => {
+        const jeton = String(corps.jeton || "").trim();
+        const email = String(corps.email || "").trim().toLowerCase();
+        const motDePasse = String(corps.motDePasse || "");
+        if (!jeton) return repondreJSON(res, 400, { erreur: "Jeton manquant." });
+        if (!REGEX_EMAIL.test(email)) return repondreJSON(res, 400, { erreur: "Email invalide." });
+        if (motDePasse.length < 8) return repondreJSON(res, 400, { erreur: "Le mot de passe doit faire au moins 8 caractères." });
+
+        const jetonExistant = trouverJetonParEmail(email);
+        if (jetonExistant && jetonExistant !== jeton) {
+          return repondreJSON(res, 409, { erreur: "Cet email est déjà utilisé par un autre compte." });
+        }
+        if (!comptes[jeton] || !Array.isArray(comptes[jeton].personnages)) {
+          comptes[jeton] = { personnages: [] };
+        }
+        if (comptes[jeton].email) {
+          return repondreJSON(res, 409, { erreur: "Ce compte a déjà un email associé." });
+        }
+
+        comptes[jeton].email = email;
+        comptes[jeton].motDePasseHache = await bcrypt.hash(motDePasse, 10);
+        sauvegarderComptes();
+        repondreJSON(res, 200, { ok: true });
+      })
+      .catch(() => repondreJSON(res, 400, { erreur: "Requête invalide." }));
+    return;
+  }
+
+  // Retrouve le jeton d'un compte à partir de son email + mot de passe —
+  // message d'erreur volontairement identique pour un email inconnu ou un
+  // mot de passe incorrect, pour ne pas révéler quels emails ont un compte.
+  if (req.method === "POST" && req.url === "/api/compte/connexion") {
+    lireCorpsJSON(req)
+      .then(async (corps) => {
+        const email = String(corps.email || "").trim().toLowerCase();
+        const motDePasse = String(corps.motDePasse || "");
+        const erreurGenerique = { erreur: "Email ou mot de passe incorrect." };
+
+        const jeton = trouverJetonParEmail(email);
+        const compte = jeton && comptes[jeton];
+        if (!compte || !compte.motDePasseHache) return repondreJSON(res, 401, erreurGenerique);
+
+        const motDePasseValide = await bcrypt.compare(motDePasse, compte.motDePasseHache);
+        if (!motDePasseValide) return repondreJSON(res, 401, erreurGenerique);
+
+        repondreJSON(res, 200, { ok: true, jeton });
+      })
+      .catch(() => repondreJSON(res, 400, { erreur: "Requête invalide." }));
+    return;
+  }
+
   let chemin = req.url === "/" ? "/index.html" : req.url;
   chemin = path.join(CLIENT_DIR, path.normalize(chemin).replace(/^(\.\.[/\\])+/, ""));
 
@@ -4243,4 +4353,50 @@ server.on("upgrade", (req, socket, head) => {
 
 server.listen(PORT, () => {
   console.log(`Serveur prêt : http://localhost:${PORT}`);
+  console.log(`Pour déployer une mise à jour sans surprendre les joueurs : tape "redeploy" puis Entrée dans cette console.`);
+});
+
+// ---------------------------------------------------------------------------
+// Redéploiement annoncé — tape "redeploy" dans la console où tourne ce
+// process (voir le message ci-dessus). Prévient tous les joueurs connectés
+// via le bandeau d'annonce (#annonce-serveur côté client), attend 1 minute
+// pour leur laisser le temps de finir un combat/atteindre un point sûr,
+// sauvegarde tout le monde, récupère le code le plus récent (git pull), puis
+// quitte le process — voir scripts/lancer-serveur.ps1, qui relance
+// automatiquement `node server.js` juste après pour appliquer le nouveau
+// code sans intervention manuelle.
+const { spawnSync } = require("child_process");
+const DEPOT_RACINE = path.join(__dirname, "..");
+let redeploiementEnCours = false;
+
+function lancerRedeploiement() {
+  if (redeploiementEnCours) {
+    console.log("Un redéploiement est déjà en cours.");
+    return;
+  }
+  redeploiementEnCours = true;
+  console.log("Redéploiement programmé dans 1 minute...");
+  diffuserATous({ type: "annonce", texte: "🔧 Le serveur redémarre dans 1 minute pour une mise à jour — vous serez brièvement déconnectés." });
+
+  setTimeout(() => {
+    console.log("Sauvegarde des joueurs connectés...");
+    for (const [jeton, joueur] of joueursParJeton) {
+      sauvegarderPersonnage(jeton, joueur);
+    }
+    sauvegarderComptes();
+
+    console.log("Récupération du code le plus récent (git pull)...");
+    const resultat = spawnSync("git", ["pull"], { cwd: DEPOT_RACINE, stdio: "inherit" });
+    if (resultat.error) {
+      console.error("Échec du git pull :", resultat.error.message);
+    }
+
+    console.log("Redémarrage du serveur...");
+    process.exit(0);
+  }, 60000);
+}
+
+process.stdin.setEncoding("utf8");
+process.stdin.on("data", (donnee) => {
+  if (donnee.trim().toLowerCase() === "redeploy") lancerRedeploiement();
 });
