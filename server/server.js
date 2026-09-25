@@ -28,10 +28,11 @@ const CLIENT_DIR = path.join(__dirname, "..", "client");
 // Deux mondes séparés : Vert-Hige (l'île principale, 0 → MONDE_LARGEUR_VERTHIGE)
 // et l'Antre du Sire-Hano, une VRAIE map à part (sa propre plage de
 // coordonnées, à partir de x=0 elle aussi). On passe de l'une à l'autre en
-// franchissant la porte du donjon — chaque joueur qui la franchit obtient sa
-// propre instance de l'arène (son propre combat contre Sire-Hano), pas un
-// espace partagé par tout le serveur. PORTE_DONJON_X reste la position de la
-// porte dans Vert-Hige (mur invisible tant que la clé n'est pas complète).
+// franchissant la porte du donjon — une seule instance de l'arène active à
+// la fois (demande explicite : pouvoir y entrer à plusieurs), partagée par
+// quiconque la franchit tant qu'elle est en cours (voir entrerDonjon), pas
+// une instance par joueur. PORTE_DONJON_X reste la position de la porte
+// dans Vert-Hige (mur invisible tant que la clé n'est pas complète).
 const PORTE_DONJON_X = 2400;
 const MONDE_LARGEUR_VERTHIGE = PORTE_DONJON_X + 60;
 const LARGEUR_ARENE_DONJON = 1380; // arène agrandie (était 760)
@@ -401,9 +402,10 @@ const monstres = [
 // d'une clé de groupe plutôt qu'individuelle. Chaque Fisselo/Troubalourd/
 // Tiralark tué a une chance de faire tomber un fragment ; une fois les
 // fragments réunis, la porte du donjon reste ouverte DÉFINITIVEMENT pour
-// tout le monde — mais chaque joueur qui la franchit obtient sa PROPRE
-// instance de l'Antre (sa propre tentative contre Sire-Hano), pas un espace
-// partagé : voir la section "Zones" plus bas.
+// tout le monde — et tout le monde qui la franchit tant qu'une tentative
+// est en cours rejoint la MÊME instance de l'Antre (demande explicite :
+// pouvoir y entrer à plusieurs), voir entrerDonjon et la section "Zones"
+// plus bas.
 
 const FRAGMENTS_CLE_REQUIS = 3;
 const CHANCE_DROP_FRAGMENT = 0.5; // par monstre de base tué, tant que la clé n'est pas complète
@@ -1468,13 +1470,22 @@ function zoneDeJoueur(p) {
   return zoneVerthige;
 }
 
-// Fait entrer un joueur dans une TOUTE NOUVELLE instance du donjon — chaque
-// joueur qui franchit la porte a son propre combat contre Sire-Hano.
+// Fait entrer un joueur dans l'instance du donjon actuellement active — au
+// plus une seule à la fois (demande explicite : pouvoir y entrer à
+// plusieurs) : quiconque franchit la porte tant qu'une instance est en
+// cours rejoint la MÊME (mêmes monstres déjà tués, même progression du
+// combat contre Sire-Hano) plutôt que d'en obtenir une pour lui tout seul.
+// Une nouvelle instance n'est créée que si aucune n'est active — voir
+// sortirDonjon, qui détruit l'instance une fois le dernier joueur reparti.
 function entrerDonjon(p) {
-  const instance = creerInstanceDonjon();
+  let instance = instancesDonjon.values().next().value;
+  if (!instance) instance = creerInstanceDonjon();
   instance.joueurs.add(p.id);
   p.zone = instance.id;
-  p.x = 30;
+  // Léger décalage aléatoire (plusieurs joueurs peuvent désormais arriver
+  // au même endroit à quelques instants d'intervalle) pour ne pas empiler
+  // tout le monde pile au même pixel à l'entrée.
+  p.x = 30 + Math.random() * 40;
   p.y = SIRE_HANO_Y_SOL - JOUEUR_HAUTEUR;
   p.vx = 0;
   p.vy = 0;
@@ -1513,11 +1524,9 @@ function sortirDonjon(p) {
   }
   // Reverrouille la porte pour forcer un nouveau farming de fragments
   // avant la prochaine tentative — mais SEULEMENT si plus personne n'est
-  // en train de tenter sa chance dans le donjon (chaque joueur a sa
-  // PROPRE instance, voir entrerDonjon). Sans ce garde-fou, la sortie
-  // d'un joueur A (victoire, défaite ou abandon) reverrouillerait aussi
-  // la clé — partagée par tout le serveur — de joueurs B/C en train de la
-  // récolter ou de combattre dans une instance totalement différente.
+  // en train de tenter sa chance dans le donjon (une seule instance
+  // partagée à la fois désormais, voir entrerDonjon : ce test revient donc
+  // à "le dernier joueur vient de repartir de LA (l'unique) instance").
   if (instancesDonjon.size === 0) {
     donjon.fragments = 0;
     donjon.ouvert = false;
