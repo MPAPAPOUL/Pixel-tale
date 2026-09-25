@@ -66,6 +66,7 @@
   .navlinks { display: flex; gap: 26px; font-size: 14.5px; font-weight: 600; }
   .navlinks a { text-decoration: none; color: var(--text-dim); transition: color 0.15s; }
   .navlinks a:hover { color: var(--gold); }
+  .logo-img { height: 42px; width: auto; border-radius: 8px; }
   .nav-cta {
     padding: 8px 16px;
     border-radius: 999px;
@@ -139,6 +140,11 @@
     filter: drop-shadow(0 14px 20px rgba(0,0,0,0.45));
   }
   .hero-cast img:nth-child(2) { height: clamp(140px, 20vw, 250px); }
+  .hero-logo {
+    max-width: clamp(200px, 30vw, 300px);
+    margin: 0 auto 28px;
+    filter: drop-shadow(0 14px 30px rgba(122,92,201,0.45));
+  }
 
   /* --- Sections génériques --- */
   section { padding: 80px 24px; position: relative; }
@@ -209,18 +215,76 @@
   .feature h4 { margin: 0 0 8px; font-size: 16px; color: #fff; }
   .feature p { margin: 0; font-size: 14px; color: var(--text-dim); line-height: 1.55; }
 
-  /* --- Ennemis --- */
-  .enemy-row { display: flex; gap: 18px; justify-content: center; flex-wrap: wrap; }
-  .enemy-chip {
+  /* --- Bestiaire --- */
+  .beast-tabs { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-bottom: 36px; }
+  .beast-tab-btn {
+    padding: 10px 22px;
+    border-radius: 999px;
+    border: 1px solid var(--hairline);
+    background: var(--card);
+    color: var(--text-dim);
+    font-weight: 700;
+    font-size: 14px;
+    font-family: inherit;
+    cursor: pointer;
+    transition: transform 0.15s, filter 0.15s;
+  }
+  .beast-tab-btn:hover { color: var(--text); border-color: var(--gold-deep); }
+  .beast-tab-btn.active {
+    background: linear-gradient(180deg, var(--gold) 0%, var(--gold-deep) 100%);
+    color: #241733;
+    border-color: transparent;
+  }
+  .beast-panel { display: none; }
+  .beast-panel.active { display: block; }
+  .beast-region-group { margin-bottom: 30px; }
+  .beast-region-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; }
+  .beast-region-head h4 { margin: 0; font-size: 18px; color: #fff; }
+  .beast-region-head .tier-badge {
+    font-size: 11.5px;
+    font-weight: 700;
+    color: var(--gold);
+    background: var(--purple-soft);
+    border: 1px solid var(--hairline);
+    padding: 3px 10px;
+    border-radius: 999px;
+  }
+  .beast-region-head .region-desc { font-size: 13px; color: var(--text-dim); flex-basis: 100%; margin: 0; }
+  .beast-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 18px; }
+  .beast-card {
     background: var(--card);
     border: 1px solid var(--hairline);
-    border-radius: 14px;
-    padding: 14px;
-    width: 140px;
+    border-radius: 16px;
+    padding: 18px;
     text-align: center;
   }
-  .enemy-chip img { height: 90px; margin: 0 auto 8px; }
-  .enemy-chip span { font-size: 12.5px; color: var(--text-dim); font-weight: 600; }
+  .beast-card img { height: 84px; margin: 0 auto 12px; filter: drop-shadow(0 8px 12px rgba(0,0,0,0.4)); }
+  .beast-card h4, .beast-card h5 { font-size: 16px; margin: 0 0 4px; color: var(--gold); }
+  .beast-card .beast-role { font-size: 12px; color: var(--text-dim); font-weight: 600; margin-bottom: 10px; }
+  .beast-stats { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; margin-bottom: 10px; }
+  .beast-stats span {
+    font-size: 12px;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid var(--hairline);
+    padding: 3px 9px;
+    border-radius: 999px;
+    color: var(--text);
+    white-space: nowrap;
+  }
+  .beast-behavior { font-size: 13px; color: var(--text-dim); line-height: 1.5; margin: 0 0 10px; text-align: left; }
+  .beast-drop {
+    font-size: 12.5px;
+    color: var(--text-dim);
+    line-height: 1.55;
+    border-top: 1px dashed var(--hairline);
+    padding-top: 10px;
+    margin-top: auto;
+    text-align: left;
+  }
+  .beast-drop strong { color: var(--gold); }
+  .beast-card.boss-card-full { text-align: left; }
+  .beast-card.boss-card-full img { height: 110px; margin: 0 0 12px; }
+  .beast-note { font-size: 13.5px; color: var(--text-dim); text-align: center; margin: 0 0 30px; line-height: 1.6; }
 
   /* --- Téléchargement --- */
   .download-card {
@@ -291,10 +355,11 @@
 
 <header>
   <nav class="wrap">
-    <div class="logo"><span class="emoji">⚔️</span> Les Royaumes Brisés</div>
+    <a class="logo" href="#"><img class="logo-img" src="assets/img/logo-pixelfe.jpg" alt="Pixelfe"></a>
     <div class="navlinks">
       <a href="#classes">Classes</a>
       <a href="#univers">Univers</a>
+      <a href="#bestiaire">Bestiaire</a>
       <a href="#fonctionnalites">Fonctionnalités</a>
       <a href="#telecharger">Télécharger</a>
     </div>
@@ -304,6 +369,7 @@
 
 <section class="hero">
   <div class="wrap">
+    <img class="hero-logo" src="assets/img/logo-pixelfe.jpg" alt="Pixelfe">
     <span class="kicker">RPG · Multijoueur · Gratuit &amp; open-source</span>
     <h1>Un monde brisé attend<br>ses héros.</h1>
     <p class="tagline">
@@ -415,15 +481,255 @@
   <div class="wrap">
     <div class="section-head">
       <span class="kicker-small">Sur ta route</span>
-      <h2>Un bestiaire varié</h2>
-      <p>Des patrouilleurs neutres qu'il vaut mieux ne pas provoquer, aux
-        tireurs à distance et aux brutes de mêlée.</p>
+      <h2>Bestiaire complet</h2>
+      <p>Toutes les créatures des Royaumes Brisés — points de vie, dégâts,
+        comportement et ce qu'elles peuvent laisser tomber.</p>
     </div>
-    <div class="enemy-row">
-      <div class="enemy-chip"><img src="assets/img/enemy-goblin-chief.png" alt="Gobelin chef"><span>Gobelin chef</span></div>
-      <div class="enemy-chip"><img src="assets/img/enemy-goblin-female.png" alt="Gobelin éclaireuse"><span>Éclaireuse</span></div>
-      <div class="enemy-chip"><img src="assets/img/enemy-goblin-male.png" alt="Gobelin neutre"><span>Gobelin neutre</span></div>
-      <div class="enemy-chip"><img src="assets/img/enemy-minotaure.png" alt="Minotaure"><span>Minotaure</span></div>
+
+    <div class="beast-tabs">
+      <button class="beast-tab-btn active" data-tab="verthige" type="button">Vert-Hige</button>
+      <button class="beast-tab-btn" data-tab="regions" type="button">Régions</button>
+      <button class="beast-tab-btn" data-tab="donjon" type="button">Donjon</button>
+      <button class="beast-tab-btn" data-tab="boss" type="button">Boss</button>
+    </div>
+
+    <!-- Vert-Hige : l'île de départ -->
+    <div class="beast-panel active" id="tab-verthige">
+      <p class="beast-note">L'île de départ, niveau 1 à 9. Chaque monstre tué a
+        <strong style="color:var(--gold)">10% de chance</strong> de laisser
+        tomber une pièce d'équipement de base (épée, arc, bâton, casque,
+        jambières, anneau, bottes ou bracelet).</p>
+      <div class="beast-grid">
+        <div class="beast-card">
+          <img src="assets/img/enemy-goblin-chief.png" alt="Troubalourd">
+          <h4>Troubalourd</h4>
+          <div class="beast-role">Patrouilleur</div>
+          <div class="beast-stats"><span>❤️ 40 PV</span><span>⚔️ 10 dégâts</span><span>✨ 8 XP</span></div>
+          <p class="beast-behavior">Patrouille sa plateforme et fait tomber la
+            foudre sur ta position (18 dégâts, zone télégraphiée de 70px).</p>
+          <div class="beast-drop"><strong>Drop :</strong> 10% équipement de base.</div>
+        </div>
+        <div class="beast-card">
+          <img src="assets/img/enemy-goblin-female.png" alt="Fisselo">
+          <h4>Fisselo</h4>
+          <div class="beast-role">Éclaireuse erratique</div>
+          <div class="beast-stats"><span>❤️ 14 PV</span><span>⚔️ 5 dégâts</span><span>✨ 4 XP</span></div>
+          <p class="beast-behavior">Se déplace de façon imprévisible et crache
+            à distance (6 dégâts).</p>
+          <div class="beast-drop"><strong>Drop :</strong> 10% équipement de base.</div>
+        </div>
+        <div class="beast-card">
+          <img src="assets/img/enemy-tiralark.png" alt="Tiralark">
+          <h4>Tiralark</h4>
+          <div class="beast-role">Tireur immobile</div>
+          <div class="beast-stats"><span>❤️ 24 PV</span><span>⚔️ 6 dégâts</span><span>✨ 6 XP</span></div>
+          <p class="beast-behavior">Reste en place et tire à distance
+            (8 dégâts, portée 500px).</p>
+          <div class="beast-drop"><strong>Drop :</strong> 10% équipement de base.</div>
+        </div>
+        <div class="beast-card">
+          <img src="assets/img/enemy-goblin-male.png" alt="Gobelin neutre">
+          <h4>Gobelin neutre</h4>
+          <div class="beast-role">Neutre (jusqu'à provocation)</div>
+          <div class="beast-stats"><span>❤️ 30 PV</span><span>⚔️ 8 dégâts</span><span>✨ 7 XP</span></div>
+          <p class="beast-behavior">Erre sans attaquer tant qu'on ne le
+            frappe pas — devient hostile dès le premier coup reçu. Présent
+            dans Vert-Hige et dans chaque région.</p>
+          <div class="beast-drop"><strong>Drop :</strong> 10% équipement de base.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Régions / biomes -->
+    <div class="beast-panel" id="tab-regions">
+      <p class="beast-note">Huit régions débloquées par téléporteur depuis
+        Vert-Hige, de plus en plus dangereuses. Un palier d'équipement tous
+        les ~20 niveaux (Tier 1 à 4) ; chaque monstre garde
+        <strong style="color:var(--gold)">10% de chance</strong> de drop sur
+        le pool de son tier.</p>
+
+      <div class="beast-region-group">
+        <div class="beast-region-head"><h4>Crêtes d'Ambre</h4><span class="tier-badge">Niveau 10 · Tier 1</span></div>
+        <div class="beast-grid">
+          <div class="beast-card">
+            <img src="assets/img/enemy-epineux.png" alt="Résinard">
+            <h5>Résinard</h5>
+            <div class="beast-role">Patrouilleur</div>
+            <div class="beast-stats"><span>❤️ 60 PV</span><span>⚔️ 15 dégâts</span><span>✨ 12 XP</span></div>
+            <div class="beast-drop"><strong>Drop :</strong> 10% équipement Tier 1 (arme/armure/accessoire).</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="beast-region-group">
+        <div class="beast-region-head"><h4>Marais de Suin</h4><span class="tier-badge">Niveau 20 · Tier 1</span></div>
+        <div class="beast-grid">
+          <div class="beast-card">
+            <img src="assets/img/enemy-tentacule-vert.png" alt="Bourbelin">
+            <h5>Bourbelin</h5>
+            <div class="beast-role">Erratique</div>
+            <div class="beast-stats"><span>❤️ 28 PV</span><span>⚔️ 10 dégâts</span><span>✨ 8 XP</span></div>
+            <div class="beast-drop"><strong>Drop :</strong> 10% équipement Tier 1 (arme/armure/accessoire).</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="beast-region-group">
+        <div class="beast-region-head"><h4>Forêt Chuchote</h4><span class="tier-badge">Niveau 30 · Tier 2</span></div>
+        <div class="beast-grid">
+          <div class="beast-card">
+            <img src="assets/img/enemy-faucheur.png" alt="Murmurance">
+            <h5>Murmurance</h5>
+            <div class="beast-role">Tireur</div>
+            <div class="beast-stats"><span>❤️ 60 PV</span><span>⚔️ 15 dégâts</span><span>✨ 15 XP</span></div>
+            <p class="beast-behavior">Tire à distance (20 dégâts, portée 500px).</p>
+            <div class="beast-drop"><strong>Drop :</strong> 10% équipement Tier 2 (arme/armure/accessoire).</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="beast-region-group">
+        <div class="beast-region-head"><h4>Pics Verglacés</h4><span class="tier-badge">Niveau 40 · Tier 2</span></div>
+        <div class="beast-grid">
+          <div class="beast-card">
+            <img src="assets/img/enemy-goblin-chief.png" alt="Craquelin" style="filter: drop-shadow(0 8px 12px rgba(0,0,0,0.4)) hue-rotate(180deg) saturate(1.5) brightness(1.15)">
+            <h5>Craquelin</h5>
+            <div class="beast-role">Patrouilleur</div>
+            <div class="beast-stats"><span>❤️ 120 PV</span><span>⚔️ 30 dégâts</span><span>✨ 24 XP</span></div>
+            <div class="beast-drop"><strong>Drop :</strong> 10% équipement Tier 2 (arme/armure/accessoire).</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="beast-region-group">
+        <div class="beast-region-head"><h4>Dunes Cendrées</h4><span class="tier-badge">Niveau 50 · Tier 3</span></div>
+        <div class="beast-grid">
+          <div class="beast-card">
+            <img src="assets/img/enemy-spectre-emergent.png" alt="Cendrelin">
+            <h5>Cendrelin</h5>
+            <div class="beast-role">Erratique</div>
+            <div class="beast-stats"><span>❤️ 49 PV</span><span>⚔️ 18 dégâts</span><span>✨ 14 XP</span></div>
+            <div class="beast-drop"><strong>Drop :</strong> 10% équipement Tier 3 (arme/armure/accessoire).</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="beast-region-group">
+        <div class="beast-region-head"><h4>Abysses Luisantes</h4><span class="tier-badge">Niveau 60 · Tier 3</span></div>
+        <div class="beast-grid">
+          <div class="beast-card">
+            <img src="assets/img/enemy-bluetentacle.png" alt="Luisereau">
+            <h5>Luisereau</h5>
+            <div class="beast-role">Tireur</div>
+            <div class="beast-stats"><span>❤️ 96 PV</span><span>⚔️ 24 dégâts</span><span>✨ 24 XP</span></div>
+            <p class="beast-behavior">Tire à distance (32 dégâts, portée 500px).</p>
+            <div class="beast-drop"><strong>Drop :</strong> 10% équipement Tier 3 (arme/armure/accessoire).</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="beast-region-group">
+        <div class="beast-region-head"><h4>Jardins Pétrifiés</h4><span class="tier-badge">Niveau 70 · Tier 4</span></div>
+        <div class="beast-grid">
+          <div class="beast-card">
+            <img src="assets/img/enemy-sorcier-4bras.png" alt="Gravide">
+            <h5>Gravide</h5>
+            <div class="beast-role">Patrouilleur</div>
+            <div class="beast-stats"><span>❤️ 180 PV</span><span>⚔️ 45 dégâts</span><span>✨ 36 XP</span></div>
+            <div class="beast-drop"><strong>Drop :</strong> 10% équipement Tier 4 (arme/armure/accessoire).</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="beast-region-group">
+        <div class="beast-region-head"><h4>Couronne d'Orage</h4><span class="tier-badge">Niveau 80 · Tier 4</span></div>
+        <div class="beast-grid">
+          <div class="beast-card">
+            <img src="assets/img/enemy-goblin-female.png" alt="Fulgurin" style="filter: drop-shadow(0 8px 12px rgba(0,0,0,0.4)) hue-rotate(45deg) saturate(1.6) brightness(1.2)">
+            <h5>Fulgurin</h5>
+            <div class="beast-role">Erratique</div>
+            <div class="beast-stats"><span>❤️ 70 PV</span><span>⚔️ 25 dégâts</span><span>✨ 20 XP</span></div>
+            <div class="beast-drop"><strong>Drop :</strong> 10% équipement Tier 4 (arme/armure/accessoire).</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Donjon : Antre du Sire-Hano -->
+    <div class="beast-panel" id="tab-donjon">
+      <p class="beast-note">L'Antre du Sire-Hano, débloquée en réunissant
+        3 fragments de clé. Chaque mob de base a
+        <strong style="color:var(--gold)">50% de chance</strong> de laisser
+        tomber un fragment (tant que la clé n'est pas complète), en plus des
+        10% habituels d'équipement de base.</p>
+      <div class="beast-grid">
+        <div class="beast-card">
+          <img src="assets/img/enemy-goblin-chief.png" alt="Troubalourd">
+          <h4>Troubalourd</h4>
+          <div class="beast-role">Patrouilleur</div>
+          <div class="beast-stats"><span>❤️ 40 PV</span><span>⚔️ 10 dégâts</span><span>✨ 8 XP</span></div>
+          <div class="beast-drop"><strong>Drop :</strong> 10% équipement de base + 50% fragment de clé.</div>
+        </div>
+        <div class="beast-card">
+          <img src="assets/img/enemy-goblin-female.png" alt="Fisselo">
+          <h4>Fisselo</h4>
+          <div class="beast-role">Éclaireuse erratique</div>
+          <div class="beast-stats"><span>❤️ 14 PV</span><span>⚔️ 5 dégâts</span><span>✨ 4 XP</span></div>
+          <div class="beast-drop"><strong>Drop :</strong> 10% équipement de base + 50% fragment de clé.</div>
+        </div>
+        <div class="beast-card">
+          <img src="assets/img/enemy-tiralark.png" alt="Tiralark">
+          <h4>Tiralark</h4>
+          <div class="beast-role">Tireur immobile</div>
+          <div class="beast-stats"><span>❤️ 24 PV</span><span>⚔️ 6 dégâts</span><span>✨ 6 XP</span></div>
+          <div class="beast-drop"><strong>Drop :</strong> 10% équipement de base + 50% fragment de clé.</div>
+        </div>
+        <div class="beast-card">
+          <img src="assets/img/enemy-minotaure.png" alt="Minotaure">
+          <h4>Minotaure</h4>
+          <div class="beast-role">Élite du donjon</div>
+          <div class="beast-stats"><span>❤️ 90 PV</span><span>⚔️ 16 dégâts</span><span>✨ 18 XP</span></div>
+          <p class="beast-behavior">Le mob le plus costaud de l'Antre, ajouté
+            aux 3 gabarits historiques pour marquer sa rareté.</p>
+          <div class="beast-drop"><strong>Drop :</strong> 10% équipement de base + 50% fragment de clé.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Boss -->
+    <div class="beast-panel" id="tab-boss">
+      <p class="beast-note">Chaque pièce de leur set légendaire a
+        <strong style="color:var(--gold)">15% de chance</strong> de tomber au
+        coup de grâce, en plus d'une récompense garantie de gemmes à la
+        victoire.</p>
+      <div class="beast-grid">
+        <div class="beast-card boss-card-full">
+          <img src="assets/img/boss-sirehano.png" alt="Sire-Hano">
+          <h4>Sire-Hano</h4>
+          <div class="beast-role">Boss de l'Antre — 3 phases</div>
+          <div class="beast-stats"><span>❤️ 480 PV (total)</span><span>✨ 15 XP / réplique</span><span>💎 5 gemmes</span></div>
+          <p class="beast-behavior">Se scinde en plusieurs répliques au fil
+            des phases, chacune avec sa propre barre de vie.</p>
+          <div class="beast-drop"><strong>Drop :</strong> 15% par pièce du set légendaire de l'Antre.</div>
+        </div>
+        <div class="beast-card boss-card-full">
+          <img src="assets/img/boss-dragonnoir.png" alt="Dragon Noir">
+          <h4>Dragon Noir</h4>
+          <div class="beast-role">Boss du monde — 2 phases</div>
+          <div class="beast-stats"><span>❤️ 3 600 PV</span><span>💎 8 gemmes</span></div>
+          <p class="beast-behavior">Le boss le plus costaud du jeu : sous 50%
+            de vie il se transforme, inflige +100% de dégâts et attaque
+            35% plus vite.</p>
+          <div class="beast-drop"><strong>Drop :</strong> 15% par pièce du set légendaire.</div>
+        </div>
+        <div class="beast-card boss-card-full">
+          <img src="assets/img/boss-chevaliernoir.png" alt="Chevalier Noir">
+          <h4>Chevalier Noir</h4>
+          <div class="beast-role">Boss du monde</div>
+          <div class="beast-stats"><span>❤️ 2 800 PV</span><span>💎 8 gemmes</span></div>
+          <div class="beast-drop"><strong>Drop :</strong> 15% par pièce du set légendaire.</div>
+        </div>
+      </div>
     </div>
   </div>
 </section>
@@ -484,5 +790,15 @@
   <p><a href="https://github.com/MPAPAPOUL/Pixel-tale" target="_blank" rel="noopener">Code source sur GitHub</a></p>
 </footer>
 
+<script>
+  document.querySelectorAll(".beast-tab-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll(".beast-tab-btn").forEach((b) => b.classList.remove("active"));
+      document.querySelectorAll(".beast-panel").forEach((p) => p.classList.remove("active"));
+      btn.classList.add("active");
+      document.getElementById("tab-" + btn.dataset.tab).classList.add("active");
+    });
+  });
+</script>
 </body>
 </html>
