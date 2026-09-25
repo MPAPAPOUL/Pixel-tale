@@ -377,6 +377,15 @@
     margin-top: 2px;
     filter: drop-shadow(0 1px 2px rgba(0,0,0,0.55));
   }
+  /* Illustration dédiée (voir htmlIconeSort/ICONES_SORTS_IMG) à la place de
+     l'emoji, seul le Quater en a pour l'instant. */
+  .spell-slot .icone .icone-img {
+    width: 26px;
+    height: 26px;
+    object-fit: cover;
+    border-radius: 6px;
+    vertical-align: middle;
+  }
   .spell-slot .cout {
     font-size: 10px;
     font-weight: 600;
@@ -432,6 +441,7 @@
      au coin bas-droit du conteneur. */
   .mode-tactile .spell-slot:nth-child(1) { width: 88px; height: 88px; right: 0; bottom: 0; border-width: 3px; }
   .mode-tactile .spell-slot:nth-child(1) .icone { font-size: 30px; }
+  .mode-tactile .spell-slot:nth-child(1) .icone .icone-img { width: 40px; height: 40px; }
   /* "z"/"e"/"r" : petits, en arc au-dessus/à gauche du gros bouton (rayon
      ≈96px, angles 100°/140°/180° — voir le commentaire plus haut), tous les
      3 de même taille (seul le sort "a" est mis en avant, même l'ultime). */
@@ -441,6 +451,7 @@
   .mode-tactile .spell-slot.ultime { border-color: #d67fff; box-shadow: 0 0 0 2px rgba(214,127,255,0.4), 0 3px 8px rgba(0,0,0,0.35); }
   .mode-tactile .spell-slot .touche { display: none; } /* touche clavier sans objet au doigt */
   .mode-tactile .spell-slot .icone { font-size: 22px; margin-top: 0; }
+  .mode-tactile .spell-slot .icone .icone-img { width: 30px; height: 30px; }
   .mode-tactile .spell-slot .cout { font-size: 9px; margin-top: 0; }
   .spell-slot .voile-cooldown {
     position: absolute;
@@ -1139,6 +1150,7 @@
     width: 16px;
   }
   .perso-sorts .sort-icone { width: 20px; text-align: center; }
+  .perso-sorts .sort-icone .icone-img { width: 18px; height: 18px; object-fit: cover; border-radius: 4px; vertical-align: middle; }
   .perso-sorts .sort-nom { flex: 1; color: #e9e2fa; }
   .perso-sorts .sort-degats { font-weight: 700; color: #ff9d7a; }
   .perso-sorts .sort-detail { color: #9d8fc7; font-size: 11px; }
@@ -6125,9 +6137,30 @@ function arrondiRect(x, y, w, h, r) {
 // fois (celle de sa propre classe), donc pas besoin d'unicité inter-classes.
 const ICONES_SORTS = {
   dorken: { a: "🗡️", z: "💥", e: "💨", r: "📯" },   // guerrier : épée, frappe, charge, cri de guerre
-  quater: { a: "🏹", z: "🎯", e: "🌠", r: "🌧️" },   // archer : tir rapide, puissant, perçant, volée
+  quater: { a: "🏹", z: "🎯", e: "🌠", r: "🌧️" },   // archer : tir rapide, puissant, perçant, volée (repli emoji si l'image manque, voir ICONES_SORTS_IMG)
   krix: { a: "✨", z: "⚡", e: "🔥", r: "🌌" },       // mage : griffe arcane, éclair, boule de feu, explosion
 };
+// Illustrations dédiées par classe/touche (remplacent l'emoji ci-dessus quand
+// présentes) — pour l'instant seul le Quater en a (voir client/sprites/
+// icones-sorts/quater/). Les autres classes gardent l'emoji tant qu'aucune
+// image ne leur est fournie.
+const ICONES_SORTS_IMG = {
+  quater: {
+    a: "sprites/icones-sorts/quater/a.png",
+    z: "sprites/icones-sorts/quater/z.png",
+    e: "sprites/icones-sorts/quater/e.png",
+    r: "sprites/icones-sorts/quater/r.png",
+  },
+};
+// Même repli que htmlIconeObjet (voir plus haut) : <img> vers l'illustration
+// si elle existe pour cette classe/touche, sinon l'emoji ; onerror rebascule
+// aussi sur l'emoji si jamais le fichier venait à manquer.
+function htmlIconeSort(classe, touche) {
+  const chemin = (ICONES_SORTS_IMG[classe] || {})[touche];
+  const emoji = (ICONES_SORTS[classe] || {})[touche] || "❔";
+  if (chemin) return `<img class="icone-img" src="${chemin}" alt="" onerror="this.outerHTML='${emoji}';">`;
+  return emoji;
+}
 
 function mettreAJourSortsHUD() {
   const conteneur = document.getElementById("spell-bar");
@@ -6137,7 +6170,6 @@ function mettreAJourSortsHUD() {
   if (!self) return;
 
   const attaques = classesInfo[self.classe].attaques;
-  const icones = ICONES_SORTS[self.classe] || {};
   conteneur.innerHTML = "";
 
   for (const touche of ["a", "z", "e", "r"]) {
@@ -6152,7 +6184,7 @@ function mettreAJourSortsHUD() {
     slot.title = `${sort.nom} (${touche.toUpperCase()})`;
     slot.innerHTML = `
       <div class="touche">${touche.toUpperCase()}</div>
-      <div class="icone">${icones[touche] || "❔"}</div>
+      <div class="icone">${htmlIconeSort(self.classe, touche)}</div>
       <div class="cout">${sort.coutMana} PM</div>
       <div class="voile-cooldown" style="height:${ratioRestant * 100}%"></div>
     `;
@@ -6995,7 +7027,6 @@ function mettreAJourFichePersonnage() {
   }
 
   const attaques = classesInfo[self.classe].attaques;
-  const icones = ICONES_SORTS[self.classe] || {};
   document.getElementById("perso-sorts").innerHTML = ["a", "z", "e", "r"]
     .map((touche) => {
       const sort = attaques[touche];
@@ -7004,7 +7035,7 @@ function mettreAJourFichePersonnage() {
       return `
         <div class="sort-ligne">
           <span class="sort-touche">${touche.toUpperCase()}</span>
-          <span class="sort-icone">${icones[touche] || "❔"}</span>
+          <span class="sort-icone">${htmlIconeSort(self.classe, touche)}</span>
           <span class="sort-nom">${escapeHtml(sort.nom)}</span>
           <span class="sort-degats">${degatsEffectifs}</span>
           <span class="sort-detail">${sort.cooldown}s · ${sort.coutMana} PM</span>
@@ -7606,6 +7637,7 @@ const PATCHNOTES = [
       "HUD des sorts sur mobile agrandi et recentré en bas à droite de l'écran : un gros bouton pour l'attaque de base entouré des 3 autres sorts en arc de cercle.",
       "Ajout de cet onglet Patchnote dans les Réglages.",
       "Retrait du bouton de saut sur mobile, redondant avec le joystick (axe vertical vers le haut).",
+      "Nouvelles illustrations pour les 4 sorts du Quater (barre de sorts et fiche de personnage).",
     ],
   },
 ];
