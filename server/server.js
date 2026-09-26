@@ -14,6 +14,7 @@ const fs = require("fs");
 const path = require("path");
 const { URL } = require("url");
 const bcrypt = require("bcryptjs");
+const idle = require("./idle"); // backend séparé pour Pixelfe-Idle (Godot), voir server/idle.js
 const { WebSocketServer } = require("ws");
 
 // process.env.PORT : hébergeurs comme Glitch/Render/Railway imposent leur
@@ -4330,6 +4331,11 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  // Routes du jeu Godot Pixelfe-Idle (classement, guildes) — entièrement
+  // isolées dans server/idle.js, aucune donnée partagée avec Les Royaumes
+  // Brisés au-delà du même process serveur.
+  if (idle.gererRequeteHTTP(req, res)) return;
+
   let chemin = req.url === "/" ? "/index.html" : req.url;
   chemin = path.join(CLIENT_DIR, path.normalize(chemin).replace(/^(\.\.[/\\])+/, ""));
 
@@ -4346,6 +4352,7 @@ const server = http.createServer((req, res) => {
 });
 
 server.on("upgrade", (req, socket, head) => {
+  if (idle.gererUpgrade(req, socket, head)) return; // /idle-chat, voir server/idle.js
   wss.handleUpgrade(req, socket, head, (ws) => {
     wss.emit("connection", ws, req);
   });
