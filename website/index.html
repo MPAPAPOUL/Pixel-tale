@@ -324,9 +324,9 @@
       <a href="#univers">Univers</a>
       <a href="#bestiaire">Bestiaire</a>
       <a href="#fonctionnalites">Fonctionnalités</a>
-      <a href="http://jeu.pixelfe.fr" target="_blank" rel="noopener">🎮 Jouer</a>
+      <a href="https://jeu.pixelfe.fr" class="lien-jouer">🎮 Jouer</a>
     </div>
-    <a class="nav-cta" href="http://jeu.pixelfe.fr" target="_blank" rel="noopener">🎮 Jouer</a>
+    <a class="nav-cta lien-jouer" href="https://jeu.pixelfe.fr">🎮 Jouer</a>
   </nav>
 </header>
 
@@ -720,6 +720,42 @@
   <p>Les Royaumes Brisés — un projet personnel, en développement actif.</p>
 </footer>
 
+<!-- Overlay plein écran pour jouer directement sur pixelfe.fr, sans ouvrir
+     un nouvel onglet — l'iframe ne charge le jeu (jeu.pixelfe.fr, servi en
+     HTTPS) qu'au moment où on clique sur "Jouer", pas au chargement de la
+     page d'accueil. -->
+<style>
+  .jeu-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    background: var(--bg-2);
+    display: none;
+    flex-direction: column;
+  }
+  .jeu-overlay.actif { display: flex; }
+  .jeu-overlay-fermer {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    z-index: 1001;
+    background: var(--card);
+    color: var(--text);
+    border: 1px solid var(--hairline);
+    border-radius: 999px;
+    padding: 8px 18px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+  }
+  .jeu-overlay-fermer:hover { background: var(--purple-soft); }
+  .jeu-overlay iframe { flex: 1; width: 100%; border: 0; }
+</style>
+<div class="jeu-overlay" id="jeu-overlay">
+  <button type="button" class="jeu-overlay-fermer" id="jeu-overlay-fermer">✕ Fermer</button>
+  <iframe id="jeu-overlay-iframe" title="Les Royaumes Brisés" allow="fullscreen"></iframe>
+</div>
+
 <script>
   document.querySelectorAll(".beast-tab-btn").forEach((btn) => {
     btn.addEventListener("click", () => {
@@ -728,6 +764,24 @@
       btn.classList.add("active");
       document.getElementById("tab-" + btn.dataset.tab).classList.add("active");
     });
+  });
+
+  // Ouvre le jeu dans l'overlay plein écran au lieu de suivre le lien
+  // normalement (nouvel onglet) — voir les liens .lien-jouer dans la nav.
+  const jeuOverlay = document.getElementById("jeu-overlay");
+  const jeuIframe = document.getElementById("jeu-overlay-iframe");
+  document.querySelectorAll(".lien-jouer").forEach((lien) => {
+    lien.addEventListener("click", (e) => {
+      e.preventDefault();
+      jeuIframe.src = "https://jeu.pixelfe.fr";
+      jeuOverlay.classList.add("actif");
+      document.body.style.overflow = "hidden";
+    });
+  });
+  document.getElementById("jeu-overlay-fermer").addEventListener("click", () => {
+    jeuOverlay.classList.remove("actif");
+    jeuIframe.src = ""; // coupe la connexion WebSocket du jeu à la fermeture
+    document.body.style.overflow = "";
   });
 </script>
 </body>
