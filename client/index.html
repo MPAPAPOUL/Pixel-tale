@@ -4057,10 +4057,15 @@ function calculerCamera() {
 // ciel) : chaque set choisi ci-dessous a été assorti à l'ambiance décrite
 // dans BIOMES_DEFINITION/zoneVerthige côté serveur (jungle pour Berge-Rhak,
 // marécage/cascade pour le Marais de Suin, forêt mauve mystique pour la
-// Forêt Chuchote, arbres gelés pour les Pics Verglacés). Les zones absentes
-// de cette liste gardent le ciel procédural existant (voir dessinerCiel) —
-// pas de bon set disponible pour elles pour l'instant.
-const ZONES_AVEC_DECOR = ["verthige", "marais-de-suin", "foret-chuchote", "pics-verglaces"];
+// Forêt Chuchote, arbres gelés pour les Pics Verglacés, plage tropicale
+// pour la Crique des Naufrageurs). Les zones absentes de cette liste
+// gardent le ciel procédural existant (voir dessinerCiel) — pas de bon set
+// disponible pour elles pour l'instant.
+// Crique des Naufrageurs : seulement 5 calques fournis (pas de pack complet
+// à 7 niveaux comme les autres) — 1.png/2.png (avant-plan) volontairement
+// absents, dessinerDecorZone les ignore proprement (voir imagePrete-like
+// garde `!img.complete || !img.naturalWidth`) plutôt que de planter.
+const ZONES_AVEC_DECOR = ["verthige", "marais-de-suin", "foret-chuchote", "pics-verglaces", "crique-naufrageurs"];
 // Index 0 = calque "1.png" (avant-plan, défile vite) → index 6 = calque
 // "7.png" (ciel plat, quasi immobile), pour une sensation de profondeur.
 const VITESSES_PARALLAXE_DECOR = [0.5, 0.4, 0.32, 0.24, 0.17, 0.1, 0.03];
