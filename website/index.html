@@ -167,6 +167,54 @@
   .section-head h2 { font-size: clamp(28px, 4vw, 38px); margin: 0 0 14px; color: #fff; }
   .section-head p { color: var(--text-dim); font-size: 16px; line-height: 1.6; margin: 0; }
 
+  /* --- Extensions (Pixelfe = plateforme, Les Royaumes Brisés = 1ère
+       extension jouable, d'autres mondes suivront) --- */
+  .extension-card {
+    display: flex;
+    flex-direction: column;
+    background: var(--card);
+    border: 1px solid var(--hairline);
+    border-radius: var(--radius);
+    overflow: hidden;
+    margin-bottom: 24px;
+  }
+  .extension-banner { width: 100%; display: block; aspect-ratio: 16/8; object-fit: cover; }
+  .extension-info { padding: 24px 28px 28px; }
+  .extension-info h4 { font-size: 22px; margin: 8px 0 10px; color: #fff; }
+  .extension-info p { color: var(--text-dim); font-size: 15px; line-height: 1.6; margin: 0 0 18px; }
+  .extension-badge {
+    display: inline-block;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.4px;
+    color: #241733;
+    background: linear-gradient(180deg, var(--gold) 0%, var(--gold-deep) 100%);
+    padding: 5px 14px;
+    border-radius: 999px;
+  }
+  .extension-badge-soon {
+    color: var(--text-dim);
+    background: rgba(255,255,255,0.08);
+    border: 1px solid var(--hairline);
+  }
+  .extension-a-venir { opacity: 0.7; }
+  .extension-placeholder {
+    width: 100%;
+    aspect-ratio: 16/8;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 48px;
+    font-weight: 800;
+    color: var(--text-dim);
+    background: repeating-linear-gradient(135deg, rgba(255,255,255,0.03) 0 20px, rgba(255,255,255,0.06) 20px 40px);
+  }
+  @media (min-width: 760px) {
+    .extension-card { flex-direction: row; }
+    .extension-banner, .extension-placeholder { width: 46%; aspect-ratio: auto; height: auto; }
+    .extension-info { flex: 1; display: flex; flex-direction: column; justify-content: center; }
+  }
+
   /* --- Classes --- */
   .classes-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
   .class-card {
@@ -328,6 +376,7 @@
     <div class="navlinks">
       <a href="#classes">Classes</a>
       <a href="#univers">Univers</a>
+      <a href="#extensions">Extensions</a>
       <a href="#bestiaire">Bestiaire</a>
       <a href="#fonctionnalites">Fonctionnalités</a>
       <a href="https://jeu.pixelfe.fr" class="lien-jouer">🎮 Jouer</a>
@@ -441,6 +490,39 @@
           <img src="assets/img/boss-chevaliernoir.png" alt="Chevalier Noir">
           <span>Chevalier Noir</span>
         </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="extensions">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="kicker-small">L'univers Pixelfe</span>
+      <h2>Une extension, puis d'autres à venir</h2>
+      <p>
+        Les Royaumes Brisés est la première extension jouable de l'univers
+        Pixelfe — d'autres mondes suivront, chacun avec ses propres héros,
+        son propre bestiaire et ses propres histoires.
+      </p>
+    </div>
+    <div class="extension-card">
+      <img class="extension-banner" src="assets/img/extension-royaumes-brises.jpg" alt="Les Royaumes Brisés">
+      <div class="extension-info">
+        <span class="extension-badge">Extension n°1 — disponible</span>
+        <h4>Les Royaumes Brisés</h4>
+        <p>RPG-platformer multijoueur en temps réel : 3 classes, un monde à
+          explorer, des boss épiques et un bestiaire complet.</p>
+        <a class="btn btn-primary lien-jouer" href="https://jeu.pixelfe.fr">🎮 Jouer maintenant</a>
+      </div>
+    </div>
+    <div class="extension-card extension-a-venir">
+      <div class="extension-placeholder">?</div>
+      <div class="extension-info">
+        <span class="extension-badge extension-badge-soon">Extension n°2 — à venir</span>
+        <h4>Un nouveau monde en préparation</h4>
+        <p>La suite de l'univers Pixelfe est en cours de conception —
+          reviens bientôt pour la découvrir.</p>
       </div>
     </div>
   </div>
