@@ -215,29 +215,29 @@
   .inventaire-case {
     position: relative;
     aspect-ratio: 1;
-    border-radius: 7px;
-    background: rgba(255,255,255,0.05);
-    border: 1px solid rgba(230,190,255,0.16);
+    border-radius: 0;
+    background: url("assets/ui/slot.png") center / cover;
+    image-rendering: pixelated;
+    border: 1px solid rgba(0,0,0,0.35);
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 16px;
   }
   .inventaire-case.remplie {
-    background: rgba(255,255,255,0.09);
     border-color: rgba(230,190,255,0.3);
     cursor: grab;
   }
   .inventaire-case.remplie:active { cursor: grabbing; }
   .inventaire-case.legendaire {
     border-color: rgba(255,214,110,0.65);
-    background: linear-gradient(160deg, rgba(255,214,110,0.18) 0%, rgba(255,214,110,0.03) 100%);
+    background: linear-gradient(160deg, rgba(255,214,110,0.32) 0%, rgba(255,214,110,0.05) 100%), url("assets/ui/slot.png") center / cover;
   }
   /* Mythique (Sire-Hano) : un cran au-dessus du légendaire, palette
      violet/cyan pour rester distinct du doré — demande explicite du joueur. */
   .inventaire-case.mythique {
     border-color: rgba(150,110,255,0.7);
-    background: linear-gradient(160deg, rgba(150,110,255,0.22) 0%, rgba(90,200,255,0.05) 100%);
+    background: linear-gradient(160deg, rgba(150,110,255,0.36) 0%, rgba(90,200,255,0.08) 100%), url("assets/ui/slot.png") center / cover;
   }
   .inventaire-case .compte {
     position: absolute;
@@ -1160,20 +1160,31 @@
   }
 
   /* --- Fiche de personnage (modale plus large, contenu scrollable) ------- */
+  /* Habillage "pixel art RPG" (pack craftpix) : le cadre bois + bandeau vert
+     vient de assets/ui/panel.png en border-image 9-slice (14px de bandeau
+     haut, 4px sur les 3 autres côtés dans l'image source), ce qui permet de
+     l'étirer à n'importe quelle taille de fenêtre sans déformer les coins. */
   .modale-fantasy.modale-personnage {
     width: min(92%, 460px);
     max-height: 86%;
     overflow-y: auto;
     text-align: left;
     position: relative;
-    padding-top: 26px;
+    border-radius: 0;
+    border-style: solid;
+    border-width: 30px 10px 10px 10px;
+    border-color: transparent;
+    border-image: url("assets/ui/panel.png") 14 4 4 4 fill stretch;
+    image-rendering: pixelated;
+    padding: 4px 8px 10px;
+    box-shadow: 0 12px 30px rgba(0,0,0,0.5);
   }
   .modale-personnage h2 { text-align: center; }
   .modale-personnage h3 {
     margin: 16px 0 8px;
     font-family: "Baloo 2", sans-serif;
     font-size: 14px;
-    color: #e7c98a;
+    color: #7a4a12;
   }
   .btn-fermer-modale {
     position: absolute;
@@ -1193,7 +1204,7 @@
     font-family: "Baloo 2", sans-serif;
     font-weight: 700;
     font-size: 15px;
-    color: #f0d9a0;
+    color: #7a4a12;
   }
   .barre-xp {
     margin: 6px 0 4px;
@@ -1207,7 +1218,7 @@
     height: 100%;
     background: linear-gradient(90deg, #9d6bd6 0%, #d6a6ff 100%);
   }
-  .perso-xp-texte { font-size: 11.5px; color: #cfc3ef; }
+  .perso-xp-texte { font-size: 11.5px; color: #6b5236; }
   .perso-stats {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -1215,21 +1226,22 @@
     margin-top: 14px;
     font-size: 13px;
   }
-  .perso-stats .stat-label { color: #cfc3ef; }
-  .perso-stats .stat-valeur { font-weight: 700; color: #fff; float: right; }
+  .perso-stats .stat-label { color: #6b5236; }
+  .perso-stats .stat-valeur { font-weight: 700; color: #2b1d10; float: right; }
   .perso-attributs {
     display: flex;
     flex-wrap: wrap;
     gap: 6px;
   }
   .perso-attributs .attribut {
-    background: rgba(255,255,255,0.06);
-    border: 1px solid rgba(230,190,255,0.2);
+    background: rgba(90,60,40,0.08);
+    border: 1px solid rgba(90,60,40,0.25);
     border-radius: 8px;
     padding: 4px 9px;
     font-size: 12px;
+    color: #4a3620;
   }
-  .perso-attributs .attribut .valeur { font-weight: 700; color: #f0d9a0; margin-right: 4px; }
+  .perso-attributs .attribut .valeur { font-weight: 700; color: #a5680f; margin-right: 4px; }
   .perso-points-dispo {
     font-size: 11.5px;
     font-weight: 700;
@@ -1268,7 +1280,7 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    background: rgba(255,255,255,0.05);
+    background: rgba(90,60,40,0.07);
     border-radius: 8px;
     padding: 5px 9px;
     font-size: 12px;
@@ -1281,9 +1293,9 @@
   }
   .perso-sorts .sort-icone { width: 20px; text-align: center; }
   .perso-sorts .sort-icone .icone-img { width: 18px; height: 18px; object-fit: cover; border-radius: 4px; vertical-align: middle; }
-  .perso-sorts .sort-nom { flex: 1; color: #e9e2fa; }
-  .perso-sorts .sort-degats { font-weight: 700; color: #ff9d7a; }
-  .perso-sorts .sort-detail { color: #9d8fc7; font-size: 11px; }
+  .perso-sorts .sort-nom { flex: 1; color: #3a2a18; }
+  .perso-sorts .sort-degats { font-weight: 700; color: #c8500f; }
+  .perso-sorts .sort-detail { color: #6b5236; font-size: 11px; }
   /* Schéma du personnage : silhouette avec un emplacement d'équipement posé
      à l'endroit anatomique correspondant (casque sur la tête, armure sur le
      torse, arme/anneau dans les mains, bracelet au poignet, jambières sur
@@ -1295,23 +1307,27 @@
     margin: 4px auto 14px;
     aspect-ratio: 140 / 200;
   }
-  .silhouette-svg { width: 100%; height: 100%; display: block; opacity: 0.5; }
-  .silhouette-svg .trait { fill: none; stroke: rgba(230,190,255,0.45); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
-  .silhouette-svg .remplissage { fill: rgba(255,255,255,0.05); }
+  .silhouette-svg { width: 100%; height: 100%; display: block; opacity: 0.7; }
+  /* Contraste adapté au fond parchemin clair du panneau pixel art (voir
+     .modale-fantasy.modale-personnage) : traits foncés au lieu du violet
+     clair d'origine, qui disparaissait sur ce fond. */
+  .silhouette-svg .trait { fill: none; stroke: rgba(90,60,40,0.55); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+  .silhouette-svg .remplissage { fill: rgba(90,60,40,0.08); }
   .perso-slot-corps {
     position: absolute;
     width: 32px;
     height: 32px;
     transform: translate(-50%, -50%);
-    border-radius: 8px;
-    background: rgba(20,14,34,0.75);
-    border: 1px solid rgba(230,190,255,0.3);
+    border-radius: 0;
+    background: url("assets/ui/slot.png") center / cover;
+    image-rendering: pixelated;
+    border: 1px solid rgba(0,0,0,0.4);
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 16px;
   }
-  .perso-slot-corps.remplie { cursor: pointer; background: rgba(255,255,255,0.1); }
+  .perso-slot-corps.remplie { cursor: pointer; }
   .perso-slot-corps .icone-vide { opacity: 0.35; }
   .perso-slot-corps .icone-img {
     width: 28px;
@@ -1321,12 +1337,12 @@
   }
   .perso-slot-corps.legendaire {
     border-color: rgba(255,214,110,0.7);
-    background: linear-gradient(160deg, rgba(255,214,110,0.22) 0%, rgba(255,214,110,0.04) 100%);
+    background: linear-gradient(160deg, rgba(255,214,110,0.32) 0%, rgba(255,214,110,0.05) 100%), url("assets/ui/slot.png") center / cover;
     box-shadow: 0 0 10px rgba(255,214,110,0.35);
   }
   .perso-slot-corps.mythique {
     border-color: rgba(150,110,255,0.75);
-    background: linear-gradient(160deg, rgba(150,110,255,0.26) 0%, rgba(90,200,255,0.05) 100%);
+    background: linear-gradient(160deg, rgba(150,110,255,0.36) 0%, rgba(90,200,255,0.08) 100%), url("assets/ui/slot.png") center / cover;
     box-shadow: 0 0 10px rgba(150,110,255,0.4);
   }
   .perso-slot-corps.survol-drop {
@@ -1339,7 +1355,7 @@
   .perso-inventaire-hint {
     font-size: 11.5px;
     font-weight: 400;
-    color: #9d8fc7;
+    color: #6b5236;
     margin: 0 0 10px;
   }
   /* Onglets Personnage / Inventaire de la fiche — voir
