@@ -3059,8 +3059,18 @@ const SPRITES_DRAGONNOIR = {
   idle: chargerImage("sprites/dragonnoir/idle.png"),
   walk1: chargerImage("sprites/dragonnoir/walk1.png"),
   walk2: chargerImage("sprites/dragonnoir/walk2.png"),
-  attack: chargerImage("sprites/dragonnoir/attack.png"),
+  // Souffle de feu en 5 frames (windup avec braise → 2 volutes de flamme →
+  // retour au calme) plutôt qu'une seule pose figée — découpées à partir
+  // d'une planche fournie par le joueur, séparées avec une vraie marge
+  // transparente entre chaque frame pour ne plus qu'un morceau de flamme
+  // d'une frame déborde visuellement sur la suivante.
+  attack1: chargerImage("sprites/dragonnoir/attack1.png"),
+  attack2: chargerImage("sprites/dragonnoir/attack2.png"),
+  attack3: chargerImage("sprites/dragonnoir/attack3.png"),
+  attack4: chargerImage("sprites/dragonnoir/attack4.png"),
+  attack5: chargerImage("sprites/dragonnoir/attack5.png"),
 };
+const SEQUENCE_ATTAQUE_DRAGONNOIR = ["attack1", "attack2", "attack3", "attack4", "attack5"];
 
 // Forme humanoïde de sa phase 2 (transformation à 50% PV) : mêmes sorts,
 // juste plus forts et plus rapides (voir DRAGON_NOIR_MULTIPLICATEUR_PHASE2 /
@@ -5392,7 +5402,17 @@ function poseDragon(dragon) {
   // sprites dédiée, même schéma idle/walk1/walk2/attack.
   const jeu = dragon.formeHumaine ? SPRITES_DRAGONNOIR_HUMAIN : SPRITES_DRAGONNOIR;
   if (!jeu) return null;
-  if (dragon.attaque) return jeu.attack || jeu.idle;
+  if (dragon.attaque) {
+    // Forme draconique : vraie séquence à 5 frames (voir
+    // SEQUENCE_ATTAQUE_DRAGONNOIR) plutôt qu'une pose unique, pour une
+    // attaque bien plus fluide à l'écran. La forme humanoïde (phase 2)
+    // n'a qu'une seule pose "attack" dédiée, inchangée.
+    if (!dragon.formeHumaine) {
+      const frames = SEQUENCE_ATTAQUE_DRAGONNOIR.map((cle) => jeu[cle]).filter(Boolean);
+      if (frames.length > 0) return frames[Math.floor(performance.now() / 90) % frames.length];
+    }
+    return jeu.attack || jeu.idle;
+  }
   if (dragon.enMouvement) {
     if (jeu.walk1 && jeu.walk2) {
       return Math.floor(performance.now() / 150) % 2 === 0 ? jeu.walk1 : jeu.walk2;
