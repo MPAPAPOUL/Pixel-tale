@@ -39,14 +39,14 @@ const CLIENT_DIR = path.join(__dirname, "..", "client");
 // Configuration du monde et de la physique
 // ---------------------------------------------------------------------------
 
-// Deux mondes séparés : Vert-Hige (l'île principale, 0 → MONDE_LARGEUR_VERTHIGE)
+// Deux mondes séparés : Berge-Rhak (l'île principale, 0 → MONDE_LARGEUR_VERTHIGE)
 // et l'Antre du Sire-Hano, une VRAIE map à part (sa propre plage de
 // coordonnées, à partir de x=0 elle aussi). On passe de l'une à l'autre en
 // franchissant la porte du donjon — une seule instance de l'arène active à
 // la fois (demande explicite : pouvoir y entrer à plusieurs), partagée par
 // quiconque la franchit tant qu'elle est en cours (voir entrerDonjon), pas
 // une instance par joueur. PORTE_DONJON_X reste la position de la porte
-// dans Vert-Hige (mur invisible tant que la clé n'est pas complète).
+// dans Berge-Rhak (mur invisible tant que la clé n'est pas complète).
 const PORTE_DONJON_X = 2400;
 const MONDE_LARGEUR_VERTHIGE = PORTE_DONJON_X + 60;
 const LARGEUR_ARENE_DONJON = 1380; // arène agrandie (était 760)
@@ -113,7 +113,7 @@ const PLATEFORMES_VERTHIGE = [
 ];
 
 // Arène de l'Antre du Sire-Hano — map à part entière, coordonnées locales
-// (x=0 = mur d'entrée / porte retour vers Vert-Hige). Agrandie pour laisser
+// (x=0 = mur d'entrée / porte retour vers Berge-Rhak). Agrandie pour laisser
 // plus de place aux 3 mobs à traquer, au combat de boss à plusieurs
 // répliques, et aux déplacements verticaux.
 const PLATEFORMES_DONJON = [
@@ -298,7 +298,7 @@ const MONSTRES_CONFIG = {
     comportement: "patrouille",
     xp: 18,
   },
-  // Gobelin neutre : patrouille au sol de chaque zone (Vert-Hige + tous les
+  // Gobelin neutre : patrouille au sol de chaque zone (Berge-Rhak + tous les
   // biomes, voir MONSTRES_GOBELIN_NEUTRE plus bas) sans jamais attaquer de
   // lui-même — `neutre: true` désarme les dégâts de contact (voir
   // simulerContactsMonstresZone) tant qu'il n'a pas encaissé de coup
@@ -780,7 +780,7 @@ function recalculerStatsEquipement(p) {
 }
 
 // ---------------------------------------------------------------------------
-// Expérience et niveaux : chaque monstre tué (Vert-Hige ET Antre) ainsi que
+// Expérience et niveaux : chaque monstre tué (Berge-Rhak ET Antre) ainsi que
 // chaque entité de Sire-Hano rapportent de l'XP au joueur qui porte le coup
 // fatal ; la victoire finale sur le boss donne un gros bonus additionnel.
 // ---------------------------------------------------------------------------
@@ -999,7 +999,7 @@ const HAUTS_FAITS = [
   { id: "chasseur", nom: "Chasseur Aguerri", titre: "Chasseur", description: "Vaincre 50 monstres.", cible: 50, stat: "monstresTues" },
   { id: "exterminateur", nom: "Exterminateur", titre: "Exterminateur", description: "Vaincre 250 monstres.", cible: 250, stat: "monstresTues" },
   { id: "veteran", nom: "Vétéran des Royaumes", titre: "Vétéran", description: "Atteindre le niveau 5.", cible: 5, stat: "niveau" },
-  { id: "heros", nom: "Héros de Vert-Hige", titre: "Héros", description: "Atteindre le niveau 15.", cible: 15, stat: "niveau" },
+  { id: "heros", nom: "Héros de Berge-Rhak", titre: "Héros", description: "Atteindre le niveau 15.", cible: 15, stat: "niveau" },
   { id: "legende", nom: "Légende Vivante", titre: "Légende Vivante", description: "Atteindre le niveau 30.", cible: 30, stat: "niveau" },
   { id: "fortune", nom: "Petite Fortune", titre: "Fortuné", description: "Amasser 1000 pièces d'or au total.", cible: 1000, stat: "orGagneTotal" },
   { id: "vainqueur-sire-hano", nom: "Bourreau de l'Antre", titre: "Bourreau de Sire-Hano", description: "Vaincre Sire-Hano.", cible: 1, stat: "sireHanoVaincus" },
@@ -1016,7 +1016,7 @@ const HAUTS_FAITS = [
   // que veteran/heros/legende ci-dessus, aux mêmes paliers que le gate
   // d'accès du téléporteur (voir DESTINATIONS_TELEPORTEUR/niveauRequis) :
   // le titre se débloque exactement au niveau où la zone devient
-  // accessible. Vert-Hige (niveau 1, zone de départ) n'a pas d'entrée ici,
+  // accessible. Berge-Rhak (niveau 1, zone de départ) n'a pas d'entrée ici,
   // rien à "débloquer".
   { id: "zone-estenoise", nom: "Bienvenue à Estenoise", titre: "Voyageur d'Estenoise-les-Brumes", description: "Débloquer Estenoise-les-Brumes (niveau 4).", cible: 4, stat: "niveau" },
   { id: "zone-cretes-ambre", nom: "Sur les Crêtes", titre: "Arpenteur des Crêtes d'Ambre", description: "Débloquer les Crêtes d'Ambre (niveau 7).", cible: 7, stat: "niveau" },
@@ -1396,7 +1396,7 @@ function simulerDragonNoir(dtSecondes) {
 }
 
 // ---------------------------------------------------------------------------
-// Zones : Vert-Hige (persistante, un seul monde partagé) et instances de
+// Zones : Berge-Rhak (persistante, un seul monde partagé) et instances de
 // l'Antre du Sire-Hano (une par joueur qui franchit la porte, détruite dès
 // que tout le monde en est reparti). Chaque zone a son propre jeu de
 // plateformes, projectiles, effets et — pour le donjon — son propre combat
@@ -1408,7 +1408,7 @@ const ZONE_VERTHIGE = "verthige";
 const zoneVerthige = {
   id: ZONE_VERTHIGE,
   type: "verthige",
-  nom: "Vert-Hige",
+  nom: "Berge-Rhak",
   blurb: "L'île de départ : prairies, jungle et la porte de l'Antre.",
   plateformes: PLATEFORMES_VERTHIGE,
   largeur: MONDE_LARGEUR_VERTHIGE,
@@ -1418,13 +1418,13 @@ const zoneVerthige = {
   projectilesMonstres: [],
   effets: [],
   objetsAuSol: [], // butin tombé au sol, à ramasser avec F (voir ramasserObjets)
-  sireHano: null, // pas de boss à Vert-Hige
+  sireHano: null, // pas de boss à Berge-Rhak
 };
 
 const instancesDonjon = new Map(); // id d'instance → zone de donjon
 let prochainInstanceId = 1;
 
-// Monstres de l'arène : les mêmes espèces qu'à Vert-Hige (Troubalourd /
+// Monstres de l'arène : les mêmes espèces qu'à Berge-Rhak (Troubalourd /
 // Fisselo / Tiralark), placées sur les plateformes élevées de l'Antre —
 // mais ici, une fois tués, ils ne réapparaissent JAMAIS (voir
 // simulerRespawnMonstresZone) : l'instance se "vide" au fil du combat.
@@ -1512,13 +1512,13 @@ function entrerDonjon(p) {
   p.vx = 0;
   p.vy = 0;
   p.invulnerableRestant = 1.0;
-  // Purement visuel côté Vert-Hige : la porte se referme derrière le
+  // Purement visuel côté Berge-Rhak : la porte se referme derrière le
   // joueur qui vient de passer (voir dessinerPorteDonjon côté client),
   // avant de se rouvrir automatiquement à l'approche du suivant.
   donjon.dernierPassageTs = Date.now();
 }
 
-// Renvoie un joueur à Vert-Hige, juste devant la porte, et nettoie
+// Renvoie un joueur à Berge-Rhak, juste devant la porte, et nettoie
 // l'instance qu'il quitte si elle devient vide. Utilisé à la fois pour la
 // sortie volontaire (icône de porte du HUD) et pour l'abandon depuis
 // l'écran de défaite — dans ce second cas le joueur est encore "mort"
@@ -1579,7 +1579,7 @@ function* toutesLesZones() {
 
 // ---------------------------------------------------------------------------
 // Monde étendu : biomes additionnels (zones persistantes et partagées, comme
-// Vert-Hige — pas une instance par joueur) et village neutre, tous
+// Berge-Rhak — pas une instance par joueur) et village neutre, tous
 // accessibles depuis n'importe où via le réseau de téléporteurs (message
 // "teleporter", voir le handler ws.on("message")). Générés une seule fois au
 // démarrage du serveur à partir de BIOMES_DEFINITION, avec un générateur de
@@ -2410,7 +2410,7 @@ function simulerPhysique(dtSecondes) {
     }
 
     // Déplacement horizontal, bloqué aux limites de la zone actuelle (bords
-    // sécurisés) — et à Vert-Hige, à la porte du donjon tant que la clé de
+    // sécurisés) — et à Berge-Rhak, à la porte du donjon tant que la clé de
     // groupe n'est pas complète : elle agit comme un mur invisible.
     p.x += p.vx * dtSecondes;
     const limiteDroite =
@@ -2458,13 +2458,13 @@ function simulerPhysique(dtSecondes) {
       }
     }
 
-    // Porte du donjon (Vert-Hige → une TOUTE NOUVELLE instance de l'Antre) :
+    // Porte du donjon (Berge-Rhak → une TOUTE NOUVELLE instance de l'Antre) :
     // clé complète + contact avec la porte.
     if (zone.type === "verthige" && donjon.ouvert && p.x + JOUEUR_LARGEUR >= PORTE_DONJON_X) {
       entrerDonjon(p);
       continue;
     }
-    // Le retour à Vert-Hige depuis l'Antre ne se déclenche plus en marchant
+    // Le retour à Berge-Rhak depuis l'Antre ne se déclenche plus en marchant
     // jusqu'au bord de la map : c'est désormais l'icône de porte du HUD
     // (message "quitterDonjon") qui le fait, à tout moment, sans dépendre
     // de la position du joueur.
@@ -2488,9 +2488,9 @@ function simulerPhysique(dtSecondes) {
 }
 
 function simulerMonstres(dtSecondes) {
-  // Boucle sur TOUTES les zones (Vert-Hige, chaque instance du donjon, et
+  // Boucle sur TOUTES les zones (Berge-Rhak, chaque instance du donjon, et
   // maintenant chaque biome/village) — auparavant limitée au tableau global
-  // `monstres` (Vert-Hige uniquement), ce qui laissait les monstres du
+  // `monstres` (Berge-Rhak uniquement), ce qui laissait les monstres du
   // donjon immobiles ; généralisé ici sans changer la logique par monstre,
   // qui ne dépend que de ses propres bornes (posées à la création, voir
   // creerMonstre).
@@ -2659,7 +2659,7 @@ function infligerDegatsMonstre(zone, m, degats, joueurId) {
       const cfg = MONSTRES_CONFIG[m.type];
       essayerDropArmeTiere(zone, m.x + cfg.largeur / 2, m.y + cfg.hauteur / 2);
     } else if (zone.type === "verthige") {
-      essayerDropFragment(); // Fisselo / Troubalourd / Tiralark de Vert-Hige : chance de fragment de clé
+      essayerDropFragment(); // Fisselo / Troubalourd / Tiralark de Berge-Rhak : chance de fragment de clé
     }
   }
 }
@@ -2689,7 +2689,7 @@ function infligerDegatsSireHano(zone, entite, degats, joueurId) {
     demarrerPhaseSireHano(zone, boss.phaseIndex + 1);
   } else {
     boss.vaincu = true;
-    boss.vaincuRestant = 8; // petit répit avant le retour automatique à Vert-Hige
+    boss.vaincuRestant = 8; // petit répit avant le retour automatique à Berge-Rhak
     // Coup de grâce final : bonus d'XP + set légendaire garanti pour le
     // joueur qui vient d'achever la toute dernière réplique.
     if (joueur) {
@@ -2929,7 +2929,7 @@ function simulerCombat(dtSecondes) {
       // réapparition automatique : le joueur reste mort jusqu'à ce qu'il
       // choisisse, via la bulle de dialogue du client, de "Réessayer"
       // (reessayerDonjon, même instance) ou de "Quitter le donjon"
-      // (sortirDonjon). À Vert-Hige, la réapparition auto après 3s reste
+      // (sortirDonjon). À Berge-Rhak, la réapparition auto après 3s reste
       // inchangée.
       if (zoneDeJoueur(p).type === "donjon") continue;
       p.respawnRestant -= dtSecondes;
@@ -3000,7 +3000,7 @@ function simulerCombat(dtSecondes) {
     }
   }
 
-  // Résolution par zone : chaque zone (Vert-Hige + chaque instance de
+  // Résolution par zone : chaque zone (Berge-Rhak + chaque instance de
   // donjon active) a son propre jeu de projectiles/effets/monstres,
   // complètement isolé des autres.
   for (const zone of toutesLesZones()) {
@@ -3282,7 +3282,7 @@ function simulerSireHano(dtSecondes) {
 
     if (boss.vaincu) {
       // Petit répit affiché ("Sire-Hano vaincu !"), puis tout le monde
-      // encore présent est renvoyé automatiquement à Vert-Hige et
+      // encore présent est renvoyé automatiquement à Berge-Rhak et
       // l'instance est détruite (porte retour + fin de combat).
       boss.vaincuRestant -= dtSecondes;
       if (boss.vaincuRestant <= 0) {
@@ -3430,7 +3430,7 @@ setInterval(() => {
 // ---------------------------------------------------------------------------
 
 // Construit l'état à envoyer à UN joueur donné : uniquement ce qui se
-// trouve dans SA zone actuelle (Vert-Hige ou son instance de donjon) — les
+// trouve dans SA zone actuelle (Berge-Rhak ou son instance de donjon) — les
 // autres joueurs, monstres, projectiles et le combat de boss d'une autre
 // instance lui restent invisibles.
 // Classement (tableau des scores) : tri unique par tick dans diffuserEtat
@@ -3510,7 +3510,7 @@ function construireEtatPourJoueur(p, classement) {
     // (toujours la même liste statique, voir DESTINATIONS_TELEPORTEUR) +
     // PNJ de la zone (uniquement peuplé au village pour l'instant, voir
     // genererZoneVillage) + lianes à grimper (voir simulerPhysique).
-    zoneActuelle: { id: zone.id, nom: zone.nom || "Vert-Hige", type: zone.type },
+    zoneActuelle: { id: zone.id, nom: zone.nom || "Berge-Rhak", type: zone.type },
     destinations: DESTINATIONS_TELEPORTEUR,
     pnjs: (zone.pnjs || []).map((n) => ({ id: n.id, nom: n.nom, type: n.type, x: n.x, y: n.y, dialogue: n.dialogue, boutique: n.boutique || null })),
     lianes: zone.lianes || [],
@@ -3677,7 +3677,7 @@ function construireEtatPourJoueur(p, classement) {
               : null,
           })),
         }
-      : null, // pas de boss à Vert-Hige
+      : null, // pas de boss à Berge-Rhak
     // Dragon Noir : boss du monde de Couronne d'Orage (voir simulerDragonNoir
     // plus haut) — même forme que `boss` ci-dessus pour réutiliser le même
     // rendu de barre de vie/jauge de télégraphe côté client, mais une seule

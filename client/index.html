@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
-<title>Vert-Hige — Les Royaumes Brisés</title>
+<title>Berge-Rhak — Les Royaumes Brisés</title>
 <!-- Aucune ressource externe chargée : polices système uniquement (voir
      les piles de secours "sans-serif" sur chaque règle font-family
      ci-dessous), pour que le jeu reste un fichier 100% autonome. -->
@@ -344,7 +344,7 @@
      personnage, généralement centré par la caméra, bien visible), réduite
      à 70%. Plaque façon bois/cuir sombre cerclée d'or, beaucoup plus opaque
      et contrastée que l'ancienne version translucide claire, pour rester
-     lisible par-dessus n'importe quel décor (Vert-Hige comme l'Antre).
+     lisible par-dessus n'importe quel décor (Berge-Rhak comme l'Antre).
      Chaque case est cliquable (voir mettreAJourSortsHUD). */
   /* Centrée en bas de l'écran (plutôt que casée à droite) — demande
      explicite pour laisser le champ libre des deux côtés ; le chat est
@@ -2097,7 +2097,7 @@
 
   <div class="accueil-carte" id="accueil-carte-creation">
     <h1 class="accueil-titre">Les Royaumes Brisés</h1>
-    <p class="accueil-soustitre" id="accueil-soustitre">Un prototype de RPG multijoueur — crée ton personnage pour commencer l'aventure à Vert-Hige.</p>
+    <p class="accueil-soustitre" id="accueil-soustitre">Un prototype de RPG multijoueur — crée ton personnage pour commencer l'aventure à Berge-Rhak.</p>
 
     <div id="accueil-bloc-classes">
       <p class="accueil-section-titre">Choisis ta classe (obligatoire)</p>
@@ -2178,7 +2178,7 @@
 
       <!-- Icône de sortie du donjon : uniquement visible dans l'Antre du
            Sire-Hano, en haut à droite de l'écran. Un clic ouvre une
-           confirmation avant de renvoyer à Vert-Hige. -->
+           confirmation avant de renvoyer à Berge-Rhak. -->
       <button type="button" class="icone-sortie-donjon masque" id="icone-sortie-donjon" title="Quitter le donjon">
         <span class="icone-sortie-donjon-symbole">🚪</span>
       </button>
@@ -2387,7 +2387,7 @@
            (voir verifierOnboarding). -->
       <div class="modale-overlay masque" id="modale-onboarding">
         <div class="modale-fantasy">
-          <h2>Bienvenue à Vert-Hige !</h2>
+          <h2>Bienvenue à Berge-Rhak !</h2>
           <p>
             Déplace-toi et combats les monstres pour monter de niveau, récolte
             l'équipement qu'ils laissent tomber au sol (touche F), puis franchis
@@ -2532,7 +2532,7 @@
       <div class="modale-overlay masque" id="modale-confirmer-sortie">
         <div class="modale-fantasy">
           <h2>Quitter le donjon ?</h2>
-          <p>Tu seras renvoyé à l'entrée de Vert-Hige et le combat en cours sera abandonné.</p>
+          <p>Tu seras renvoyé à l'entrée de Berge-Rhak et le combat en cours sera abandonné.</p>
           <div class="modale-actions">
             <button type="button" class="btn-modale btn-danger" id="btn-confirmer-sortie">Quitter</button>
             <button type="button" class="btn-modale btn-neutre" id="btn-annuler-sortie">Annuler</button>
@@ -4013,7 +4013,7 @@ function calculerCamera() {
   };
 }
 
-// Vert-Hige est une île céleste posée sur les nuages : le ciel doit se
+// Berge-Rhak est une île céleste posée sur les nuages : le ciel doit se
 // sentir plus "rêve pastel" que "beau temps ordinaire" (inspiré de
 // l'ambiance MapleStory 2), avec d'autres îles flottantes au loin et des
 // rayons de soleil, le tout en parallaxe très légère par rapport à la
@@ -4142,7 +4142,7 @@ function dessinerRayonsSoleil(camX) {
 }
 
 // Petites îles flottantes au loin (terre + touffe d'arbres), à deux
-// profondeurs de parallaxe différentes, pour rappeler que Vert-Hige n'est
+// profondeurs de parallaxe différentes, pour rappeler que Berge-Rhak n'est
 // qu'une île parmi d'autres au-dessus des nuages.
 const ILES_LOINTAINES = [
   { xBase: 80, y: 340, echelle: 0.55, profondeur: 0.10 },
@@ -4639,14 +4639,14 @@ function dessinerMaisonnette(x, y) {
   ctx.restore();
 }
 
-// Porte de l'Antre du Sire-Hano, côté Vert-Hige : un mur infranchissable
+// Porte de l'Antre du Sire-Hano, côté Berge-Rhak : un mur infranchissable
 // tant que la clé de groupe (fragments récoltés sur les monstres de base)
 // n'est pas complète, puis un portail engageant une fois ouverte — chaque
 // joueur qui la franchit obtient sa PROPRE instance de l'arène. Côté
 // Antre, le retour ne se fait plus en marchant jusqu'au bord de la map :
 // c'est l'icône de porte du HUD (haut droit de l'écran) qui s'en charge,
 // voir mettreAJourIconeSortieDonjon().
-// Porte de l'Antre du Sire-Hano, côté Vert-Hige : une VRAIE porte (arche de
+// Porte de l'Antre du Sire-Hano, côté Berge-Rhak : une VRAIE porte (arche de
 // pierre + battants de bois cerclés de fer), pas juste un mur lumineux.
 // Verrouillée (barre de fer + cadenas) tant que la clé de groupe n'est pas
 // complète, puis grande ouverte sur un portail sombre une fois la clé
@@ -6562,7 +6562,7 @@ function mettreAJourSortsHUD() {
 function mettreAJourHUDDonjon() {
   const conteneur = document.getElementById("donjon-hud");
   const donjonState = state.donjon;
-  const boss = state.boss; // null tant qu'on est à Vert-Hige (pas d'instance)
+  const boss = state.boss; // null tant qu'on est à Berge-Rhak (pas d'instance)
   if (!donjonState) return;
 
   const fragmentsHtml = Array.from({ length: donjonState.fragmentsRequis }, (_, i) =>
@@ -6572,7 +6572,7 @@ function mettreAJourHUDDonjon() {
   if (boss && boss.vaincu) {
     conteneur.innerHTML = `
       <div class="statut vaincu">Sire-Hano vaincu !</div>
-      <div>Retour à Vert-Hige dans ${boss.vaincuRestant}s (ou via l'icône de porte en haut à droite).</div>
+      <div>Retour à Berge-Rhak dans ${boss.vaincuRestant}s (ou via l'icône de porte en haut à droite).</div>
     `;
   } else if (boss && boss.actif) {
     const entites = boss.entites || [];
@@ -8109,8 +8109,8 @@ const PATCHNOTES = [
     changements: [
       "Nouveau : Shift+clic sur un bouton \"+\" d'attribut ajoute 10 points d'un coup ; clic droit ouvre une fenêtre pour choisir un nombre précis, plafonné aux points disponibles.",
       "La hitbox du personnage (celle que visent les monstres) est réduite de moitié en étant accroupi.",
-      "Vert-Hige : 30% des plateformes retirées, celles qui restent sont deux fois plus grandes.",
-      "Nouveau monstre neutre : un gobelin en patrouille au sol sur chaque zone (Vert-Hige et tous les biomes), inoffensif tant qu'on ne l'attaque pas.",
+      "Berge-Rhak : 30% des plateformes retirées, celles qui restent sont deux fois plus grandes.",
+      "Nouveau monstre neutre : un gobelin en patrouille au sol sur chaque zone (Berge-Rhak et tous les biomes), inoffensif tant qu'on ne l'attaque pas.",
       "Troubalourd et Fisselo ont un nouveau sprite (et une nouvelle hitbox pour Fisselo) ; les 3 monstres gobelins sont redimensionnés (moitié de la taille du joueur).",
       "Le gobelin neutre fonce désormais sur le joueur dès qu'il est attaqué, au lieu de rester passif jusqu'au contact. Deux par zone désormais, en déplacement aléatoire.",
       "Correction : Fisselo restait visuellement figé dans une seule direction entre deux crachats au lieu de se retourner en se déplaçant.",
