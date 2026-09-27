@@ -1300,19 +1300,20 @@
      à l'endroit anatomique correspondant (casque sur la tête, armure sur le
      torse, arme/anneau dans les mains, bracelet au poignet, jambières sur
      les jambes, bottes aux pieds) — voir rendreSlotEquipement. */
+  /* Fond illustré issu du pack craftpix (panneau "paperdoll" du fichier
+     Equipment.png, découpé dans assets/ui/equip-silhouette.png) à la place
+     de l'ancien schéma en traits SVG — même ratio que la découpe (65×85)
+     pour ne pas la déformer. */
   .perso-silhouette {
     position: relative;
     width: 100%;
-    max-width: 200px;
+    max-width: 190px;
     margin: 4px auto 14px;
-    aspect-ratio: 140 / 200;
+    aspect-ratio: 65 / 85;
+    background: url("assets/ui/equip-silhouette.png") center / 100% 100%;
+    image-rendering: pixelated;
+    border-radius: 6px;
   }
-  .silhouette-svg { width: 100%; height: 100%; display: block; opacity: 0.7; }
-  /* Contraste adapté au fond parchemin clair du panneau pixel art (voir
-     .modale-fantasy.modale-personnage) : traits foncés au lieu du violet
-     clair d'origine, qui disparaissait sur ce fond. */
-  .silhouette-svg .trait { fill: none; stroke: rgba(90,60,40,0.55); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
-  .silhouette-svg .remplissage { fill: rgba(90,60,40,0.08); }
   .perso-slot-corps {
     position: absolute;
     width: 32px;
@@ -1367,14 +1368,16 @@
   }
   .perso-onglet-btn {
     flex: 1;
-    padding: 7px 8px;
+    padding: 7px 4px;
     border-radius: 10px;
     background: rgba(255,255,255,0.06);
     border: 2px solid rgba(230,190,255,0.25);
     color: #cfc3ef;
     font-family: "Baloo 2", sans-serif;
     font-weight: 700;
-    font-size: 13px;
+    font-size: 11.5px;
+    line-height: 1.15;
+    text-align: center;
   }
   .perso-onglet-btn.actif {
     background: linear-gradient(180deg, rgba(201,162,75,0.35) 0%, rgba(201,162,75,0.12) 100%);
@@ -2465,12 +2468,14 @@
           <button type="button" class="btn-fermer-modale" id="btn-fermer-personnage" title="Fermer">✕</button>
           <h2 id="perso-titre">Fiche de personnage</h2>
 
-          <!-- Deux onglets : Personnage (C) et Inventaire (I) — voir
-               afficherOngletPersonnage. Rouvrir la fiche sur la touche
-               déjà active la referme, comme avant ; l'autre touche bascule
-               d'onglet sans fermer. -->
+          <!-- Trois onglets : Caractéristiques (C), Équipement et Inventaire
+               (I) — voir afficherOngletPersonnage. Rouvrir la fiche sur la
+               touche déjà active la referme, comme avant ; l'autre touche
+               bascule d'onglet sans fermer (l'onglet Équipement n'a pas de
+               raccourci dédié : E/A/Z/R sont déjà pris par les sorts). -->
           <div class="perso-onglets" id="perso-onglets">
-            <button type="button" class="perso-onglet-btn actif" data-onglet="perso" id="onglet-btn-perso">Personnage</button>
+            <button type="button" class="perso-onglet-btn actif" data-onglet="perso" id="onglet-btn-perso">Caractéristiques</button>
+            <button type="button" class="perso-onglet-btn" data-onglet="equipement" id="onglet-btn-equipement">Équipement</button>
             <button type="button" class="perso-onglet-btn" data-onglet="inventaire" id="onglet-btn-inventaire">Inventaire <span class="perso-onglet-touche">I</span></button>
           </div>
 
@@ -2488,25 +2493,19 @@
 
             <h3>Sorts</h3>
             <div class="perso-sorts" id="perso-sorts"></div>
+          </div>
 
-            <h3>Équipement</h3>
+          <div class="perso-onglet-panneau masque" id="perso-panneau-equipement">
             <!-- Schéma du personnage : chaque emplacement est posé à
                  l'endroit anatomique correspondant (voir rendreSlotEquipement
-                 et la position en % de chaque .perso-slot-corps ci-dessous).
+                 et la position en % de chaque .perso-slot-corps ci-dessous),
+                 sur le fond illustré du pack craftpix (assets/ui/equip-
+                 silhouette.png) au lieu de l'ancien schéma en traits SVG.
                  Se remplit par clic depuis l'onglet Inventaire (même
                  tableau d'objets, voir ITEM_VERS_CATEGORIE), ou par
                  glisser-déposer quand les deux onglets sont visibles en
                  même temps (grand écran). -->
             <div class="perso-silhouette" id="perso-silhouette">
-              <svg class="silhouette-svg" viewBox="0 0 140 200" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
-                <circle class="remplissage trait" cx="70" cy="26" r="18" />
-                <path class="remplissage trait" d="M45 100 Q42 55 70 52 Q98 55 95 100 L92 118 L48 118 Z" />
-                <path class="trait" d="M45 60 L18 96 L24 112" />
-                <path class="trait" d="M95 60 L122 96 L116 112" />
-                <path class="remplissage trait" d="M50 118 L48 175 L64 178 L68 130 L72 130 L76 178 L92 175 L90 118 Z" />
-                <path class="trait" d="M64 178 L60 192 L74 192" />
-                <path class="trait" d="M76 178 L80 192 L66 192" />
-              </svg>
               <div class="perso-slot-corps" data-categorie="casque" id="perso-casque-actuelle" style="left:50%; top:10%;"></div>
               <div class="perso-slot-corps" data-categorie="armure" id="perso-armure-actuelle" style="left:50%; top:38%;"></div>
               <div class="perso-slot-corps" data-categorie="bracelet" id="perso-bracelet-actuelle" style="left:87%; top:44%;"></div>
@@ -7030,8 +7029,10 @@ let ongletPersonnageActif = "perso";
 function afficherOngletPersonnage(onglet) {
   ongletPersonnageActif = onglet;
   document.getElementById("perso-panneau-perso").classList.toggle("masque", onglet !== "perso");
+  document.getElementById("perso-panneau-equipement").classList.toggle("masque", onglet !== "equipement");
   document.getElementById("perso-panneau-inventaire").classList.toggle("masque", onglet !== "inventaire");
   document.getElementById("onglet-btn-perso").classList.toggle("actif", onglet === "perso");
+  document.getElementById("onglet-btn-equipement").classList.toggle("actif", onglet === "equipement");
   document.getElementById("onglet-btn-inventaire").classList.toggle("actif", onglet === "inventaire");
 }
 function ouvrirPersonnage(onglet) {
@@ -7052,6 +7053,7 @@ document.getElementById("modale-personnage").addEventListener("click", (e) => {
   if (e.target.id === "modale-personnage") fermerPersonnage(); // clic sur le fond assombri
 });
 document.getElementById("onglet-btn-perso").addEventListener("click", () => afficherOngletPersonnage("perso"));
+document.getElementById("onglet-btn-equipement").addEventListener("click", () => afficherOngletPersonnage("equipement"));
 document.getElementById("onglet-btn-inventaire").addEventListener("click", () => afficherOngletPersonnage("inventaire"));
 document.addEventListener("keydown", (e) => {
   if (saisieTexteActive()) return;
