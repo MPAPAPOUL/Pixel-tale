@@ -1173,6 +1173,12 @@ const DRAGON_NOIR_VITESSE_MULTIPLICATEUR_PHASE2 = 1.35; // déplacement plus rap
 // multiplicateurs ci-dessus — seule la silhouette et le gabarit changent.
 const DRAGON_NOIR_HUMAIN_LARGEUR = 46;
 const DRAGON_NOIR_HUMAIN_HAUTEUR = 70;
+// Le sprite affiché est agrandi (×2.1, voir dessinerDragonNoir côté client)
+// bien au-delà de sa hitbox (largeur visuelle ≈220px pour une hitbox de
+// 84px) : sans ce décalage, le souffle de feu apparaît juste au bord de la
+// hitbox mais bien À L'INTÉRIEUR du corps dessiné, donnant l'impression que
+// la flamme sort de derrière le dragon plutôt que de sa gueule.
+const DRAGON_NOIR_DECALAGE_SOUFFLE = 68;
 
 const DRAGON_NOIR_ATTAQUES = {
   griffe: { degats: 26, cooldown: 1.5, portee: 72 },
@@ -1360,7 +1366,7 @@ function simulerDragonNoir(dtSecondes) {
       zone.projectilesMonstres.push({
         id: prochainProjectileMonstreId++,
         couleur: "#ff8a3a",
-        x: dragon.x + (dragon.facing >= 0 ? dragon.largeur : 0),
+        x: dragon.x + (dragon.facing >= 0 ? dragon.largeur + DRAGON_NOIR_DECALAGE_SOUFFLE : -DRAGON_NOIR_DECALAGE_SOUFFLE),
         y: dragon.y + dragon.hauteur / 2 + (i - (attaque.nombre - 1) / 2) * attaque.ecartY,
         vx: attaque.vitesse * dragon.facing,
         degats: Math.round(attaque.degats * multiplicateur),
