@@ -17,6 +17,18 @@ const bcrypt = require("bcryptjs");
 const idle = require("./idle"); // backend séparé pour Pixelfe-Idle (Godot), voir server/idle.js
 const { WebSocketServer } = require("ws");
 
+// Filet de sécurité pour l'hébergement public : sans ça, une exception
+// inattendue n'importe où (un cas limite non prévu dans la boucle physique,
+// une route mal formée...) fait planter TOUT le process Node, déconnectant
+// tous les joueurs d'un coup pour un bug isolé. On journalise et on continue
+// plutôt que de couper toute la partie pour tout le monde.
+process.on("uncaughtException", (err) => {
+  console.error("Exception non interceptée :", err);
+});
+process.on("unhandledRejection", (raison) => {
+  console.error("Promesse rejetée sans .catch :", raison);
+});
+
 // process.env.PORT : hébergeurs comme Glitch/Render/Railway imposent leur
 // propre port via cette variable d'environnement — 3000 reste le repli pour
 // une exécution en local (voir README).
@@ -1612,6 +1624,7 @@ const BIOMES_DEFINITION = [
   { id: "abysses-luisantes", nom: "Abysses Luisantes", blurb: "Une faille où la roche elle-même semble respirer une lumière bleutée.", niveau: 60, monstreNom: "Luisereau", couleur: "#3a5f8a", teinte: "hue-rotate(220deg) saturate(1.6) brightness(1.1)" },
   { id: "jardins-petrifies", nom: "Jardins Pétrifiés", blurb: "Un ancien verger dont chaque fruit s'est changé en pierre précieuse.", niveau: 70, monstreNom: "Gravide", couleur: "#8a3a5f", teinte: "hue-rotate(300deg) saturate(1.4) brightness(0.95)" },
   { id: "couronne-orage", nom: "Couronne d'Orage", blurb: "Le sommet du monde connu, où le tonnerre gronde plus bas que les nuages.", niveau: 80, monstreNom: "Fulgurin", couleur: "#d4af37", teinte: "hue-rotate(45deg) saturate(1.6) brightness(1.2)" },
+  { id: "sanctuaire-eclipse", nom: "Sanctuaire Éclipsé", blurb: "Un temple englouti par une nuit permanente, où même les échos ont peur de résonner.", niveau: 90, monstreNom: "Voilure", couleur: "#5a3a7a", teinte: "hue-rotate(260deg) saturate(1.5) brightness(0.85)" },
 ];
 
 // Chaque biome reprend l'un des 3 gabarits de comportement déjà éprouvés
@@ -1709,6 +1722,7 @@ const TYPE_GRIMPE_PAR_BIOME = {
   "abysses-luisantes": "cristal",
   "jardins-petrifies": "racine",
   "couronne-orage": "chaine",
+  "sanctuaire-eclipse": "cristal",
 };
 
 // Génère la zone persistante d'un biome : plateformes procédurales (seed
@@ -4226,6 +4240,15 @@ wss.on("connection", (ws, req) => {
     }
   });
 
+  // Sans ce handler, une erreur réseau imprévue sur CE socket (paquet
+  // malformé, coupure brutale du client, etc.) remonte comme un événement
+  // "error" non écouté sur l'EventEmitter du WebSocket — Node la traite
+  // alors comme une exception non interceptée et fait planter tout le
+  // process, déconnectant TOUS les joueurs pour l'incident d'un seul.
+  ws.on("error", (err) => {
+    console.error(`Erreur WebSocket (joueur ${joueur.id}) :`, err.message);
+  });
+
   ws.on("close", () => {
     const instance = instancesDonjon.get(joueur.zone);
     if (instance) {
@@ -4407,3 +4430,10 @@ process.stdin.setEncoding("utf8");
 process.stdin.on("data", (donnee) => {
   if (donnee.trim().toLowerCase() === "redeploy") lancerRedeploiement();
 });
+
+// Équivalent de "redeploy" mais pour un hébergement en tant que service
+// (systemd sur le VPS) : pas de console interactive à taper dedans dans ce
+// contexte, donc on déclenche la même séquence via un signal Unix — depuis
+// le serveur : `systemctl kill -s SIGUSR1 pixel-tale` (voir le script de
+// déploiement).
+process.on("SIGUSR1", lancerRedeploiement);
