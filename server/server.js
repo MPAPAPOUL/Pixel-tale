@@ -2459,10 +2459,23 @@ function simulerPhysique(dtSecondes) {
     }
 
     // Porte du donjon (Berge-Rhak → une TOUTE NOUVELLE instance de l'Antre) :
-    // clé complète + contact avec la porte.
-    if (zone.type === "verthige" && donjon.ouvert && p.x + JOUEUR_LARGEUR >= PORTE_DONJON_X) {
-      entrerDonjon(p);
-      continue;
+    // clé complète + contact avec la porte, mais plus d'entrée automatique
+    // (demande explicite du joueur) — le contact bloque désormais comme un
+    // mur mou tant que le client n'a pas confirmé via la modale "Entrer dans
+    // le donjon ?" (message "confirmerEntreeDonjon"). S'éloigner de la porte
+    // annule la confirmation en attente, pour re-proposer la modale à la
+    // prochaine approche.
+    if (zone.type === "verthige" && donjon.ouvert) {
+      if (p.x + JOUEUR_LARGEUR >= PORTE_DONJON_X) {
+        if (p.confirmeEntreeDonjon) {
+          p.confirmeEntreeDonjon = false;
+          entrerDonjon(p);
+          continue;
+        }
+        p.x = PORTE_DONJON_X - JOUEUR_LARGEUR;
+      } else {
+        p.confirmeEntreeDonjon = false;
+      }
     }
     // Le retour à Berge-Rhak depuis l'Antre ne se déclenche plus en marchant
     // jusqu'au bord de la map : c'est désormais l'icône de porte du HUD
@@ -4139,6 +4152,14 @@ wss.on("connection", (ws, req) => {
       if (texte) {
         diffuserATous({ type: "chat", id: joueur.id, texte });
       }
+    } else if (message.type === "confirmerEntreeDonjon") {
+      // Modale "Entrer dans le donjon ?" côté client (voir dessinerPorteDonjon
+      // + le mur mou posé dans simulerPhysique) : le contact avec la porte ne
+      // fait plus entrer automatiquement, il ne fait que bloquer le joueur
+      // devant tant qu'il n'a pas explicitement confirmé ici. Un seul aller,
+      // remis à false dès l'entrée effective ou dès que le joueur s'éloigne
+      // de la porte (voir simulerPhysique).
+      joueur.confirmeEntreeDonjon = true;
     } else if (message.type === "quitterDonjon") {
       // Icône de porte du HUD (à tout moment) OU bouton rouge "Quitter le
       // donjon" de l'écran de défaite (joueur mort) — dans les deux cas on

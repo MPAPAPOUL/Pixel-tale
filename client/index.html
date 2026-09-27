@@ -2542,6 +2542,20 @@
         </div>
       </div>
 
+      <!-- Confirmation avant d'entrer dans le donjon (contact avec la porte
+           une fois la clé complète) : le contact seul ne fait plus entrer
+           automatiquement, voir mettreAJourModaleEntreeDonjon(). -->
+      <div class="modale-overlay masque" id="modale-confirmer-entree">
+        <div class="modale-fantasy">
+          <h2>Entrer dans le donjon ?</h2>
+          <p>Tu vas franchir la porte de l'Antre du Sire-Hano et affronter la horde qui le garde.</p>
+          <div class="modale-actions">
+            <button type="button" class="btn-modale btn-succes" id="btn-confirmer-entree">Entrer</button>
+            <button type="button" class="btn-modale btn-neutre" id="btn-annuler-entree">Annuler</button>
+          </div>
+        </div>
+      </div>
+
       <!-- Confirmation avant une sortie volontaire du donjon (icône de
            porte), pour éviter un clic accidentel en plein combat. -->
       <div class="modale-overlay masque" id="modale-confirmer-sortie">
@@ -3922,6 +3936,7 @@ function render() {
   mettreAJourHUDDonjon();
   mettreAJourIconeSortieDonjon();
   mettreAJourIconeSortieTrone();
+  mettreAJourModaleEntreeDonjon();
   mettreAJourModaleDefaite();
   mettreAJourOr();
   mettreAJourZoneNom();
@@ -4028,6 +4043,41 @@ function calculerCamera() {
   };
 }
 
+// Décors parallax par zone (pack craftpix "background", 7 calques numérotés
+// du plus proche — 1.png — au plus lointain — 7.png, un simple aplat de
+// ciel) : chaque set choisi ci-dessous a été assorti à l'ambiance décrite
+// dans BIOMES_DEFINITION/zoneVerthige côté serveur (jungle pour Berge-Rhak,
+// marécage/cascade pour le Marais de Suin, forêt mauve mystique pour la
+// Forêt Chuchote, arbres gelés pour les Pics Verglacés). Les zones absentes
+// de cette liste gardent le ciel procédural existant (voir dessinerCiel) —
+// pas de bon set disponible pour elles pour l'instant.
+const ZONES_AVEC_DECOR = ["verthige", "marais-de-suin", "foret-chuchote", "pics-verglaces"];
+// Index 0 = calque "1.png" (avant-plan, défile vite) → index 6 = calque
+// "7.png" (ciel plat, quasi immobile), pour une sensation de profondeur.
+const VITESSES_PARALLAXE_DECOR = [0.5, 0.4, 0.32, 0.24, 0.17, 0.1, 0.03];
+const DECORS_ZONES = {};
+for (const idZoneDecor of ZONES_AVEC_DECOR) {
+  DECORS_ZONES[idZoneDecor] = [1, 2, 3, 4, 5, 6, 7].map((n) => chargerImage(`assets/backgrounds/${idZoneDecor}/${n}.png`));
+}
+
+// Dessine les 7 calques d'un décor, du plus lointain au plus proche, chacun
+// mis à l'échelle sur la hauteur du canvas puis répété horizontalement (la
+// largeur d'un monde dépasse largement celle d'une image) avec un décalage
+// de parallaxe propre à sa profondeur.
+function dessinerDecorZone(idZoneDecor, camX) {
+  const calques = DECORS_ZONES[idZoneDecor];
+  const hauteurCible = canvas.height;
+  for (let i = 6; i >= 0; i--) {
+    const img = calques[i];
+    if (!img.complete || !img.naturalWidth) continue;
+    const largeurAffichee = img.naturalWidth * (hauteurCible / img.naturalHeight);
+    const decalage = mod(-camX * VITESSES_PARALLAXE_DECOR[i], largeurAffichee);
+    for (let x = decalage - largeurAffichee; x < canvas.width; x += largeurAffichee) {
+      ctx.drawImage(img, x, 0, largeurAffichee, hauteurCible);
+    }
+  }
+}
+
 // Berge-Rhak est une île céleste posée sur les nuages : le ciel doit se
 // sentir plus "rêve pastel" que "beau temps ordinaire" (inspiré de
 // l'ambiance MapleStory 2), avec d'autres îles flottantes au loin et des
@@ -4043,6 +4093,12 @@ function dessinerCiel(camera) {
   // d'accueil qui vient après dans le fichier.
   if (state && state.donjon && state.donjon.dansDonjon) {
     dessinerCielVolcan(camX);
+    return;
+  }
+
+  const idZoneActuelle = state && state.zoneActuelle && state.zoneActuelle.id;
+  if (idZoneActuelle && DECORS_ZONES[idZoneActuelle]) {
+    dessinerDecorZone(idZoneActuelle, camX);
     return;
   }
 
@@ -6640,6 +6696,25 @@ function mettreAJourIconeSortieDonjon() {
   if (!dansDonjon) document.getElementById("modale-confirmer-sortie").classList.add("masque");
 }
 
+// Entrée du donjon : depuis que le contact avec la porte ne fait plus
+// entrer automatiquement (voir simulerPhysique côté serveur, mur mou tant
+// que non confirmé), le client propose cette modale au premier contact et
+// la referme tout seul si le joueur s'éloigne sans répondre — pour ne pas
+// la redemander en boucle tant qu'il reste planté contre la porte après un
+// "Annuler".
+let modaleEntreeDonjonRefusee = false;
+function mettreAJourModaleEntreeDonjon() {
+  const modale = document.getElementById("modale-confirmer-entree");
+  const donjonState = state.donjon;
+  const self = state.players.find((p) => p.id === selfId);
+  const auContact = !!(
+    donjonState && donjonState.ouvert && !donjonState.dansDonjon &&
+    self && self.x + 36 >= donjonState.porteX // 36 = JOUEUR_LARGEUR côté serveur (voir simulerPhysique)
+  );
+  if (!auContact) modaleEntreeDonjonRefusee = false;
+  modale.classList.toggle("masque", !auContact || modaleEntreeDonjonRefusee);
+}
+
 // Écran de défaite : plus de réapparition automatique dans l'Antre — tant
 // que le joueur n'a pas choisi "Quitter" ou "Réessayer", il reste mort et
 // cette bulle reste affichée.
@@ -6661,6 +6736,19 @@ function mettreAJourIconeSortieTrone() {
 }
 document.getElementById("icone-sortie-trone").addEventListener("click", () => {
   envoyer({ type: "quitterSalleTroneAmbre" });
+});
+
+document.getElementById("btn-annuler-entree").addEventListener("click", () => {
+  modaleEntreeDonjonRefusee = true;
+  document.getElementById("modale-confirmer-entree").classList.add("masque");
+});
+document.getElementById("btn-confirmer-entree").addEventListener("click", () => {
+  envoyer({ type: "confirmerEntreeDonjon" });
+  // Évite un flash de la modale entre ce clic et le tick serveur qui bascule
+  // réellement dansDonjon à true (voir mettreAJourModaleEntreeDonjon) —
+  // remise à false automatiquement dès que le joueur n'est plus au contact.
+  modaleEntreeDonjonRefusee = true;
+  document.getElementById("modale-confirmer-entree").classList.add("masque");
 });
 
 document.getElementById("icone-sortie-donjon").addEventListener("click", () => {
