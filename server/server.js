@@ -1633,6 +1633,9 @@ const BIOMES_DEFINITION = [
   { id: "jardins-petrifies", nom: "Jardins Pétrifiés", blurb: "Un ancien verger dont chaque fruit s'est changé en pierre précieuse.", niveau: 70, monstreNom: "Gravide", couleur: "#8a3a5f", teinte: "hue-rotate(300deg) saturate(1.4) brightness(0.95)" },
   { id: "couronne-orage", nom: "Couronne d'Orage", blurb: "Le sommet du monde connu, où le tonnerre gronde plus bas que les nuages.", niveau: 80, monstreNom: "Fulgurin", couleur: "#d4af37", teinte: "hue-rotate(45deg) saturate(1.6) brightness(1.2)" },
   { id: "sanctuaire-eclipse", nom: "Sanctuaire Éclipsé", blurb: "Un temple englouti par une nuit permanente, où même les échos ont peur de résonner.", niveau: 90, monstreNom: "Voilure", couleur: "#5a3a7a", teinte: "hue-rotate(260deg) saturate(1.5) brightness(0.85)" },
+  // Art dédié fourni par le joueur (pack "Pirate Boss", voir
+  // ART_DEDIE_PAR_BIOME plus bas) plutôt qu'un gabarit reteinté.
+  { id: "crique-naufrageurs", nom: "Crique des Naufrageurs", blurb: "Une baie où les coques éventrées dorment sous le sable, gardées par ceux qui les y ont menées.", niveau: 100, monstreNom: "Sabrenoir", couleur: "#7a2733", teinte: "hue-rotate(340deg) saturate(1.2) brightness(0.95)" },
 ];
 
 // Chaque biome reprend l'un des 3 gabarits de comportement déjà éprouvés
@@ -1708,8 +1711,13 @@ const ART_DEDIE_PAR_BIOME = {
   "dunes-cendrees": { base: "spectre-emergent", teinte: null, largeur: 71, hauteur: 46 }, // spectre très large/aplati, ratio ≈1.54, était 40
   "abysses-luisantes": { base: "bluetentacle", teinte: null, largeur: 29, hauteur: 84 }, // ratio ≈0.69, hauteur ×2 (était 42, initialement 38)
   "jardins-petrifies": { base: "sorcier-4bras", teinte: null, largeur: 69, hauteur: 58 }, // bras écartés, ratio ≈1.18, était 48
-  // Les deux dernières régions gardent le gabarit teinté (le dragon DCSS
-  // dédié qui y était a été retiré, trop pixelisé à l'échelle du jeu).
+  // "sanctuaire-eclipse" garde le gabarit teinté (le dragon DCSS dédié qui y
+  // était a été retiré, trop pixelisé à l'échelle du jeu).
+  // Capitaine Sabrenoir (pack "Pirate Boss" fourni par le joueur) — ratio
+  // moyen idle/marche/attaque ≈0.60 (idle et marche ≈0.53, attaque plus
+  // large ≈0.72 sabre tendu) ; même groupe d'échelle que sorcier-4bras
+  // (pas dans ECHELLE_HAUTEUR_REDUITE_MONSTRES côté client → échelle ×2.1).
+  "crique-naufrageurs": { base: "capitaine-pirate", teinte: null, largeur: 36, hauteur: 60 },
 };
 for (const [id, art] of Object.entries(ART_DEDIE_PAR_BIOME)) {
   if (MONSTRES_CONFIG[id]) Object.assign(MONSTRES_CONFIG[id], art);
@@ -1731,6 +1739,7 @@ const TYPE_GRIMPE_PAR_BIOME = {
   "jardins-petrifies": "racine",
   "couronne-orage": "chaine",
   "sanctuaire-eclipse": "cristal",
+  "crique-naufrageurs": "corde", // cordage de gréement, thème naval
 };
 
 // Génère la zone persistante d'un biome : plateformes procédurales (seed
