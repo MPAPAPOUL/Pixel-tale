@@ -1358,6 +1358,7 @@ function simulerDragonNoir(dtSecondes) {
     }
     dragon.cooldowns.griffe = attaque.cooldown * cadence;
     dragon.attaqueAnimRestant = 0.3;
+    dragon.attaqueType = "griffe";
   }
 
   if (dragon.cooldowns.souffle <= 0 && distanceCible <= DRAGON_NOIR_ATTAQUES.souffle.porteeMax) {
@@ -1377,6 +1378,7 @@ function simulerDragonNoir(dtSecondes) {
     }
     dragon.cooldowns.souffle = attaque.cooldown * cadence;
     dragon.attaqueAnimRestant = 0.35;
+    dragon.attaqueType = "souffle";
   }
 
   if (dragon.cooldowns.meteore <= 0 && !dragon.aoeEnAttente) {
@@ -3698,6 +3700,12 @@ function construireEtatPourJoueur(p, classement) {
           invulnerable: dragon.invulnerableRestant > 0,
           enMouvement: Math.abs(dragon.vx) > 1,
           attaque: dragon.attaqueAnimRestant > 0,
+          // "griffe" (mêlée, pas de flamme) / "souffle" (le seul qui doit
+          // déclencher la séquence de flamme à 5 frames côté client, voir
+          // poseDragon) — sans ce champ, le client ne peut pas savoir QUEL
+          // sort est en cours et affichait la flamme même pendant un coup
+          // de griffe.
+          attaqueType: dragon.attaqueType || null,
           aoeEnAttente: dragon.aoeEnAttente
             ? {
                 x: dragon.aoeEnAttente.x,

@@ -5403,11 +5403,12 @@ function poseDragon(dragon) {
   const jeu = dragon.formeHumaine ? SPRITES_DRAGONNOIR_HUMAIN : SPRITES_DRAGONNOIR;
   if (!jeu) return null;
   if (dragon.attaque) {
-    // Forme draconique : vraie séquence à 5 frames (voir
-    // SEQUENCE_ATTAQUE_DRAGONNOIR) plutôt qu'une pose unique, pour une
-    // attaque bien plus fluide à l'écran. La forme humanoïde (phase 2)
-    // n'a qu'une seule pose "attack" dédiée, inchangée.
-    if (!dragon.formeHumaine) {
+    // La séquence de flamme à 5 frames (voir SEQUENCE_ATTAQUE_DRAGONNOIR)
+    // ne doit jouer QUE pendant le souffle — pas pendant un coup de griffe
+    // (mêlée, sans flamme), sous peine de faire apparaître une flamme là où
+    // il ne devrait pas y en avoir. La forme humanoïde (phase 2) garde sa
+    // pose "attack" unique, inchangée.
+    if (!dragon.formeHumaine && dragon.attaqueType === "souffle") {
       const frames = SEQUENCE_ATTAQUE_DRAGONNOIR.map((cle) => jeu[cle]).filter(Boolean);
       if (frames.length > 0) return frames[Math.floor(performance.now() / 90) % frames.length];
     }
