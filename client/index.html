@@ -1526,12 +1526,14 @@
        personnage) : une carte cliquable par personnage, même famille
        visuelle que .carte-classe ci-dessus pour rester cohérent. ---------- */
   .accueil-liste-persos { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
+  .carte-perso-ligne { display: flex; align-items: stretch; gap: 8px; }
   .carte-perso {
     display: flex;
     flex-direction: column;
     align-items: flex-start;
+    justify-content: center;
     gap: 3px;
-    width: 100%;
+    flex: 1 1 auto;
     text-align: left;
     padding: 12px 16px;
     border-radius: 14px;
@@ -1544,6 +1546,18 @@
   .carte-perso:hover { transform: translateY(-2px); border-color: var(--gold); background: rgba(255,159,67,0.12); }
   .carte-perso-pseudo { font-family: "Baloo 2", sans-serif; font-size: 15px; }
   .carte-perso-details { font-size: 11.5px; color: #cfc3ef; }
+  .btn-suppr-perso {
+    flex: 0 0 auto;
+    width: 42px;
+    border-radius: 14px;
+    border: 2px solid var(--hairline);
+    background: rgba(255,255,255,0.04);
+    color: #e8a0a0;
+    font-size: 16px;
+    cursor: pointer;
+    transition: border-color 0.12s ease, background 0.12s ease;
+  }
+  .btn-suppr-perso:hover { border-color: #d9534f; background: rgba(217,83,79,0.15); }
 
   /* --- Personnalisation d'avatar (écran de création) : nuanciers
        cheveux/yeux/vêtements avec aperçu live — voir obtenirSpriteRecolore
@@ -2173,6 +2187,20 @@
       <button type="button" class="btn-jouer" id="btn-nouveau-perso">+ Nouveau personnage</button>
     </div>
     <button type="button" class="lien-compte-joueur" id="btn-ouvrir-compte-persos">🔑 Compte joueur</button>
+  </div>
+
+  <!-- Confirmation avant suppression définitive d'un personnage (écran de
+       sélection) — jamais de native confirm(), même famille visuelle que les
+       autres modales de confirmation du jeu. -->
+  <div class="modale-overlay masque" id="modale-confirmer-suppression-perso">
+    <div class="modale-fantasy">
+      <h2>Supprimer ce personnage ?</h2>
+      <p>Cette action est définitive : <strong id="suppression-perso-pseudo"></strong> et toute sa progression seront perdus pour toujours.</p>
+      <div class="modale-actions">
+        <button type="button" class="btn-modale btn-danger" id="btn-confirmer-suppression-perso">Supprimer</button>
+        <button type="button" class="btn-modale btn-neutre" id="btn-annuler-suppression-perso">Annuler</button>
+      </div>
+    </div>
   </div>
 
   <div class="accueil-carte" id="accueil-carte-creation">
@@ -8308,10 +8336,13 @@ function rendreListePersonnages(personnages, max) {
       const infosClasse = DESCRIPTIONS_CLASSES.find((c) => c.id === p.classe);
       const labelClasse = infosClasse ? infosClasse.nom : p.classe;
       return `
-        <button type="button" class="carte-perso" data-personnage-id="${p.id}">
-          <span class="carte-perso-pseudo">${escapeHtml(p.pseudo)}</span>
-          <span class="carte-perso-details">${escapeHtml(labelClasse)} — Nv.${p.niveau}</span>
-        </button>`;
+        <div class="carte-perso-ligne">
+          <button type="button" class="carte-perso" data-personnage-id="${p.id}">
+            <span class="carte-perso-pseudo">${escapeHtml(p.pseudo)}</span>
+            <span class="carte-perso-details">${escapeHtml(labelClasse)} — Nv.${p.niveau}</span>
+          </button>
+          <button type="button" class="btn-suppr-perso" data-suppr-personnage-id="${p.id}" data-suppr-pseudo="${escapeHtml(p.pseudo)}" title="Supprimer ce personnage">🗑️</button>
+        </div>`;
     })
     .join("");
   const btnNouveau = document.getElementById("btn-nouveau-perso");
@@ -8322,9 +8353,39 @@ function rendreListePersonnages(personnages, max) {
 }
 
 document.getElementById("accueil-liste-persos").addEventListener("click", (e) => {
+  const btnSuppr = e.target.closest(".btn-suppr-perso[data-suppr-personnage-id]");
+  if (btnSuppr) {
+    personnageIdASupprimer = btnSuppr.dataset.supprPersonnageId;
+    document.getElementById("suppression-perso-pseudo").textContent = btnSuppr.dataset.supprPseudo;
+    document.getElementById("modale-confirmer-suppression-perso").classList.remove("masque");
+    return;
+  }
   const carte = e.target.closest(".carte-perso[data-personnage-id]");
   if (!carte) return;
   demarrerPartie({ personnageId: carte.dataset.personnageId });
+});
+
+// Suppression définitive d'un personnage (voir POST /api/personnages/supprimer
+// côté serveur) — jamais de native confirm(), on repasse par la modale
+// dédiée ci-dessus puis on recharge la liste pour refléter la suppression.
+let personnageIdASupprimer = null;
+document.getElementById("btn-annuler-suppression-perso").addEventListener("click", () => {
+  personnageIdASupprimer = null;
+  document.getElementById("modale-confirmer-suppression-perso").classList.add("masque");
+});
+document.getElementById("btn-confirmer-suppression-perso").addEventListener("click", async () => {
+  if (!personnageIdASupprimer) return;
+  const idASupprimer = personnageIdASupprimer;
+  document.getElementById("modale-confirmer-suppression-perso").classList.add("masque");
+  personnageIdASupprimer = null;
+  try {
+    await fetch("/api/personnages/supprimer", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ jeton: jetonJoueur, personnageId: idASupprimer }),
+    });
+  } catch {}
+  initialiserEcranAccueil();
 });
 
 document.getElementById("btn-nouveau-perso").addEventListener("click", () => {

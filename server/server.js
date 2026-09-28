@@ -4618,6 +4618,52 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  // Supprime définitivement un personnage d'un compte (écran de sélection,
+  // demande explicite "possibilité de supprimer un personnage"). Si ce
+  // personnage est actuellement en jeu (même jeton, même session), on coupe
+  // sa connexion d'abord — sans le sauvegarder, puisqu'il va disparaître —
+  // en reprenant le même nettoyage (players/clients/joueursParJeton/instance
+  // de donjon) que le garde-fou "double session" un peu plus haut.
+  if (req.method === "POST" && req.url === "/api/personnages/supprimer") {
+    lireCorpsJSON(req)
+      .then((corps) => {
+        const jeton = String(corps.jeton || "").trim();
+        const personnageId = String(corps.personnageId || "").trim();
+        if (!jeton || !personnageId) return repondreJSON(res, 400, { erreur: "Requête invalide." });
+
+        const compte = comptes[jeton];
+        const liste = (compte && compte.personnages) || [];
+        const index = liste.findIndex((p) => p.id === personnageId);
+        if (index === -1) return repondreJSON(res, 404, { erreur: "Personnage introuvable." });
+
+        const joueurEnJeu = joueursParJeton.get(jeton);
+        if (joueurEnJeu && joueurEnJeu._personnageId === personnageId) {
+          joueurEnJeu._sessionRemplacee = true;
+          const ws = clients.get(joueurEnJeu.id);
+          if (ws && ws.readyState === ws.OPEN) {
+            try {
+              ws.send(JSON.stringify({ type: "personnageSupprime" }));
+            } catch {}
+            ws.close();
+          }
+          const instance = instancesDonjon.get(joueurEnJeu.zone);
+          if (instance) {
+            instance.joueurs.delete(joueurEnJeu.id);
+            if (instance.joueurs.size === 0) instancesDonjon.delete(instance.id);
+          }
+          players.delete(joueurEnJeu.id);
+          clients.delete(joueurEnJeu.id);
+          joueursParJeton.delete(jeton);
+        }
+
+        liste.splice(index, 1);
+        sauvegarderComptes();
+        repondreJSON(res, 200, { ok: true });
+      })
+      .catch(() => repondreJSON(res, 400, { erreur: "Requête invalide." }));
+    return;
+  }
+
   // Lie un email + mot de passe au compte (jeton) actuel — permet de le
   // retrouver plus tard depuis un autre appareil/navigateur via
   // /api/compte/connexion. Un compte ne peut être lié qu'à un seul email à
