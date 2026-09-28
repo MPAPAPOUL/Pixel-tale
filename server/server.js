@@ -373,25 +373,6 @@ const MONSTRES_CONFIG = {
     comportement: "patrouille",
     xp: 26,
   },
-  // Mannequin d'entraînement du tutoriel (Estenoise-les-Brumes) : immobile
-  // (vitesse 0, réutilise le comportement "patrouille" pour éviter tout
-  // nouveau cas particulier dans simulerMonstres), PV volontairement bas
-  // pour tomber en 1-3 coups même pour un tout nouveau personnage niveau 1,
-  // et ne riposte jamais (degatsContact: 0) — purement pédagogique. Drop
-  // garanti géré à part dans infligerDegatsMonstre (la zone "village" n'est
-  // couverte par aucune des branches de loot existantes).
-  mannequinEntrainement: {
-    label: "Mannequin d'entraînement",
-    couleur: "#8a7a5a",
-    largeur: 34,
-    hauteur: 50,
-    vitesse: 0,
-    hpMax: 20,
-    degatsContact: 0,
-    delaiRespawn: 6,
-    comportement: "patrouille",
-    xp: 1,
-  },
 };
 
 // Compteur global : garantit un id UNIQUE par monstre. L'ancien id dérivé de
@@ -1890,6 +1871,16 @@ function genererZoneVillage() {
     { x: 610, y: 420, width: 170, height: 24 },
     { x: 980, y: 470, width: 170, height: 24 },
   ];
+  // Gobelin neutre du tutoriel (voir avancerTutoriel) : un gobelin normal
+  // (plus de mannequin dédié), placé au milieu de la carte plutôt qu'à
+  // l'entrée pour que le trajet jusqu'à lui fasse partie de l'étape
+  // "déplacement" — patrouille tout de même sur le sol entier comme un
+  // gobelin neutre classique (voir creerMonstre), seule sa position de
+  // départ est recentrée.
+  const gobelinTutoriel = creerMonstre("gobelinNeutre", plateformes[0]);
+  gobelinTutoriel.x = Math.round(largeur / 2 - MONSTRES_CONFIG.gobelinNeutre.largeur / 2);
+  gobelinTutoriel.xApparition = gobelinTutoriel.x;
+
   return {
     id: "village",
     type: "village",
@@ -1898,62 +1889,18 @@ function genererZoneVillage() {
     plateformes,
     largeur,
     hauteur: MONDE_HAUTEUR,
-    // Mannequin d'entraînement du tutoriel (voir avancerTutoriel) : posé sur
-    // le sol tout près du point d'apparition des nouveaux personnages
-    // (x:60, voir la branche "nouveauPersonnage" du handler de connexion),
-    // pour être immédiatement visible sans avoir à chercher.
-    monstres: [creerMonstre("mannequinEntrainement", { x: 130, y: 600, width: 60 })],
+    monstres: [gobelinTutoriel],
     projectiles: [],
     projectilesMonstres: [],
     effets: [],
     objetsAuSol: [],
     sireHano: null,
     lianes: [],
-    pnjs: [
-      {
-        id: "vendeur-torvik",
-        nom: "Torvik le Bien-Referré",
-        type: "vendeur",
-        x: 300,
-        y: 552,
-        dialogue: ["Envie d'un peu d'acier neuf ?", "Tout ce que je vends a déjà sauvé une vie. La mienne, surtout."],
-        // Prix x2 (demande explicite) par rapport aux valeurs d'origine
-        // (40/55/25).
-        boutique: [
-          { item: "epee", label: "Épée courte", prix: 80 },
-          { item: "arc", label: "Arc simple", prix: 80 },
-          { item: "baton", label: "Bâton noueux", prix: 80 },
-          { item: "armureT1", label: "Cuirasse rustique", prix: 110 },
-          { item: "casque", label: "Casque cabossé", prix: 50 },
-          { item: "jambieres", label: "Jambières rapiécées", prix: 50 },
-          { item: "anneau", label: "Anneau terni", prix: 50 },
-          { item: "bottes", label: "Bottes usées", prix: 50 },
-          { item: "bracelet", label: "Bracelet simple", prix: 50 },
-        ],
-      },
-      {
-        id: "pnj-oreline",
-        nom: "Oreline la Rieuse",
-        type: "flavor",
-        x: 700,
-        y: 552,
-        dialogue: [
-          "On raconte que Sire-Hano n'a jamais gagné un seul concours de danse, même contre lui-même.",
-          "Ici, même les cailloux ont meilleur caractère qu'à la porte de l'Antre.",
-        ],
-      },
-      {
-        id: "pnj-bramick",
-        nom: "Bramick Trois-Doigts",
-        type: "flavor",
-        x: 1100,
-        y: 552,
-        dialogue: [
-          "J'ai perdu deux doigts contre un Fisselo. Le troisième, c'est une toute autre histoire.",
-          "Le village s'appelle Estenoise-les-Brumes. Ne me demande pas pourquoi, je viens d'arriver moi aussi.",
-        ],
-      },
-    ],
+    // Plus de marchand ni de PNJ de décor au village (demande explicite) —
+    // liste vide plutôt que suppression du champ, le reste du code
+    // (dessinerPnjs côté client, message "acheterBoutiquePnj" côté serveur)
+    // suppose déjà `zone.pnjs` existant.
+    pnjs: [],
   };
 }
 
@@ -2876,10 +2823,10 @@ function infligerDegatsMonstre(zone, m, degats, joueurId) {
   if (m.morte) return;
   m.hostile = true; // un gobelin neutre (voir MONSTRES_CONFIG.gobelinNeutre) devient hostile dès qu'un joueur le frappe, sans effet sur les autres types (déjà hostiles)
   m.hp = Math.max(0, m.hp - degats);
-  if (m.type === "mannequinEntrainement") {
-    // Étape "combat" du tutoriel : validée dès le premier coup porté, pas
-    // besoin d'attendre que le mannequin tombe à 0 PV (qui peut prendre
-    // plusieurs coups selon la classe).
+  if (zone.id === "village") {
+    // Étape "combat" du tutoriel : validée dès le premier coup porté sur le
+    // gobelin du village, pas besoin d'attendre qu'il tombe à 0 PV (qui peut
+    // prendre plusieurs coups selon la classe).
     const attaquant = players.get(joueurId);
     if (attaquant) avancerTutoriel(attaquant, 1);
   }
@@ -2919,7 +2866,7 @@ function infligerDegatsMonstre(zone, m, degats, joueurId) {
       essayerDropArmeTiere(zone, m.x + cfg.largeur / 2, m.y + cfg.hauteur / 2);
     } else if (zone.type === "verthige") {
       essayerDropFragment(); // Fisselo / Troubalourd / Tiralark de Berge-Rhak : chance de fragment de clé
-    } else if (m.type === "mannequinEntrainement") {
+    } else if (zone.id === "village") {
       // La zone "village" n'est couverte par aucune des branches ci-dessus :
       // drop garanti (pas de jet aléatoire, voir essayerDropArme) pour que
       // l'étape "butin" du tutoriel soit toujours possible.

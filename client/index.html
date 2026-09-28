@@ -4736,12 +4736,6 @@ function dessinerSol(plateforme) {
     const couleur = COULEURS_FLEURS[Math.floor(pseudoAleatoire(px * 0.211) * COULEURS_FLEURS.length)];
     dessinerFleur(px + decalage, y, couleur);
   }
-
-  // Petites maisonnettes décoratives, espacées, jamais deux collées.
-  for (let px = x + 160; px < x + width - 160; px += 430) {
-    if (pseudoAleatoire(px * 0.013) < 0.5) continue;
-    dessinerMaisonnette(px, y);
-  }
 }
 
 // Plateforme flottante carrelée d'une région — même principe que
@@ -4834,67 +4828,6 @@ function dessinerFleur(x, y, couleur) {
   ctx.beginPath();
   ctx.arc(0, -8, 2, 0, Math.PI * 2);
   ctx.fill();
-  ctx.restore();
-}
-
-// Petite maisonnette décorative façon village MapleStory : toit pointu,
-// façade colorée, une fenêtre et une porte. Purement du décor (pas de
-// collision), posée sur la ligne d'herbe du sol.
-function dessinerMaisonnette(x, y) {
-  const largeur = 52;
-  const hauteurMur = 30;
-  const baseY = y; // pile sur la ligne de sol/collision
-  const gaucheX = x - largeur / 2;
-
-  ctx.save();
-
-  // Petite ombre douce au sol.
-  ctx.fillStyle = "rgba(74,53,96,0.18)";
-  ctx.beginPath();
-  ctx.ellipse(x, baseY + 3, largeur * 0.55, 6, 0, 0, Math.PI * 2);
-  ctx.fill();
-
-  // Mur.
-  ctx.fillStyle = "#fff1da";
-  ctx.fillRect(gaucheX, baseY - hauteurMur, largeur, hauteurMur);
-  ctx.strokeStyle = "#c9a24b";
-  ctx.lineWidth = 2;
-  ctx.strokeRect(gaucheX, baseY - hauteurMur, largeur, hauteurMur);
-
-  // Toit triangulaire arrondi.
-  ctx.fillStyle = "#ff8f6a";
-  ctx.beginPath();
-  ctx.moveTo(gaucheX - 8, baseY - hauteurMur + 4);
-  ctx.lineTo(x, baseY - hauteurMur - 26);
-  ctx.lineTo(gaucheX + largeur + 8, baseY - hauteurMur + 4);
-  ctx.quadraticCurveTo(x, baseY - hauteurMur - 4, gaucheX - 8, baseY - hauteurMur + 4);
-  ctx.closePath();
-  ctx.fill();
-
-  // Petite cheminée.
-  ctx.fillStyle = "#c9a86a";
-  ctx.fillRect(x + largeur * 0.18, baseY - hauteurMur - 22, 8, 14);
-
-  // Porte.
-  ctx.fillStyle = "#a9825a";
-  const largeurPorte = 14;
-  ctx.beginPath();
-  ctx.moveTo(x - largeurPorte / 2, baseY);
-  ctx.lineTo(x - largeurPorte / 2, baseY - 16);
-  ctx.quadraticCurveTo(x, baseY - 22, x + largeurPorte / 2, baseY - 16);
-  ctx.lineTo(x + largeurPorte / 2, baseY);
-  ctx.closePath();
-  ctx.fill();
-
-  // Fenêtre ronde.
-  ctx.fillStyle = "#a9d8ff";
-  ctx.beginPath();
-  ctx.arc(gaucheX + largeur - 14, baseY - hauteurMur + 13, 6, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.strokeStyle = "#c9a24b";
-  ctx.lineWidth = 1.5;
-  ctx.stroke();
-
   ctx.restore();
 }
 
@@ -7087,8 +7020,8 @@ function mettreAJourIconeTeleporteur() {
 // explicative (pas d'action de jeu à détecter derrière) qui a donc besoin
 // d'un "Compris !" explicite plutôt que d'avancer toute seule.
 const TEXTES_TUTORIEL = [
-  { titre: "Bienvenue à Estenoise-les-Brumes !", texte: "Utilise les flèches (ou ZQSD selon ton réglage) pour te déplacer." },
-  { titre: "Un mannequin d'entraînement...", texte: "Approche-toi et appuie sur ta touche de sort de base (A) pour l'attaquer !" },
+  { titre: "Bienvenue à Estenoise-les-Brumes !", texte: "Utilise les flèches (ou ZQSD selon ton réglage) pour te déplacer jusqu'au gobelin au milieu du village." },
+  { titre: "Un gobelin approche...", texte: "Approche-toi et appuie sur ta touche de sort de base (A) pour l'attaquer !" },
   { titre: "Butin au sol", texte: "Il a laissé tomber quelque chose — approche-toi et appuie sur F pour le ramasser." },
   { titre: "Fiche de personnage", texte: "Ouvre ta fiche (touche C ou l'icône 📜 en haut à gauche) et dépense un point de caractéristique." },
   {
