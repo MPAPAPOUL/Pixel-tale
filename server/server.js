@@ -1925,18 +1925,64 @@ function genererZoneVillage() {
   };
 }
 
+// Relief dédié à la Crique des Corsaires : même principe "escalier montant"
+// que genererPlateformes (sol pleine largeur + étages), mais des plateformes
+// nettement plus larges/épaisses (demande explicite) pour laisser plus de
+// place aux combats à plusieurs monstres.
+function genererPlateformesPlage(rng, largeur, nbEtages) {
+  const plateformes = [{ x: 0, y: 600, width: largeur, height: 40 }];
+  let x = 70 + Math.floor(rng() * 60);
+  for (let i = 0; i < nbEtages; i++) {
+    const w = 220 + Math.floor(rng() * 220); // 220-440 (vs 130-300 pour les autres biomes)
+    const y = Math.max(150, 520 - i * 52 - Math.floor(rng() * 40));
+    plateformes.push({ x: Math.round(x), y: Math.round(y), width: w, height: 30 });
+    x += w + 50 + Math.floor(rng() * 130);
+    if (x > largeur - 260) x = 60 + Math.floor(rng() * 90);
+  }
+  return plateformes;
+}
+
+// Escalier reliant deux plateformes existantes : quelques petites marches
+// intermédiaires en ligne droite entre le coin haut de la plus basse et le
+// coin bas de la plus haute, pour permettre de monter à pied plutôt que de
+// sauter (deuxième façon de grimper, en plus de la liane) — demande
+// explicite ("essayer escalier pour relier 2 plateformes"). Marquées
+// `escalier: true` pour rester à l'écart du tirage au sort des monstres
+// (trop étroites pour y patrouiller).
+function ajouterEscalierEntre(plateformes, indexBas, indexHaut, nbMarches) {
+  const bas = plateformes[indexBas];
+  const haut = plateformes[indexHaut];
+  const largeurMarche = 48;
+  const xDepart = bas.x + bas.width;
+  const xArrivee = haut.x;
+  for (let i = 1; i <= nbMarches; i++) {
+    const t = i / (nbMarches + 1);
+    plateformes.push({
+      x: Math.round(xDepart + (xArrivee - xDepart) * t - largeurMarche / 2),
+      y: Math.round(bas.y + (haut.y - bas.y) * t),
+      width: largeurMarche,
+      height: 20,
+      escalier: true,
+    });
+  }
+}
+
 // Crique des Corsaires : une map à part plutôt qu'un biome de plus dans
 // BIOMES_DEFINITION, car elle mélange TROIS monstres différents (voir
 // MONSTRES_CONFIG.squidman/pirateZombie/pirateLeader ci-dessus) au lieu d'un
 // seul gabarit reteinté — la génération automatique des biomes ne prévoit
 // qu'un type de monstre par région. Relief généré comme un biome classique
-// (genererPlateformes), placée au niveau 15 (entre Crêtes d'Ambre et Marais
-// de Suin). Assets fournis pour les 3 monstres + le décor plage.
+// (genererPlateformesPlage), placée au niveau 15 (entre Crêtes d'Ambre et
+// Marais de Suin). Assets fournis pour les 3 monstres + le décor plage.
 function genererZonePlage() {
   const rng = mulberry32(1000 + 999 * 97); // seed dédiée, hors de la plage utilisée par les biomes (indexSeed 0..8)
-  const largeur = 1400 + Math.floor(rng() * 260);
-  const plateformes = genererPlateformes(rng, largeur, 9);
-  const plateformesSurelevees = plateformes.slice(1);
+  const largeur = 1500 + Math.floor(rng() * 300);
+  const plateformes = genererPlateformesPlage(rng, largeur, 9);
+  // Escalier entre les deux premières plateformes surélevées (indices 1 et
+  // 2, juste au-dessus du sol) — la partie la plus fréquentée en arrivant
+  // dans la zone.
+  if (plateformes.length > 2) ajouterEscalierEntre(plateformes, 1, 2, 4);
+  const plateformesSurelevees = plateformes.slice(1).filter((p) => !p.escalier);
   const plateformeSommet = plateformes.reduce((sommet, p) => (p.y < sommet.y ? p : sommet), plateformes[0]);
   const xGrimpe = Math.round(plateformeSommet.x + plateformeSommet.width * (0.3 + rng() * 0.4));
   const SOL_Y = 600;
@@ -1974,8 +2020,10 @@ function genererZonePlage() {
   // Cycle des 3 types pirates plutôt qu'un tirage aléatoire, pour garantir
   // qu'on croise bien les trois sur une même génération de zone — le
   // Capitaine (élite) est volontairement plus rare que les deux autres.
-  const cycleTypesPirates = ["squidman", "pirateZombie", "squidman", "pirateZombie", "pirateLeader"];
-  const nbMonstres = 5 + Math.floor(rng() * 2);
+  // Plusieurs monstres peuvent désormais partager une plateforme (elles sont
+  // bien plus larges qu'avant), d'où un nombre de monstres nettement relevé.
+  const cycleTypesPirates = ["squidman", "pirateZombie", "squidman", "pirateZombie", "pirateLeader", "squidman", "pirateZombie"];
+  const nbMonstres = 11 + Math.floor(rng() * 3);
   for (let i = 0; i < nbMonstres; i++) {
     const plateforme = plateformesMelangees[i % plateformesMelangees.length] || plateformes[0];
     zone.monstres.push(creerMonstre(cycleTypesPirates[i % cycleTypesPirates.length], plateforme));
