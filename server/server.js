@@ -321,6 +321,11 @@ const MONSTRES_CONFIG = {
     // redevient une poursuite directe du joueur une fois hostile, voir le
     // branchement dédié dans simulerMonstres qui passe avant ce comportement.
     comportement: "erratique",
+    // Intervalle de changement de direction très allongé (demande explicite :
+    // "parcours beaucoup plus de pixel avant de se retourner") — sans ça le
+    // comportement "erratique" par défaut (0.3-1s) le fait tourner en rond
+    // sur quelques pixels malgré des bornes de patrouille larges.
+    intervalleErratique: { min: 3, max: 6 },
     neutre: true,
     xp: 7,
   },
@@ -430,7 +435,8 @@ function creerMonstre(type, plateforme) {
     monstre.borneDroite = plateforme.x + plateforme.width - cfg.largeur - 6;
   }
   if (cfg.comportement === "erratique") {
-    monstre.prochainChangement = 0.3 + Math.random() * 0.6;
+    const intervalleInit = cfg.intervalleErratique || { min: 0.3, max: 0.9 };
+    monstre.prochainChangement = intervalleInit.min + Math.random() * (intervalleInit.max - intervalleInit.min);
   }
   if (cfg.tir) {
     // Décalage initial aléatoire pour que plusieurs monstres du même type ne
@@ -2784,7 +2790,8 @@ function simulerMonstres(dtSecondes) {
         m.prochainChangement -= dtSecondes;
         if (m.prochainChangement <= 0) {
           m.vx = (Math.random() < 0.5 ? -1 : 1) * cfg.vitesse * (0.5 + Math.random() * 0.5);
-          m.prochainChangement = 0.3 + Math.random() * 0.7;
+          const intervalle = cfg.intervalleErratique || { min: 0.3, max: 1.0 };
+          m.prochainChangement = intervalle.min + Math.random() * (intervalle.max - intervalle.min);
         }
         m.x += m.vx * dtSecondes;
         if (m.x < m.borneGauche) {
