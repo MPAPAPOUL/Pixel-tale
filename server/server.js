@@ -368,6 +368,25 @@ const MONSTRES_CONFIG = {
     comportement: "patrouille",
     xp: 26,
   },
+  // Mannequin d'entraînement du tutoriel (Estenoise-les-Brumes) : immobile
+  // (vitesse 0, réutilise le comportement "patrouille" pour éviter tout
+  // nouveau cas particulier dans simulerMonstres), PV volontairement bas
+  // pour tomber en 1-3 coups même pour un tout nouveau personnage niveau 1,
+  // et ne riposte jamais (degatsContact: 0) — purement pédagogique. Drop
+  // garanti géré à part dans infligerDegatsMonstre (la zone "village" n'est
+  // couverte par aucune des branches de loot existantes).
+  mannequinEntrainement: {
+    label: "Mannequin d'entraînement",
+    couleur: "#8a7a5a",
+    largeur: 34,
+    hauteur: 50,
+    vitesse: 0,
+    hpMax: 20,
+    degatsContact: 0,
+    delaiRespawn: 6,
+    comportement: "patrouille",
+    xp: 1,
+  },
 };
 
 // Compteur global : garantit un id UNIQUE par monstre. L'ancien id dérivé de
@@ -1039,6 +1058,9 @@ function incrementerQuete(p, type, montant) {
 // ---------------------------------------------------------------------------
 
 const HAUTS_FAITS = [
+  // Récompense de fin de tutoriel (voir terminerTutoriel) — premier titre
+  // que tout nouveau joueur peut obtenir, avant même "Premier Sang".
+  { id: "tutoriel-termine", nom: "Nouveau Héros", titre: "Nouveau Héros", description: "Terminer le tutoriel d'Estenoise-les-Brumes.", cible: 1, stat: "tutorielTermine" },
   { id: "premier-sang", nom: "Premier Sang", titre: "Aspirant", description: "Vaincre son premier monstre.", cible: 1, stat: "monstresTues" },
   { id: "chasseur", nom: "Chasseur Aguerri", titre: "Chasseur", description: "Vaincre 50 monstres.", cible: 50, stat: "monstresTues" },
   { id: "exterminateur", nom: "Exterminateur", titre: "Exterminateur", description: "Vaincre 250 monstres.", cible: 250, stat: "monstresTues" },
@@ -1870,7 +1892,11 @@ function genererZoneVillage() {
     plateformes,
     largeur,
     hauteur: MONDE_HAUTEUR,
-    monstres: [],
+    // Mannequin d'entraînement du tutoriel (voir avancerTutoriel) : posé sur
+    // le sol tout près du point d'apparition des nouveaux personnages
+    // (x:60, voir la branche "nouveauPersonnage" du handler de connexion),
+    // pour être immédiatement visible sans avoir à chercher.
+    monstres: [creerMonstre("mannequinEntrainement", { x: 130, y: 600, width: 60 })],
     projectiles: [],
     projectilesMonstres: [],
     effets: [],
@@ -2487,7 +2513,7 @@ function creerJoueur() {
     // Compteurs CUMULATIFS (jamais remis à zéro, contrairement à la
     // progression des quêtes journalières) — servent uniquement de
     // conditions aux hauts faits, voir verifierHautsFaits plus bas.
-    statsVie: { monstresTues: 0, orGagneTotal: 0, questesReclamees: 0, sireHanoVaincus: 0, dragonNoirVaincus: 0, chevalierNoirVaincus: 0, gemmesGagneesTotal: 0 },
+    statsVie: { monstresTues: 0, orGagneTotal: 0, questesReclamees: 0, sireHanoVaincus: 0, dragonNoirVaincus: 0, chevalierNoirVaincus: 0, gemmesGagneesTotal: 0, tutorielTermine: 0 },
     // Hauts faits débloqués (tableau d'ids, voir HAUTS_FAITS) + titre
     // actuellement affiché sous le pseudo (doit être l'un des hauts faits
     // débloqués, ou null) — voir verifierHautsFaits / message "definirTitre".
@@ -2499,7 +2525,49 @@ function creerJoueur() {
     // toast de bienvenue associé, même mécanique.
     connexionQuotidienne: { dernierJour: null, serie: 0 },
     dernierRecompenseConnexion: null,
+    // Tutoriel guidé d'Estenoise-les-Brumes (voir avancerTutoriel plus bas) :
+    // etape 0 déplacement, 1 combat (mannequin), 2 butin, 3 caractéristique,
+    // 4 sorts/mana/cooldowns/vie, 5 = terminé. Par défaut actif pour tout
+    // joueur fraîchement créé par creerJoueur() ; explicitement désactivé
+    // dans appliquerProgression pour les personnages déjà existants (pas
+    // question de l'imposer après coup à quelqu'un qui a déjà commencé
+    // avant l'ajout de cette fonctionnalité).
+    tutoriel: { etape: 0, termine: false },
   };
+}
+
+// Récompense de fin de tutoriel (or/gemmes + titre "Nouveau Héros", voir le
+// haut fait dédié "tutoriel-termine" dans HAUTS_FAITS) — factorisée à part
+// de avancerTutoriel pour être appelable aussi bien en arrivant naturellement
+// à la dernière étape qu'en passant le tutoriel d'un coup (message
+// "tutorielPasser"), sans jamais l'accorder deux fois (`statsVie
+// .tutorielTermine` sert de verrou, en plus de piloter le haut fait
+// lui-même).
+function terminerTutoriel(joueur) {
+  if (!joueur.tutoriel || joueur.tutoriel.termine) return;
+  joueur.tutoriel.etape = 5;
+  joueur.tutoriel.termine = true;
+  if (!joueur.statsVie.tutorielTermine) {
+    joueur.statsVie.tutorielTermine = 1;
+    joueur.or = (joueur.or || 0) + 30;
+    joueur.gemmes = (joueur.gemmes || 0) + 20;
+    verifierHautsFaits(joueur); // débloque le haut fait "tutoriel-termine" (titre "Nouveau Héros"), équipé automatiquement si aucun titre n'est encore choisi
+  }
+}
+
+// Fait avancer le tutoriel de `joueur` à l'étape suivante SI il est
+// actuellement bien à `etapeAttendue` (no-op sinon : tutoriel déjà terminé,
+// joueur pas encore arrivé à cette étape, ou double-déclenchement du même
+// événement) — centralise la logique plutôt que de la dupliquer à chaque
+// point d'accroche (déplacement, combat, butin, caractéristique, sorts).
+function avancerTutoriel(joueur, etapeAttendue) {
+  const t = joueur.tutoriel;
+  if (!t || t.termine || t.etape !== etapeAttendue) return;
+  if (etapeAttendue + 1 >= 5) {
+    terminerTutoriel(joueur);
+  } else {
+    t.etape = etapeAttendue + 1;
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -2531,6 +2599,7 @@ function ramasserObjets(zone, p) {
   for (const objet of ramasses) {
     p.inventaire[objet.type] = (p.inventaire[objet.type] || 0) + 1;
   }
+  avancerTutoriel(p, 2); // étape "butin" : ramasser ce que le mannequin a laissé tomber
   const [premier, ...reste] = ramasses;
   const legendaire = ramasses.some((o) => o.type.endsWith("Legendaire"));
   const mythique = ramasses.some((o) => o.type.endsWith("Mythique")); // jamais au sol en pratique (voir essayerDropLegendaireBoss), gardé par symétrie
@@ -2549,6 +2618,7 @@ function simulerPhysique(dtSecondes) {
     if (!p.alive) continue; // le corps reste figé pendant le K.O.
     const zone = zoneDeJoueur(p);
 
+    if (p.input.left || p.input.right) avancerTutoriel(p, 0); // étape "déplacement"
     if (p.input.f) ramasserObjets(zone, p);
 
     if (p.dashRestant > 0) {
@@ -2799,6 +2869,13 @@ function infligerDegatsMonstre(zone, m, degats, joueurId) {
   if (m.morte) return;
   m.hostile = true; // un gobelin neutre (voir MONSTRES_CONFIG.gobelinNeutre) devient hostile dès qu'un joueur le frappe, sans effet sur les autres types (déjà hostiles)
   m.hp = Math.max(0, m.hp - degats);
+  if (m.type === "mannequinEntrainement") {
+    // Étape "combat" du tutoriel : validée dès le premier coup porté, pas
+    // besoin d'attendre que le mannequin tombe à 0 PV (qui peut prendre
+    // plusieurs coups selon la classe).
+    const attaquant = players.get(joueurId);
+    if (attaquant) avancerTutoriel(attaquant, 1);
+  }
   if (m.hp === 0) {
     m.morte = true;
     m.respawnRestant = MONSTRES_CONFIG[m.type].delaiRespawn;
@@ -2835,6 +2912,13 @@ function infligerDegatsMonstre(zone, m, degats, joueurId) {
       essayerDropArmeTiere(zone, m.x + cfg.largeur / 2, m.y + cfg.hauteur / 2);
     } else if (zone.type === "verthige") {
       essayerDropFragment(); // Fisselo / Troubalourd / Tiralark de Berge-Rhak : chance de fragment de clé
+    } else if (m.type === "mannequinEntrainement") {
+      // La zone "village" n'est couverte par aucune des branches ci-dessus :
+      // drop garanti (pas de jet aléatoire, voir essayerDropArme) pour que
+      // l'étape "butin" du tutoriel soit toujours possible.
+      const cfg = MONSTRES_CONFIG[m.type];
+      const type = ORDRE_LOOT_BASE[Math.floor(Math.random() * ORDRE_LOOT_BASE.length)];
+      deposerObjetAuSol(zone, type, m.x + cfg.largeur / 2, m.y + cfg.hauteur / 2);
     }
   }
 }
@@ -3708,6 +3792,7 @@ function construireEtatPourJoueur(p, classement) {
       pointsDisponibles: p.pointsDisponibles || 0,
       statsAlouees: p.statsAlouees,
       titreActif: p.titreActif || null,
+      tutoriel: p.tutoriel || null,
     },
     players: Array.from(players.values())
       .filter((autre) => autre.zone === p.zone)
@@ -4090,6 +4175,7 @@ function extraireProgression(p) {
     titreActif: p.titreActif,
     connexionQuotidienne: p.connexionQuotidienne,
     apparence: p.apparence,
+    tutoriel: p.tutoriel,
   };
 }
 
@@ -4151,6 +4237,12 @@ function appliquerProgression(p, sauvegarde) {
   if (sauvegarde.connexionQuotidienne && typeof sauvegarde.connexionQuotidienne.serie === "number") {
     Object.assign(p.connexionQuotidienne, sauvegarde.connexionQuotidienne);
   }
+  // Tutoriel : restauré tel quel si présent (joueur qui s'était déconnecté
+  // en plein milieu), sinon explicitement marqué terminé plutôt que de
+  // laisser le défaut "actif" posé par creerJoueur — un personnage déjà
+  // existant (sauvegarde antérieure à cette fonctionnalité, ou simplement
+  // pas nouveau) n'a pas à se le voir imposer après coup.
+  p.tutoriel = sauvegarde.tutoriel || { etape: 5, termine: true };
   recalculerStatsEquipement(p); // recalcule hpMax/manaMax à partir de la progression restaurée
   p.hp = p.hpMax;
   p.mana = p.manaMax;
@@ -4256,6 +4348,13 @@ wss.on("connection", (ws, req) => {
       recalculerStatsEquipement(joueur);
       joueur.hp = joueur.hpMax;
       joueur.mana = joueur.manaMax;
+      // Tutoriel d'Estenoise-les-Brumes (voir avancerTutoriel) : tout nouveau
+      // personnage y apparaît directement plutôt qu'à Berge-Rhak, avec 5
+      // points de caractéristique d'avance pour pouvoir vivre l'étape
+      // "attribuer un point" sans devoir d'abord monter de niveau.
+      joueur.zone = "village";
+      joueur.x = 60;
+      joueur.pointsDisponibles = 5;
       sauvegarderPersonnage(jeton, joueur); // visible immédiatement dans GET /api/personnages
       sauvegarderComptes();
     } else {
@@ -4379,7 +4478,22 @@ wss.on("connection", (ws, req) => {
         joueur.pointsDisponibles -= applique;
         joueur.statsAlouees[attribut] = (joueur.statsAlouees[attribut] || 0) + applique;
         recalculerStatsEquipement(joueur);
+        avancerTutoriel(joueur, 3); // étape "caractéristique"
       }
+    } else if (message.type === "tutorielEvenement") {
+      // Bouton "Compris" de l'étape sorts/mana/cooldowns/vie (pure
+      // explication, aucune action de jeu à détecter derrière) — voir
+      // avancerTutoriel. `etape` doit correspondre à l'étape actuelle du
+      // joueur, sans quoi le message est ignoré (avancerTutoriel est déjà
+      // un no-op dans ce cas, mais autant éviter un message.etape farfelu).
+      const etape = Number(message.etape);
+      if (Number.isInteger(etape)) avancerTutoriel(joueur, etape);
+    } else if (message.type === "tutorielPasser") {
+      // "Passer le tutoriel" : termine tout de suite, avec la même
+      // récompense que la complétion normale (voir terminerTutoriel) — pas
+      // question de pénaliser un joueur qui connaît déjà le jeu (compte
+      // secondaire, revient après une pause...).
+      terminerTutoriel(joueur);
     } else if (message.type === "teleporter") {
       // Onglet téléporteur (haut droit de l'écran) : voyage instantané vers
       // n'importe quelle destination de DESTINATIONS_TELEPORTEUR, depuis

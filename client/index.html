@@ -825,6 +825,14 @@
   .icone-teleporteur:hover { filter: brightness(1.25); transform: translateY(-1px); }
   .icone-teleporteur:active { transform: translateY(1px); filter: brightness(0.95); }
   .icone-teleporteur-symbole { font-size: 22px; filter: drop-shadow(0 0 4px rgba(110,220,255,0.6)); }
+  /* Invite à utiliser le téléporteur une fois le tutoriel terminé (voir
+     mettreAJourTutoriel) : halo doré pulsant plutôt qu'un simple texte, pour
+     attirer l'œil sans ajouter de modale supplémentaire. */
+  .icone-teleporteur.tutoriel-surbrillance { animation: tutorielPulseTeleporteur 1.1s ease-in-out infinite; }
+  @keyframes tutorielPulseTeleporteur {
+    0%, 100% { box-shadow: 0 0 0 2px rgba(5,15,20,0.6), 0 4px 10px rgba(0,0,0,0.45), 0 0 0 0 rgba(255,214,110,0.7); }
+    50% { box-shadow: 0 0 0 2px rgba(5,15,20,0.6), 0 4px 10px rgba(0,0,0,0.45), 0 0 0 9px rgba(255,214,110,0); }
+  }
 
   /* --- Icône boutique à gemmes (juste à côté du téléporteur) ------------- */
   .icone-boutique-gemmes {
@@ -1870,6 +1878,59 @@
   .quete-bouton-reclamer:disabled { opacity: 0.4; cursor: default; }
   .quete-bouton-reclamer.deja-reclamee { border-color: var(--hairline); background: transparent; }
 
+  /* --- Tutoriel guidé d'Estenoise-les-Brumes (voir mettreAJourTutoriel) :
+       carte flottante en bas de l'écran, JAMAIS bloquante (pas de fond
+       assombri façon modale) puisque le joueur doit pouvoir bouger/agir
+       pendant qu'elle est affichée — seule l'étape "sorts/mana/cooldowns/
+       vie" (pure explication) a un bouton de confirmation. ------------- */
+  .tutoriel-panel {
+    position: absolute;
+    left: 50%;
+    bottom: 86px;
+    transform: translateX(-50%);
+    z-index: 15;
+    width: min(92%, 420px);
+    padding: 12px 16px 10px;
+    background: rgba(20,14,10,0.88);
+    border: 2px solid var(--gold);
+    border-radius: 14px;
+    text-align: center;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.45);
+    pointer-events: auto;
+  }
+  .tutoriel-panel.masque { display: none; }
+  .tutoriel-titre {
+    font-family: "Baloo 2", sans-serif;
+    font-weight: 700;
+    color: #f0d9a0;
+    font-size: 14px;
+    margin-bottom: 4px;
+  }
+  .tutoriel-texte { font-size: 12.5px; color: #e9e2fa; line-height: 1.45; margin-bottom: 9px; }
+  .tutoriel-actions { display: flex; justify-content: center; align-items: center; gap: 12px; }
+  .tutoriel-bouton-compris {
+    padding: 6px 16px;
+    border-radius: 8px;
+    border: 1px solid var(--gold);
+    background: rgba(201,162,75,0.22);
+    color: #fff;
+    font-family: "Baloo 2", sans-serif;
+    font-weight: 700;
+    font-size: 12.5px;
+    cursor: pointer;
+  }
+  .tutoriel-bouton-compris.masque { display: none; }
+  .tutoriel-lien-passer {
+    background: none;
+    border: none;
+    color: #9d8fc7;
+    font-size: 11px;
+    text-decoration: underline;
+    cursor: pointer;
+    padding: 4px;
+  }
+  .tutoriel-lien-passer:hover { color: #cfc3ef; }
+
   /* --- Suivi de quêtes compact (sous l'icône quêtes) : aperçu permanent des
        3 objectifs du jour sans avoir à ouvrir la modale. 3 lignes fixes,
        créées une seule fois au chargement puis seulement mises à jour en
@@ -2396,6 +2457,20 @@
       <div class="pnj-bulle masque" id="pnj-bulle">
         <div class="pnj-bulle-nom" id="pnj-bulle-nom"></div>
         <div class="pnj-bulle-texte" id="pnj-bulle-texte"></div>
+      </div>
+
+      <!-- Tutoriel guidé d'Estenoise-les-Brumes (voir mettreAJourTutoriel) :
+           jamais bloquante, pas de fond assombri — le joueur doit pouvoir
+           bouger/agir pendant qu'elle reste affichée. "Compris" n'apparaît
+           que pour l'étape purement explicative (sorts/mana/cooldowns/vie),
+           "Passer le tutoriel" reste toujours disponible. -->
+      <div class="tutoriel-panel masque" id="tutoriel-panel">
+        <div class="tutoriel-titre" id="tutoriel-titre"></div>
+        <div class="tutoriel-texte" id="tutoriel-texte"></div>
+        <div class="tutoriel-actions">
+          <button type="button" class="tutoriel-bouton-compris masque" id="tutoriel-bouton-compris">Compris !</button>
+          <button type="button" class="tutoriel-lien-passer" id="tutoriel-lien-passer">Passer le tutoriel</button>
+        </div>
       </div>
 
       <!-- Bandeau de reconnexion (coupure réseau / retour d'arrière-plan
@@ -4010,6 +4085,7 @@ function render() {
   mettreAJourOr();
   mettreAJourZoneNom();
   mettreAJourIconeTeleporteur();
+  mettreAJourTutoriel();
   // Équipement + inventaire vivent maintenant tous les deux dans la fiche
   // de personnage (icône déployable 📜/C) : inutile de les mettre à jour
   // tant qu'elle n'est pas ouverte (mettreAJourInventaire est appelée
@@ -6932,6 +7008,13 @@ let onboardingVerifie = false;
 function verifierOnboarding() {
   if (onboardingVerifie) return;
   onboardingVerifie = true;
+  // Le tutoriel guidé d'Estenoise-les-Brumes (voir mettreAJourTutoriel) fait
+  // désormais tout ce que ce message statique faisait — et bien plus
+  // (déplacement, combat, butin, caractéristique, sorts/mana/cooldowns/vie,
+  // étape par étape) — donc plus question de l'afficher en plus pour un
+  // joueur qui a un tutoriel serveur en cours ou déjà terminé (autrement
+  // dit : tout le monde depuis l'ajout de cette fonctionnalité).
+  if (state.perso && state.perso.tutoriel) return;
   try {
     if (localStorage.getItem("rb_onboarding_vu_v2")) return;
   } catch {
@@ -6956,13 +7039,55 @@ function mettreAJourIconeTeleporteur() {
   const dansDonjon = !!(state.donjon && state.donjon.dansDonjon);
   const dansSalleTrone = !!(state.salleTroneAmbre && state.salleTroneAmbre.dansSalle);
   const masque = dansDonjon || dansSalleTrone;
-  document.getElementById("icone-teleporteur").classList.toggle("masque", masque);
+  const icone = document.getElementById("icone-teleporteur");
+  icone.classList.toggle("masque", masque);
   if (masque) document.getElementById("modale-teleporteur").classList.add("masque");
   // Boutique à gemmes : même visibilité que le téléporteur juste à côté (pas
   // de sens en plein combat de donjon/Salle du Trône).
   document.getElementById("icone-boutique-gemmes").classList.toggle("masque", masque);
   if (masque) document.getElementById("modale-boutique-gemmes").classList.add("masque");
+  // Invite à quitter le village une fois le tutoriel terminé (voir
+  // mettreAJourTutoriel) : halo pulsant tant qu'on reste à Estenoise, se
+  // désactive tout seul dès qu'on téléporte ailleurs.
+  const tutoriel = state.perso && state.perso.tutoriel;
+  const inviteTeleporteur = !masque && !!tutoriel && tutoriel.termine && state.zoneActuelle && state.zoneActuelle.id === "village";
+  icone.classList.toggle("tutoriel-surbrillance", inviteTeleporteur);
 }
+
+// Tutoriel guidé d'Estenoise-les-Brumes (voir avancerTutoriel côté serveur) :
+// un texte par étape, `bouton: true` pour la seule étape purement
+// explicative (pas d'action de jeu à détecter derrière) qui a donc besoin
+// d'un "Compris !" explicite plutôt que d'avancer toute seule.
+const TEXTES_TUTORIEL = [
+  { titre: "Bienvenue à Estenoise-les-Brumes !", texte: "Utilise les flèches (ou ZQSD selon ton réglage) pour te déplacer." },
+  { titre: "Un mannequin d'entraînement...", texte: "Approche-toi et appuie sur ta touche de sort de base (A) pour l'attaquer !" },
+  { titre: "Butin au sol", texte: "Il a laissé tomber quelque chose — approche-toi et appuie sur F pour le ramasser." },
+  { titre: "Fiche de personnage", texte: "Ouvre ta fiche (touche C ou l'icône 📜 en haut à gauche) et dépense un point de caractéristique." },
+  {
+    titre: "Sorts, Mana, Cooldowns et Vie",
+    texte: "Tes PV et ton Mana s'affichent en haut à gauche. Chaque sort (A/Z/E/R) coûte du Mana et a son propre temps de recharge (cooldown) — surveille les deux avant de foncer !",
+    bouton: true,
+  },
+];
+
+function mettreAJourTutoriel() {
+  const panel = document.getElementById("tutoriel-panel");
+  const tutoriel = state.perso && state.perso.tutoriel;
+  const actif = !!tutoriel && !tutoriel.termine;
+  panel.classList.toggle("masque", !actif);
+  if (!actif) return;
+  const info = TEXTES_TUTORIEL[tutoriel.etape] || TEXTES_TUTORIEL[0];
+  document.getElementById("tutoriel-titre").textContent = info.titre;
+  document.getElementById("tutoriel-texte").textContent = info.texte;
+  document.getElementById("tutoriel-bouton-compris").classList.toggle("masque", !info.bouton);
+}
+document.getElementById("tutoriel-bouton-compris").addEventListener("click", () => {
+  const tutoriel = state.perso && state.perso.tutoriel;
+  if (tutoriel) envoyer({ type: "tutorielEvenement", etape: tutoriel.etape });
+});
+document.getElementById("tutoriel-lien-passer").addEventListener("click", () => {
+  envoyer({ type: "tutorielPasser" });
+});
 
 function mettreAJourTeleporteur() {
   const conteneur = document.getElementById("liste-destinations");
