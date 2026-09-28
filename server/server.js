@@ -324,6 +324,50 @@ const MONSTRES_CONFIG = {
     neutre: true,
     xp: 7,
   },
+  // Crique des Corsaires (voir genererZonePlage plus bas) : trois monstres
+  // distincts avec leur propre planche de sprites animée (16/20/10 frames,
+  // voir SPRITES_PIRATES côté client) plutôt qu'un gabarit reteinté — assets
+  // fournis. Stats calées entre Crêtes d'Ambre (niveau 10) et Marais de Suin
+  // (niveau 20), la zone étant placée au niveau 15.
+  squidman: {
+    label: "Homme-Calmar",
+    couleur: "#3a7a6b",
+    largeur: 38,
+    hauteur: 52,
+    vitesse: 60, // erratique et vif, comme Fisselo
+    hpMax: 38,
+    degatsContact: 9,
+    delaiRespawn: 8,
+    comportement: "erratique",
+    xp: 9,
+  },
+  pirateZombie: {
+    label: "Pirate Zombie",
+    couleur: "#5a6b4f",
+    largeur: 38,
+    hauteur: 56,
+    vitesse: 38,
+    hpMax: 65,
+    degatsContact: 15,
+    delaiRespawn: 8,
+    comportement: "patrouille",
+    xp: 14,
+  },
+  // Mob élite de la crique (même esprit que Minotaure pour l'Antre) : plus
+  // rare, nettement plus costaud, pour marquer sa place de "chef" parmi les
+  // trois monstres de la zone.
+  pirateLeader: {
+    label: "Capitaine Corsaire",
+    couleur: "#8a2b2b",
+    largeur: 44,
+    hauteur: 62,
+    vitesse: 44,
+    hpMax: 110,
+    degatsContact: 22,
+    delaiRespawn: 12,
+    comportement: "patrouille",
+    xp: 26,
+  },
 };
 
 // Compteur global : garantit un id UNIQUE par monstre. L'ancien id dérivé de
@@ -1881,8 +1925,69 @@ function genererZoneVillage() {
   };
 }
 
+// Crique des Corsaires : une map à part plutôt qu'un biome de plus dans
+// BIOMES_DEFINITION, car elle mélange TROIS monstres différents (voir
+// MONSTRES_CONFIG.squidman/pirateZombie/pirateLeader ci-dessus) au lieu d'un
+// seul gabarit reteinté — la génération automatique des biomes ne prévoit
+// qu'un type de monstre par région. Relief généré comme un biome classique
+// (genererPlateformes), placée au niveau 15 (entre Crêtes d'Ambre et Marais
+// de Suin). Assets fournis pour les 3 monstres + le décor plage.
+function genererZonePlage() {
+  const rng = mulberry32(1000 + 999 * 97); // seed dédiée, hors de la plage utilisée par les biomes (indexSeed 0..8)
+  const largeur = 1400 + Math.floor(rng() * 260);
+  const plateformes = genererPlateformes(rng, largeur, 9);
+  const plateformesSurelevees = plateformes.slice(1);
+  const plateformeSommet = plateformes.reduce((sommet, p) => (p.y < sommet.y ? p : sommet), plateformes[0]);
+  const xGrimpe = Math.round(plateformeSommet.x + plateformeSommet.width * (0.3 + rng() * 0.4));
+  const SOL_Y = 600;
+  const MARGE_BAS = 20;
+
+  const zone = {
+    id: "plage-corsaire",
+    type: "biome",
+    nom: "Crique des Corsaires",
+    blurb: "Une plage oubliée où des pirates depuis longtemps décédés montent encore la garde.",
+    niveauMob: 15,
+    tierLoot: 1, // niveau 15 ≤ 20 → même palier d'équipement que Crêtes d'Ambre/Marais de Suin
+    plateformes,
+    largeur,
+    hauteur: MONDE_HAUTEUR,
+    monstres: [],
+    projectiles: [],
+    projectilesMonstres: [],
+    effets: [],
+    objetsAuSol: [],
+    sireHano: null,
+    lianes: [{
+      x: xGrimpe,
+      y: plateformeSommet.y,
+      hauteur: SOL_Y - plateformeSommet.y - MARGE_BAS,
+      type: "liane",
+    }],
+  };
+
+  const plateformesMelangees = plateformesSurelevees.slice();
+  for (let i = plateformesMelangees.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [plateformesMelangees[i], plateformesMelangees[j]] = [plateformesMelangees[j], plateformesMelangees[i]];
+  }
+  // Cycle des 3 types pirates plutôt qu'un tirage aléatoire, pour garantir
+  // qu'on croise bien les trois sur une même génération de zone — le
+  // Capitaine (élite) est volontairement plus rare que les deux autres.
+  const cycleTypesPirates = ["squidman", "pirateZombie", "squidman", "pirateZombie", "pirateLeader"];
+  const nbMonstres = 5 + Math.floor(rng() * 2);
+  for (let i = 0; i < nbMonstres; i++) {
+    const plateforme = plateformesMelangees[i % plateformesMelangees.length] || plateformes[0];
+    zone.monstres.push(creerMonstre(cycleTypesPirates[i % cycleTypesPirates.length], plateforme));
+  }
+  zone.monstres.push(creerMonstre("gobelinNeutre", plateformes[0]));
+  zone.monstres.push(creerMonstre("gobelinNeutre", plateformes[0]));
+  return zone;
+}
+
 const ZONES_PERSISTANTES = new Map();
 ZONES_PERSISTANTES.set("village", genererZoneVillage());
+ZONES_PERSISTANTES.set("plage-corsaire", genererZonePlage());
 BIOMES_DEFINITION.forEach((biome, i) => ZONES_PERSISTANTES.set(biome.id, genererZoneBiome(biome, i)));
 
 // Le Dragon Noir vit dans Couronne d'Orage, la dernière région du jeu (voir
@@ -1904,6 +2009,12 @@ const NIVEAU_REQUIS_PALIER = 3;
 const DESTINATIONS_TELEPORTEUR = [
   { id: ZONE_VERTHIGE, nom: zoneVerthige.nom, blurb: zoneVerthige.blurb, niveau: 1 },
   { id: "village", nom: ZONES_PERSISTANTES.get("village").nom, blurb: ZONES_PERSISTANTES.get("village").blurb, niveau: 1 },
+  {
+    id: "plage-corsaire",
+    nom: ZONES_PERSISTANTES.get("plage-corsaire").nom,
+    blurb: ZONES_PERSISTANTES.get("plage-corsaire").blurb,
+    niveau: ZONES_PERSISTANTES.get("plage-corsaire").niveauMob,
+  },
   ...BIOMES_DEFINITION.map((b) => ({ id: b.id, nom: b.nom, blurb: b.blurb, niveau: b.niveau })),
   // La Salle du Trône n'apparaît PAS ici : contrairement aux biomes, elle ne
   // se rejoint que par sa porte (voir plus bas), pas par le réseau de
@@ -3160,7 +3271,10 @@ function simulerFoudreMonstresZone(zone, dtSecondes) {
           const distance = Math.hypot(p.x + JOUEUR_LARGEUR / 2 - zoneAoe.x, p.y + JOUEUR_HAUTEUR / 2 - zoneAoe.y);
           if (distance <= zoneAoe.rayon) infligerDegatsJoueur(p, zoneAoe.degats, zoneAoe.x);
         }
-        zone.effets.push({ id: prochainEffetId++, x: zoneAoe.x, y: zoneAoe.y, rayon: zoneAoe.rayon, couleur: "#f0d95a", vie: 0.3, vieMax: 0.3 });
+        // Explosion toxique verte (demande explicite) à la place de l'éclair
+        // jaune d'origine — voir dessinerExplosionToxique côté client, qui
+        // anime les 10 frames du sprite sur la durée de vie de l'effet.
+        zone.effets.push({ id: prochainEffetId++, x: zoneAoe.x, y: zoneAoe.y, rayon: zoneAoe.rayon, couleur: "#7fe05a", effet: "explosion_toxique", vie: 0.5, vieMax: 0.5 });
         m.aoeEnAttente = null;
       }
       continue;

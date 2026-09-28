@@ -2763,8 +2763,10 @@ const TEINTES_BIOMES = {
   "abysses-luisantes": "hue-rotate(165deg) saturate(1.5) brightness(1.05)",
   "jardins-petrifies": "hue-rotate(280deg) saturate(1.3) brightness(0.95)",
   "couronne-orage": "saturate(1.7) brightness(1.3) contrast(1.1)",
+  "plage-corsaire": "hue-rotate(20deg) saturate(1.15) brightness(1.1)",
 };
 const COULEURS_BIOMES = {
+  "plage-corsaire": "#d9b26a",
   "cretes-ambre": "#c98a2b",
   "marais-de-suin": "#4f6b3a",
   "foret-chuchote": "#3a6b5f",
@@ -3164,6 +3166,15 @@ const IMGS_ECLAIR_CHEVALIER = [
   SPRITES_CHEVALIER_NOIR_EFFETS.eclair3,
 ];
 
+// Explosion toxique verte (foudre du Chief Goblin/Troubalourd, voir
+// simulerFoudreMonstresZone côté serveur) : 10 frames découpées d'une
+// animation d'explosion complète (naissance → pic → dissipation), jouées
+// une seule fois sur toute la durée de vie de l'effet (voir
+// dessinerExplosionToxique) plutôt qu'un simple cercle qui s'estompe.
+const IMGS_EXPLOSION_TOXIQUE = Array.from({ length: 10 }, (_, i) =>
+  chargerImage(`sprites/explosion-toxique/frame_${String(i).padStart(2, "0")}.png`)
+);
+
 const SPRITES_MONSTRES = {
   troubalourd: {
     idle: chargerImage("sprites/troubalourd/idle.png"),
@@ -3231,6 +3242,59 @@ const SPRITES_MONSTRES = {
   },
 };
 
+function chargerImagesNumerotees(prefixe, nombre) {
+  return Array.from({ length: nombre }, (_, i) => chargerImage(`${prefixe}${String(i).padStart(2, "0")}.png`));
+}
+
+// Monstres de la Crique des Corsaires (voir MONSTRES_CONFIG côté serveur) :
+// contrairement à SPRITES_MONSTRES ci-dessus (une seule image par pose), ces
+// trois-là ont de vraies séquences d'animation (16 à 20 frames) — gérées à
+// part par poseMonstreAnime plutôt que par poseMonstre, pour un rendu bien
+// plus fluide que le reste du bestiaire (demande explicite).
+const SPRITES_PIRATES = {
+  pirateLeader: {
+    idle: chargerImagesNumerotees("sprites/pirate-leader/idle_", 16),
+    walk: chargerImagesNumerotees("sprites/pirate-leader/walk_", 20),
+    attack: chargerImagesNumerotees("sprites/pirate-leader/attack_", 10),
+  },
+  pirateZombie: {
+    idle: chargerImagesNumerotees("sprites/pirate-zombie/idle_", 16),
+    walk: chargerImagesNumerotees("sprites/pirate-zombie/walk_", 20),
+    attack: chargerImagesNumerotees("sprites/pirate-zombie/attack_", 10),
+  },
+  squidman: {
+    idle: chargerImagesNumerotees("sprites/squidman/idle_", 16),
+    walk: chargerImagesNumerotees("sprites/squidman/walk_", 20),
+    attack: chargerImagesNumerotees("sprites/squidman/attack_", 10),
+  },
+};
+// id de monstre → timestamp de début de l'attaque en cours (même principe
+// que flashMonstres ci-dessous) : nécessaire pour jouer les 10 frames
+// d'attaque une seule fois du début à la fin plutôt qu'en boucle, puisque
+// l'objet monstre lui-même est recréé à chaque état réseau reçu (impossible
+// d'y stocker directement un "début d'attaque" qui survive d'une frame à
+// l'autre).
+let attaqueDebutPirates = {};
+
+function poseMonstreAnime(m, animes) {
+  const maintenant = performance.now();
+  if (m.attaque && animes.attack) {
+    const DUREE_MS = 250; // doit rester cohérent avec attaqueAnimRestant côté serveur
+    let debut = attaqueDebutPirates[m.id];
+    if (!debut || maintenant - debut > DUREE_MS) {
+      debut = maintenant;
+      attaqueDebutPirates[m.id] = debut;
+    }
+    const progression = Math.min(0.999, (maintenant - debut) / DUREE_MS);
+    return animes.attack[Math.floor(progression * animes.attack.length)];
+  }
+  delete attaqueDebutPirates[m.id];
+  if (m.enMouvement && animes.walk) {
+    return animes.walk[Math.floor(maintenant / 45) % animes.walk.length]; // 20 frames ≈ 0,9s par cycle
+  }
+  return animes.idle[Math.floor(maintenant / 90) % animes.idle.length]; // 16 frames ≈ 1,44s par cycle
+}
+
 function imagePrete(img) {
   return !!img && img.complete && img.naturalWidth > 0;
 }
@@ -3255,6 +3319,11 @@ function poseJoueur(p) {
 // Même logique pour les monstres, plus simple (pas de KO ni de double
 // pose d'attaque — les monstres disparaissent quand leurs PV tombent à 0).
 function poseMonstre(m) {
+  // Monstres animés (voir SPRITES_PIRATES) : logique dédiée à part, séquences
+  // de plusieurs frames plutôt qu'une seule image par pose.
+  const animes = SPRITES_PIRATES[m.base || m.type];
+  if (animes) return poseMonstreAnime(m, animes);
+
   // Les monstres originaux des régions étendues n'ont pas leur propre
   // planche de sprites (aucun nouvel art disponible) : ils réutilisent
   // celle du gabarit indiqué par le serveur (`m.base`), reteintée à
@@ -4051,27 +4120,42 @@ function calculerCamera() {
 // Forêt Chuchote, arbres gelés pour les Pics Verglacés). Les zones absentes
 // de cette liste gardent le ciel procédural existant (voir dessinerCiel) —
 // pas de bon set disponible pour elles pour l'instant.
-const ZONES_AVEC_DECOR = ["verthige", "marais-de-suin", "foret-chuchote", "pics-verglaces"];
-// Index 0 = calque "1.png" (avant-plan, défile vite) → index 6 = calque
-// "7.png" (ciel plat, quasi immobile), pour une sensation de profondeur.
-const VITESSES_PARALLAXE_DECOR = [0.5, 0.4, 0.32, 0.24, 0.17, 0.1, 0.03];
+// Nombre de calques numérotés (1.png, 2.png, ...) disponibles par zone — pas
+// forcément 7 : la plage n'en a que 5 (decor/land/sea/cloud/sky, pas d'île
+// ni de soleil dédié), les autres packs utilisés jusqu'ici en ont 7.
+const ZONES_AVEC_DECOR = {
+  verthige: 7,
+  "marais-de-suin": 7,
+  "foret-chuchote": 7,
+  "pics-verglaces": 7,
+  "plage-corsaire": 5,
+};
 const DECORS_ZONES = {};
-for (const idZoneDecor of ZONES_AVEC_DECOR) {
-  DECORS_ZONES[idZoneDecor] = [1, 2, 3, 4, 5, 6, 7].map((n) => chargerImage(`assets/backgrounds/${idZoneDecor}/${n}.png`));
+for (const idZoneDecor in ZONES_AVEC_DECOR) {
+  const nbCalques = ZONES_AVEC_DECOR[idZoneDecor];
+  DECORS_ZONES[idZoneDecor] = Array.from({ length: nbCalques }, (_, i) =>
+    chargerImage(`assets/backgrounds/${idZoneDecor}/${i + 1}.png`)
+  );
 }
 
-// Dessine les 7 calques d'un décor, du plus lointain au plus proche, chacun
+// Dessine les calques d'un décor, du plus lointain au plus proche, chacun
 // mis à l'échelle sur la hauteur du canvas puis répété horizontalement (la
 // largeur d'un monde dépasse largement celle d'une image) avec un décalage
-// de parallaxe propre à sa profondeur.
+// de parallaxe propre à sa profondeur — vitesse interpolée entre 0.5
+// (calque 1, avant-plan) et 0.03 (dernier calque, quasi immobile) selon le
+// nombre réel de calques de la zone, pour rester correct que la zone en ait
+// 5 ou 7.
 function dessinerDecorZone(idZoneDecor, camX) {
   const calques = DECORS_ZONES[idZoneDecor];
   const hauteurCible = canvas.height;
-  for (let i = 6; i >= 0; i--) {
+  const dernierIndex = calques.length - 1;
+  for (let i = dernierIndex; i >= 0; i--) {
     const img = calques[i];
     if (!img.complete || !img.naturalWidth) continue;
+    const t = dernierIndex > 0 ? i / dernierIndex : 0;
+    const vitesse = 0.5 - t * (0.5 - 0.03);
     const largeurAffichee = img.naturalWidth * (hauteurCible / img.naturalHeight);
-    const decalage = mod(-camX * VITESSES_PARALLAXE_DECOR[i], largeurAffichee);
+    const decalage = mod(-camX * vitesse, largeurAffichee);
     for (let x = decalage - largeurAffichee; x < canvas.width; x += largeurAffichee) {
       ctx.drawImage(img, x, 0, largeurAffichee, hauteurCible);
     }
@@ -5658,12 +5742,10 @@ function dessinerTelegrapheAoe() {
   // Le Chevalier Noir télégraphie une colonne verticale (voir `colonne` ci-
   // dessous), rendue à part de la boucle circulaire générique.
   if (state.chevalierNoir && state.chevalierNoir.aoeEnAttente) zonesActives.push(state.chevalierNoir.aoeEnAttente);
-  // Foudre du Chief Goblin (Troubalourd, voir simulerFoudreMonstresZone
-  // côté serveur) — même cercle d'avertissement générique, porté par un
-  // monstre commun plutôt qu'un boss unique.
-  for (const m of state.monsters || []) {
-    if (m.aoeEnAttente) zonesActives.push(m.aoeEnAttente);
-  }
+  // Foudre du Chief Goblin (Troubalourd, voir simulerFoudreMonstresZone côté
+  // serveur) : plus de rond rouge de télégraphe (demande explicite) — son
+  // impact se voit directement via l'explosion toxique (voir dessinerEffets/
+  // dessinerExplosionToxique), sans avertissement préalable.
 
   for (const zone of zonesActives) {
     if (zone.colonne) {
@@ -6223,6 +6305,8 @@ function dessinerEffets() {
       dessinerExplosionFeuChevalier(e);
     } else if (e.effet === "eclair_chevalier_impact") {
       dessinerImpactEclairChevalier(e);
+    } else if (e.effet === "explosion_toxique") {
+      dessinerExplosionToxique(e);
     } else {
       ctx.save();
       ctx.globalAlpha = e.opacite * 0.6;
@@ -6327,6 +6411,32 @@ function dessinerImpactEclairChevalier(e) {
   ctx.globalAlpha = Math.max(0, e.opacite) * 0.7;
   ctx.fillStyle = "rgba(180,230,255,0.5)";
   ctx.fillRect(e.x - e.rayon, 0, e.rayon * 2, canvas.height);
+  ctx.restore();
+}
+
+// Explosion toxique verte de la foudre du Chief Goblin (Troubalourd) : joue
+// les 10 frames de IMGS_EXPLOSION_TOXIQUE une seule fois sur toute la durée
+// de vie de l'effet (opacite va de 1 à 0, voir construireEtatPourJoueur côté
+// serveur) plutôt qu'en boucle — la progression de l'animation suit donc
+// directement l'extinction de l'effet, sans dépendre de performance.now().
+function dessinerExplosionToxique(e) {
+  const progression = Math.min(0.999, Math.max(0, 1 - e.opacite));
+  const frames = IMGS_EXPLOSION_TOXIQUE;
+  const img = frames[Math.floor(progression * frames.length)];
+  if (!imagePrete(img)) return;
+  // Le sprite source garde une bonne marge interne (bras de l'explosion qui
+  // rayonnent) : on l'agrandit un peu par rapport au rayon de dégâts réel
+  // pour que la zone d'impact soit visuellement bien couverte.
+  const tailleCible = e.rayon * 2.7;
+  const echelle = tailleCible / Math.max(img.naturalWidth, img.naturalHeight);
+  const largeur = img.naturalWidth * echelle;
+  const hauteur = img.naturalHeight * echelle;
+  ctx.save();
+  // Reste bien visible presque jusqu'à la toute fin plutôt que de s'estomper
+  // dès le début (contrairement au cercle générique) : l'explosion doit se
+  // voir clairement, pas juste clignoter.
+  ctx.globalAlpha = Math.min(1, e.opacite + 0.35);
+  ctx.drawImage(img, e.x - largeur / 2, e.y - hauteur / 2, largeur, hauteur);
   ctx.restore();
 }
 
