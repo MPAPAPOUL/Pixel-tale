@@ -2055,8 +2055,11 @@ BIOMES_DEFINITION.forEach((biome, i) => ZONES_PERSISTANTES.set(biome.id, generer
 // message "teleporter" ci-dessous.
 const NIVEAU_REQUIS_PALIER = 3;
 const DESTINATIONS_TELEPORTEUR = [
-  { id: ZONE_VERTHIGE, nom: zoneVerthige.nom, blurb: zoneVerthige.blurb, niveau: 1 },
+  // Estenoise-les-Brumes en tête de liste (demande explicite) : le village
+  // neutre devient le "hub" de référence du réseau de téléporteurs, devant
+  // Berge-Rhak elle-même.
   { id: "village", nom: ZONES_PERSISTANTES.get("village").nom, blurb: ZONES_PERSISTANTES.get("village").blurb, niveau: 1 },
+  { id: ZONE_VERTHIGE, nom: zoneVerthige.nom, blurb: zoneVerthige.blurb, niveau: 1 },
   {
     id: "plage-corsaire",
     nom: ZONES_PERSISTANTES.get("plage-corsaire").nom,
