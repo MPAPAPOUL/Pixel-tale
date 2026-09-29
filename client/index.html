@@ -825,6 +825,14 @@
   .icone-teleporteur:hover { filter: brightness(1.25); transform: translateY(-1px); }
   .icone-teleporteur:active { transform: translateY(1px); filter: brightness(0.95); }
   .icone-teleporteur-symbole { font-size: 22px; filter: drop-shadow(0 0 4px rgba(110,220,255,0.6)); }
+  /* Invite à utiliser le téléporteur une fois le tutoriel terminé (voir
+     mettreAJourTutoriel) : halo doré pulsant plutôt qu'un simple texte, pour
+     attirer l'œil sans ajouter de modale supplémentaire. */
+  .icone-teleporteur.tutoriel-surbrillance { animation: tutorielPulseTeleporteur 1.1s ease-in-out infinite; }
+  @keyframes tutorielPulseTeleporteur {
+    0%, 100% { box-shadow: 0 0 0 2px rgba(5,15,20,0.6), 0 4px 10px rgba(0,0,0,0.45), 0 0 0 0 rgba(255,214,110,0.7); }
+    50% { box-shadow: 0 0 0 2px rgba(5,15,20,0.6), 0 4px 10px rgba(0,0,0,0.45), 0 0 0 9px rgba(255,214,110,0); }
+  }
 
   /* --- Icône boutique à gemmes (juste à côté du téléporteur) ------------- */
   .icone-boutique-gemmes {
@@ -1518,12 +1526,14 @@
        personnage) : une carte cliquable par personnage, même famille
        visuelle que .carte-classe ci-dessus pour rester cohérent. ---------- */
   .accueil-liste-persos { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
+  .carte-perso-ligne { display: flex; align-items: stretch; gap: 8px; }
   .carte-perso {
     display: flex;
     flex-direction: column;
     align-items: flex-start;
+    justify-content: center;
     gap: 3px;
-    width: 100%;
+    flex: 1 1 auto;
     text-align: left;
     padding: 12px 16px;
     border-radius: 14px;
@@ -1536,6 +1546,18 @@
   .carte-perso:hover { transform: translateY(-2px); border-color: var(--gold); background: rgba(255,159,67,0.12); }
   .carte-perso-pseudo { font-family: "Baloo 2", sans-serif; font-size: 15px; }
   .carte-perso-details { font-size: 11.5px; color: #cfc3ef; }
+  .btn-suppr-perso {
+    flex: 0 0 auto;
+    width: 42px;
+    border-radius: 14px;
+    border: 2px solid var(--hairline);
+    background: rgba(255,255,255,0.04);
+    color: #e8a0a0;
+    font-size: 16px;
+    cursor: pointer;
+    transition: border-color 0.12s ease, background 0.12s ease;
+  }
+  .btn-suppr-perso:hover { border-color: #d9534f; background: rgba(217,83,79,0.15); }
 
   /* --- Personnalisation d'avatar (écran de création) : nuanciers
        cheveux/yeux/vêtements avec aperçu live — voir obtenirSpriteRecolore
@@ -1870,6 +1892,59 @@
   .quete-bouton-reclamer:disabled { opacity: 0.4; cursor: default; }
   .quete-bouton-reclamer.deja-reclamee { border-color: var(--hairline); background: transparent; }
 
+  /* --- Tutoriel guidé d'Estenoise-les-Brumes (voir mettreAJourTutoriel) :
+       carte flottante en bas de l'écran, JAMAIS bloquante (pas de fond
+       assombri façon modale) puisque le joueur doit pouvoir bouger/agir
+       pendant qu'elle est affichée — seule l'étape "sorts/mana/cooldowns/
+       vie" (pure explication) a un bouton de confirmation. ------------- */
+  .tutoriel-panel {
+    position: absolute;
+    left: 50%;
+    bottom: 86px;
+    transform: translateX(-50%);
+    z-index: 15;
+    width: min(92%, 420px);
+    padding: 12px 16px 10px;
+    background: rgba(20,14,10,0.88);
+    border: 2px solid var(--gold);
+    border-radius: 14px;
+    text-align: center;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.45);
+    pointer-events: auto;
+  }
+  .tutoriel-panel.masque { display: none; }
+  .tutoriel-titre {
+    font-family: "Baloo 2", sans-serif;
+    font-weight: 700;
+    color: #f0d9a0;
+    font-size: 14px;
+    margin-bottom: 4px;
+  }
+  .tutoriel-texte { font-size: 12.5px; color: #e9e2fa; line-height: 1.45; margin-bottom: 9px; }
+  .tutoriel-actions { display: flex; justify-content: center; align-items: center; gap: 12px; }
+  .tutoriel-bouton-compris {
+    padding: 6px 16px;
+    border-radius: 8px;
+    border: 1px solid var(--gold);
+    background: rgba(201,162,75,0.22);
+    color: #fff;
+    font-family: "Baloo 2", sans-serif;
+    font-weight: 700;
+    font-size: 12.5px;
+    cursor: pointer;
+  }
+  .tutoriel-bouton-compris.masque { display: none; }
+  .tutoriel-lien-passer {
+    background: none;
+    border: none;
+    color: #9d8fc7;
+    font-size: 11px;
+    text-decoration: underline;
+    cursor: pointer;
+    padding: 4px;
+  }
+  .tutoriel-lien-passer:hover { color: #cfc3ef; }
+
   /* --- Suivi de quêtes compact (sous l'icône quêtes) : aperçu permanent des
        3 objectifs du jour sans avoir à ouvrir la modale. 3 lignes fixes,
        créées une seule fois au chargement puis seulement mises à jour en
@@ -2112,6 +2187,20 @@
       <button type="button" class="btn-jouer" id="btn-nouveau-perso">+ Nouveau personnage</button>
     </div>
     <button type="button" class="lien-compte-joueur" id="btn-ouvrir-compte-persos">🔑 Compte joueur</button>
+  </div>
+
+  <!-- Confirmation avant suppression définitive d'un personnage (écran de
+       sélection) — jamais de native confirm(), même famille visuelle que les
+       autres modales de confirmation du jeu. -->
+  <div class="modale-overlay masque" id="modale-confirmer-suppression-perso">
+    <div class="modale-fantasy">
+      <h2>Supprimer ce personnage ?</h2>
+      <p>Cette action est définitive : <strong id="suppression-perso-pseudo"></strong> et toute sa progression seront perdus pour toujours.</p>
+      <div class="modale-actions">
+        <button type="button" class="btn-modale btn-danger" id="btn-confirmer-suppression-perso">Supprimer</button>
+        <button type="button" class="btn-modale btn-neutre" id="btn-annuler-suppression-perso">Annuler</button>
+      </div>
+    </div>
   </div>
 
   <div class="accueil-carte" id="accueil-carte-creation">
@@ -2396,6 +2485,20 @@
       <div class="pnj-bulle masque" id="pnj-bulle">
         <div class="pnj-bulle-nom" id="pnj-bulle-nom"></div>
         <div class="pnj-bulle-texte" id="pnj-bulle-texte"></div>
+      </div>
+
+      <!-- Tutoriel guidé d'Estenoise-les-Brumes (voir mettreAJourTutoriel) :
+           jamais bloquante, pas de fond assombri — le joueur doit pouvoir
+           bouger/agir pendant qu'elle reste affichée. "Compris" n'apparaît
+           que pour l'étape purement explicative (sorts/mana/cooldowns/vie),
+           "Passer le tutoriel" reste toujours disponible. -->
+      <div class="tutoriel-panel masque" id="tutoriel-panel">
+        <div class="tutoriel-titre" id="tutoriel-titre"></div>
+        <div class="tutoriel-texte" id="tutoriel-texte"></div>
+        <div class="tutoriel-actions">
+          <button type="button" class="tutoriel-bouton-compris masque" id="tutoriel-bouton-compris">Compris !</button>
+          <button type="button" class="tutoriel-lien-passer" id="tutoriel-lien-passer">Passer le tutoriel</button>
+        </div>
       </div>
 
       <!-- Bandeau de reconnexion (coupure réseau / retour d'arrière-plan
@@ -2764,8 +2867,10 @@ const TEINTES_BIOMES = {
   "jardins-petrifies": "hue-rotate(280deg) saturate(1.3) brightness(0.95)",
   "couronne-orage": "saturate(1.7) brightness(1.3) contrast(1.1)",
   "crique-naufrageurs": "hue-rotate(190deg) saturate(1.3) brightness(1.05)",
+  "plage-corsaire": "hue-rotate(20deg) saturate(1.15) brightness(1.1)",
 };
 const COULEURS_BIOMES = {
+  "plage-corsaire": "#d9b26a",
   "cretes-ambre": "#c98a2b",
   "marais-de-suin": "#4f6b3a",
   "foret-chuchote": "#3a6b5f",
@@ -3166,6 +3271,15 @@ const IMGS_ECLAIR_CHEVALIER = [
   SPRITES_CHEVALIER_NOIR_EFFETS.eclair3,
 ];
 
+// Explosion toxique verte (foudre du Chief Goblin/Troubalourd, voir
+// simulerFoudreMonstresZone côté serveur) : 10 frames découpées d'une
+// animation d'explosion complète (naissance → pic → dissipation), jouées
+// une seule fois sur toute la durée de vie de l'effet (voir
+// dessinerExplosionToxique) plutôt qu'un simple cercle qui s'estompe.
+const IMGS_EXPLOSION_TOXIQUE = Array.from({ length: 10 }, (_, i) =>
+  chargerImage(`sprites/explosion-toxique/frame_${String(i).padStart(2, "0")}.png`)
+);
+
 const SPRITES_MONSTRES = {
   troubalourd: {
     idle: chargerImage("sprites/troubalourd/idle.png"),
@@ -3240,6 +3354,59 @@ const SPRITES_MONSTRES = {
   },
 };
 
+function chargerImagesNumerotees(prefixe, nombre) {
+  return Array.from({ length: nombre }, (_, i) => chargerImage(`${prefixe}${String(i).padStart(2, "0")}.png`));
+}
+
+// Monstres de la Crique des Corsaires (voir MONSTRES_CONFIG côté serveur) :
+// contrairement à SPRITES_MONSTRES ci-dessus (une seule image par pose), ces
+// trois-là ont de vraies séquences d'animation (16 à 20 frames) — gérées à
+// part par poseMonstreAnime plutôt que par poseMonstre, pour un rendu bien
+// plus fluide que le reste du bestiaire (demande explicite).
+const SPRITES_PIRATES = {
+  pirateLeader: {
+    idle: chargerImagesNumerotees("sprites/pirate-leader/idle_", 16),
+    walk: chargerImagesNumerotees("sprites/pirate-leader/walk_", 20),
+    attack: chargerImagesNumerotees("sprites/pirate-leader/attack_", 10),
+  },
+  pirateZombie: {
+    idle: chargerImagesNumerotees("sprites/pirate-zombie/idle_", 16),
+    walk: chargerImagesNumerotees("sprites/pirate-zombie/walk_", 20),
+    attack: chargerImagesNumerotees("sprites/pirate-zombie/attack_", 10),
+  },
+  squidman: {
+    idle: chargerImagesNumerotees("sprites/squidman/idle_", 16),
+    walk: chargerImagesNumerotees("sprites/squidman/walk_", 20),
+    attack: chargerImagesNumerotees("sprites/squidman/attack_", 10),
+  },
+};
+// id de monstre → timestamp de début de l'attaque en cours (même principe
+// que flashMonstres ci-dessous) : nécessaire pour jouer les 10 frames
+// d'attaque une seule fois du début à la fin plutôt qu'en boucle, puisque
+// l'objet monstre lui-même est recréé à chaque état réseau reçu (impossible
+// d'y stocker directement un "début d'attaque" qui survive d'une frame à
+// l'autre).
+let attaqueDebutPirates = {};
+
+function poseMonstreAnime(m, animes) {
+  const maintenant = performance.now();
+  if (m.attaque && animes.attack) {
+    const DUREE_MS = 250; // doit rester cohérent avec attaqueAnimRestant côté serveur
+    let debut = attaqueDebutPirates[m.id];
+    if (!debut || maintenant - debut > DUREE_MS) {
+      debut = maintenant;
+      attaqueDebutPirates[m.id] = debut;
+    }
+    const progression = Math.min(0.999, (maintenant - debut) / DUREE_MS);
+    return animes.attack[Math.floor(progression * animes.attack.length)];
+  }
+  delete attaqueDebutPirates[m.id];
+  if (m.enMouvement && animes.walk) {
+    return animes.walk[Math.floor(maintenant / 45) % animes.walk.length]; // 20 frames ≈ 0,9s par cycle
+  }
+  return animes.idle[Math.floor(maintenant / 90) % animes.idle.length]; // 16 frames ≈ 1,44s par cycle
+}
+
 function imagePrete(img) {
   return !!img && img.complete && img.naturalWidth > 0;
 }
@@ -3264,6 +3431,11 @@ function poseJoueur(p) {
 // Même logique pour les monstres, plus simple (pas de KO ni de double
 // pose d'attaque — les monstres disparaissent quand leurs PV tombent à 0).
 function poseMonstre(m) {
+  // Monstres animés (voir SPRITES_PIRATES) : logique dédiée à part, séquences
+  // de plusieurs frames plutôt qu'une seule image par pose.
+  const animes = SPRITES_PIRATES[m.base || m.type];
+  if (animes) return poseMonstreAnime(m, animes);
+
   // Les monstres originaux des régions étendues n'ont pas leur propre
   // planche de sprites (aucun nouvel art disponible) : ils réutilisent
   // celle du gabarit indiqué par le serveur (`m.base`), reteintée à
@@ -3950,6 +4122,7 @@ function render() {
   mettreAJourOr();
   mettreAJourZoneNom();
   mettreAJourIconeTeleporteur();
+  mettreAJourTutoriel();
   // Équipement + inventaire vivent maintenant tous les deux dans la fiche
   // de personnage (icône déployable 📜/C) : inutile de les mettre à jour
   // tant qu'elle n'est pas ouverte (mettreAJourInventaire est appelée
@@ -4057,35 +4230,49 @@ function calculerCamera() {
 // ciel) : chaque set choisi ci-dessous a été assorti à l'ambiance décrite
 // dans BIOMES_DEFINITION/zoneVerthige côté serveur (jungle pour Berge-Rhak,
 // marécage/cascade pour le Marais de Suin, forêt mauve mystique pour la
-// Forêt Chuchote, arbres gelés pour les Pics Verglacés, plage tropicale
-// pour la Crique des Naufrageurs). Les zones absentes de cette liste
-// gardent le ciel procédural existant (voir dessinerCiel) — pas de bon set
-// disponible pour elles pour l'instant.
-// Crique des Naufrageurs : seulement 5 calques fournis (pas de pack complet
-// à 7 niveaux comme les autres) — 1.png/2.png (avant-plan) volontairement
-// absents, dessinerDecorZone les ignore proprement (voir imagePrete-like
-// garde `!img.complete || !img.naturalWidth`) plutôt que de planter.
-const ZONES_AVEC_DECOR = ["verthige", "marais-de-suin", "foret-chuchote", "pics-verglaces", "crique-naufrageurs"];
+// Forêt Chuchote, arbres gelés pour les Pics Verglacés, plage pour la
+// Crique). Les zones absentes de cette liste gardent le ciel procédural
+// existant (voir dessinerCiel).
+// Nombre de calques numérotés (1.png, 2.png, ...) disponibles par zone — pas
+// forcément 7 : la plage n'en a que 5, les autres packs en ont 7. Les calques
+// manquants (fichier absent) sont ignorés par dessinerDecorZone.
+const ZONES_AVEC_DECOR = {
+  verthige: 7,
+  "marais-de-suin": 7,
+  "foret-chuchote": 7,
+  "pics-verglaces": 7,
+  "plage-corsaire": 5,
+  "crique-naufrageurs": 7,
+};
 // Index 0 = calque "1.png" (avant-plan, défile vite) → index 6 = calque
 // "7.png" (ciel plat, quasi immobile), pour une sensation de profondeur.
 const VITESSES_PARALLAXE_DECOR = [0.5, 0.4, 0.32, 0.24, 0.17, 0.1, 0.03];
 const DECORS_ZONES = {};
-for (const idZoneDecor of ZONES_AVEC_DECOR) {
-  DECORS_ZONES[idZoneDecor] = [1, 2, 3, 4, 5, 6, 7].map((n) => chargerImage(`assets/backgrounds/${idZoneDecor}/${n}.png`));
+for (const idZoneDecor in ZONES_AVEC_DECOR) {
+  const nbCalques = ZONES_AVEC_DECOR[idZoneDecor];
+  DECORS_ZONES[idZoneDecor] = Array.from({ length: nbCalques }, (_, i) =>
+    chargerImage(`assets/backgrounds/${idZoneDecor}/${i + 1}.png`)
+  );
 }
 
-// Dessine les 7 calques d'un décor, du plus lointain au plus proche, chacun
+// Dessine les calques d'un décor, du plus lointain au plus proche, chacun
 // mis à l'échelle sur la hauteur du canvas puis répété horizontalement (la
 // largeur d'un monde dépasse largement celle d'une image) avec un décalage
-// de parallaxe propre à sa profondeur.
+// de parallaxe propre à sa profondeur — vitesse interpolée entre 0.5
+// (calque 1, avant-plan) et 0.03 (dernier calque, quasi immobile) selon le
+// nombre réel de calques de la zone, pour rester correct que la zone en ait
+// 5 ou 7.
 function dessinerDecorZone(idZoneDecor, camX) {
   const calques = DECORS_ZONES[idZoneDecor];
   const hauteurCible = canvas.height;
-  for (let i = 6; i >= 0; i--) {
+  const dernierIndex = calques.length - 1;
+  for (let i = dernierIndex; i >= 0; i--) {
     const img = calques[i];
     if (!img.complete || !img.naturalWidth) continue;
+    const t = dernierIndex > 0 ? i / dernierIndex : 0;
+    const vitesse = 0.5 - t * (0.5 - 0.03);
     const largeurAffichee = img.naturalWidth * (hauteurCible / img.naturalHeight);
-    const decalage = mod(-camX * VITESSES_PARALLAXE_DECOR[i], largeurAffichee);
+    const decalage = mod(-camX * vitesse, largeurAffichee);
     for (let x = decalage - largeurAffichee; x < canvas.width; x += largeurAffichee) {
       ctx.drawImage(img, x, 0, largeurAffichee, hauteurCible);
     }
@@ -4562,12 +4749,6 @@ function dessinerSol(plateforme) {
     const couleur = COULEURS_FLEURS[Math.floor(pseudoAleatoire(px * 0.211) * COULEURS_FLEURS.length)];
     dessinerFleur(px + decalage, y, couleur);
   }
-
-  // Petites maisonnettes décoratives, espacées, jamais deux collées.
-  for (let px = x + 160; px < x + width - 160; px += 430) {
-    if (pseudoAleatoire(px * 0.013) < 0.5) continue;
-    dessinerMaisonnette(px, y);
-  }
 }
 
 // Plateforme flottante carrelée d'une région — même principe que
@@ -4660,67 +4841,6 @@ function dessinerFleur(x, y, couleur) {
   ctx.beginPath();
   ctx.arc(0, -8, 2, 0, Math.PI * 2);
   ctx.fill();
-  ctx.restore();
-}
-
-// Petite maisonnette décorative façon village MapleStory : toit pointu,
-// façade colorée, une fenêtre et une porte. Purement du décor (pas de
-// collision), posée sur la ligne d'herbe du sol.
-function dessinerMaisonnette(x, y) {
-  const largeur = 52;
-  const hauteurMur = 30;
-  const baseY = y; // pile sur la ligne de sol/collision
-  const gaucheX = x - largeur / 2;
-
-  ctx.save();
-
-  // Petite ombre douce au sol.
-  ctx.fillStyle = "rgba(74,53,96,0.18)";
-  ctx.beginPath();
-  ctx.ellipse(x, baseY + 3, largeur * 0.55, 6, 0, 0, Math.PI * 2);
-  ctx.fill();
-
-  // Mur.
-  ctx.fillStyle = "#fff1da";
-  ctx.fillRect(gaucheX, baseY - hauteurMur, largeur, hauteurMur);
-  ctx.strokeStyle = "#c9a24b";
-  ctx.lineWidth = 2;
-  ctx.strokeRect(gaucheX, baseY - hauteurMur, largeur, hauteurMur);
-
-  // Toit triangulaire arrondi.
-  ctx.fillStyle = "#ff8f6a";
-  ctx.beginPath();
-  ctx.moveTo(gaucheX - 8, baseY - hauteurMur + 4);
-  ctx.lineTo(x, baseY - hauteurMur - 26);
-  ctx.lineTo(gaucheX + largeur + 8, baseY - hauteurMur + 4);
-  ctx.quadraticCurveTo(x, baseY - hauteurMur - 4, gaucheX - 8, baseY - hauteurMur + 4);
-  ctx.closePath();
-  ctx.fill();
-
-  // Petite cheminée.
-  ctx.fillStyle = "#c9a86a";
-  ctx.fillRect(x + largeur * 0.18, baseY - hauteurMur - 22, 8, 14);
-
-  // Porte.
-  ctx.fillStyle = "#a9825a";
-  const largeurPorte = 14;
-  ctx.beginPath();
-  ctx.moveTo(x - largeurPorte / 2, baseY);
-  ctx.lineTo(x - largeurPorte / 2, baseY - 16);
-  ctx.quadraticCurveTo(x, baseY - 22, x + largeurPorte / 2, baseY - 16);
-  ctx.lineTo(x + largeurPorte / 2, baseY);
-  ctx.closePath();
-  ctx.fill();
-
-  // Fenêtre ronde.
-  ctx.fillStyle = "#a9d8ff";
-  ctx.beginPath();
-  ctx.arc(gaucheX + largeur - 14, baseY - hauteurMur + 13, 6, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.strokeStyle = "#c9a24b";
-  ctx.lineWidth = 1.5;
-  ctx.stroke();
-
   ctx.restore();
 }
 
@@ -5672,12 +5792,10 @@ function dessinerTelegrapheAoe() {
   // Le Chevalier Noir télégraphie une colonne verticale (voir `colonne` ci-
   // dessous), rendue à part de la boucle circulaire générique.
   if (state.chevalierNoir && state.chevalierNoir.aoeEnAttente) zonesActives.push(state.chevalierNoir.aoeEnAttente);
-  // Foudre du Chief Goblin (Troubalourd, voir simulerFoudreMonstresZone
-  // côté serveur) — même cercle d'avertissement générique, porté par un
-  // monstre commun plutôt qu'un boss unique.
-  for (const m of state.monsters || []) {
-    if (m.aoeEnAttente) zonesActives.push(m.aoeEnAttente);
-  }
+  // Foudre du Chief Goblin (Troubalourd, voir simulerFoudreMonstresZone côté
+  // serveur) : plus de rond rouge de télégraphe (demande explicite) — son
+  // impact se voit directement via l'explosion toxique (voir dessinerEffets/
+  // dessinerExplosionToxique), sans avertissement préalable.
 
   for (const zone of zonesActives) {
     if (zone.colonne) {
@@ -6237,6 +6355,8 @@ function dessinerEffets() {
       dessinerExplosionFeuChevalier(e);
     } else if (e.effet === "eclair_chevalier_impact") {
       dessinerImpactEclairChevalier(e);
+    } else if (e.effet === "explosion_toxique") {
+      dessinerExplosionToxique(e);
     } else {
       ctx.save();
       ctx.globalAlpha = e.opacite * 0.6;
@@ -6341,6 +6461,32 @@ function dessinerImpactEclairChevalier(e) {
   ctx.globalAlpha = Math.max(0, e.opacite) * 0.7;
   ctx.fillStyle = "rgba(180,230,255,0.5)";
   ctx.fillRect(e.x - e.rayon, 0, e.rayon * 2, canvas.height);
+  ctx.restore();
+}
+
+// Explosion toxique verte de la foudre du Chief Goblin (Troubalourd) : joue
+// les 10 frames de IMGS_EXPLOSION_TOXIQUE une seule fois sur toute la durée
+// de vie de l'effet (opacite va de 1 à 0, voir construireEtatPourJoueur côté
+// serveur) plutôt qu'en boucle — la progression de l'animation suit donc
+// directement l'extinction de l'effet, sans dépendre de performance.now().
+function dessinerExplosionToxique(e) {
+  const progression = Math.min(0.999, Math.max(0, 1 - e.opacite));
+  const frames = IMGS_EXPLOSION_TOXIQUE;
+  const img = frames[Math.floor(progression * frames.length)];
+  if (!imagePrete(img)) return;
+  // Le sprite source garde une bonne marge interne (bras de l'explosion qui
+  // rayonnent) : on l'agrandit un peu par rapport au rayon de dégâts réel
+  // pour que la zone d'impact soit visuellement bien couverte.
+  const tailleCible = e.rayon * 2.7;
+  const echelle = tailleCible / Math.max(img.naturalWidth, img.naturalHeight);
+  const largeur = img.naturalWidth * echelle;
+  const hauteur = img.naturalHeight * echelle;
+  ctx.save();
+  // Reste bien visible presque jusqu'à la toute fin plutôt que de s'estomper
+  // dès le début (contrairement au cercle générique) : l'explosion doit se
+  // voir clairement, pas juste clignoter.
+  ctx.globalAlpha = Math.min(1, e.opacite + 0.35);
+  ctx.drawImage(img, e.x - largeur / 2, e.y - hauteur / 2, largeur, hauteur);
   ctx.restore();
 }
 
@@ -6836,6 +6982,13 @@ let onboardingVerifie = false;
 function verifierOnboarding() {
   if (onboardingVerifie) return;
   onboardingVerifie = true;
+  // Le tutoriel guidé d'Estenoise-les-Brumes (voir mettreAJourTutoriel) fait
+  // désormais tout ce que ce message statique faisait — et bien plus
+  // (déplacement, combat, butin, caractéristique, sorts/mana/cooldowns/vie,
+  // étape par étape) — donc plus question de l'afficher en plus pour un
+  // joueur qui a un tutoriel serveur en cours ou déjà terminé (autrement
+  // dit : tout le monde depuis l'ajout de cette fonctionnalité).
+  if (state.perso && state.perso.tutoriel) return;
   try {
     if (localStorage.getItem("rb_onboarding_vu_v2")) return;
   } catch {
@@ -6860,13 +7013,55 @@ function mettreAJourIconeTeleporteur() {
   const dansDonjon = !!(state.donjon && state.donjon.dansDonjon);
   const dansSalleTrone = !!(state.salleTroneAmbre && state.salleTroneAmbre.dansSalle);
   const masque = dansDonjon || dansSalleTrone;
-  document.getElementById("icone-teleporteur").classList.toggle("masque", masque);
+  const icone = document.getElementById("icone-teleporteur");
+  icone.classList.toggle("masque", masque);
   if (masque) document.getElementById("modale-teleporteur").classList.add("masque");
   // Boutique à gemmes : même visibilité que le téléporteur juste à côté (pas
   // de sens en plein combat de donjon/Salle du Trône).
   document.getElementById("icone-boutique-gemmes").classList.toggle("masque", masque);
   if (masque) document.getElementById("modale-boutique-gemmes").classList.add("masque");
+  // Invite à quitter le village une fois le tutoriel terminé (voir
+  // mettreAJourTutoriel) : halo pulsant tant qu'on reste à Estenoise, se
+  // désactive tout seul dès qu'on téléporte ailleurs.
+  const tutoriel = state.perso && state.perso.tutoriel;
+  const inviteTeleporteur = !masque && !!tutoriel && tutoriel.termine && state.zoneActuelle && state.zoneActuelle.id === "village";
+  icone.classList.toggle("tutoriel-surbrillance", inviteTeleporteur);
 }
+
+// Tutoriel guidé d'Estenoise-les-Brumes (voir avancerTutoriel côté serveur) :
+// un texte par étape, `bouton: true` pour la seule étape purement
+// explicative (pas d'action de jeu à détecter derrière) qui a donc besoin
+// d'un "Compris !" explicite plutôt que d'avancer toute seule.
+const TEXTES_TUTORIEL = [
+  { titre: "Bienvenue à Estenoise-les-Brumes !", texte: "Utilise les flèches (ou ZQSD selon ton réglage) pour te déplacer jusqu'au gobelin au milieu du village." },
+  { titre: "Un gobelin approche...", texte: "Approche-toi et appuie sur ta touche de sort de base (A) pour l'attaquer !" },
+  { titre: "Butin au sol", texte: "Il a laissé tomber quelque chose — approche-toi et appuie sur F pour le ramasser." },
+  { titre: "Fiche de personnage", texte: "Ouvre ta fiche (touche C ou l'icône 📜 en haut à gauche) et dépense un point de caractéristique." },
+  {
+    titre: "Sorts, Mana, Cooldowns et Vie",
+    texte: "Tes PV et ton Mana s'affichent en haut à gauche. Chaque sort (A/Z/E/R) coûte du Mana et a son propre temps de recharge (cooldown) — surveille les deux avant de foncer !",
+    bouton: true,
+  },
+];
+
+function mettreAJourTutoriel() {
+  const panel = document.getElementById("tutoriel-panel");
+  const tutoriel = state.perso && state.perso.tutoriel;
+  const actif = !!tutoriel && !tutoriel.termine;
+  panel.classList.toggle("masque", !actif);
+  if (!actif) return;
+  const info = TEXTES_TUTORIEL[tutoriel.etape] || TEXTES_TUTORIEL[0];
+  document.getElementById("tutoriel-titre").textContent = info.titre;
+  document.getElementById("tutoriel-texte").textContent = info.texte;
+  document.getElementById("tutoriel-bouton-compris").classList.toggle("masque", !info.bouton);
+}
+document.getElementById("tutoriel-bouton-compris").addEventListener("click", () => {
+  const tutoriel = state.perso && state.perso.tutoriel;
+  if (tutoriel) envoyer({ type: "tutorielEvenement", etape: tutoriel.etape });
+});
+document.getElementById("tutoriel-lien-passer").addEventListener("click", () => {
+  envoyer({ type: "tutorielPasser" });
+});
 
 function mettreAJourTeleporteur() {
   const conteneur = document.getElementById("liste-destinations");
@@ -8087,10 +8282,13 @@ function rendreListePersonnages(personnages, max) {
       const infosClasse = DESCRIPTIONS_CLASSES.find((c) => c.id === p.classe);
       const labelClasse = infosClasse ? infosClasse.nom : p.classe;
       return `
-        <button type="button" class="carte-perso" data-personnage-id="${p.id}">
-          <span class="carte-perso-pseudo">${escapeHtml(p.pseudo)}</span>
-          <span class="carte-perso-details">${escapeHtml(labelClasse)} — Nv.${p.niveau}</span>
-        </button>`;
+        <div class="carte-perso-ligne">
+          <button type="button" class="carte-perso" data-personnage-id="${p.id}">
+            <span class="carte-perso-pseudo">${escapeHtml(p.pseudo)}</span>
+            <span class="carte-perso-details">${escapeHtml(labelClasse)} — Nv.${p.niveau}</span>
+          </button>
+          <button type="button" class="btn-suppr-perso" data-suppr-personnage-id="${p.id}" data-suppr-pseudo="${escapeHtml(p.pseudo)}" title="Supprimer ce personnage">🗑️</button>
+        </div>`;
     })
     .join("");
   const btnNouveau = document.getElementById("btn-nouveau-perso");
@@ -8101,9 +8299,39 @@ function rendreListePersonnages(personnages, max) {
 }
 
 document.getElementById("accueil-liste-persos").addEventListener("click", (e) => {
+  const btnSuppr = e.target.closest(".btn-suppr-perso[data-suppr-personnage-id]");
+  if (btnSuppr) {
+    personnageIdASupprimer = btnSuppr.dataset.supprPersonnageId;
+    document.getElementById("suppression-perso-pseudo").textContent = btnSuppr.dataset.supprPseudo;
+    document.getElementById("modale-confirmer-suppression-perso").classList.remove("masque");
+    return;
+  }
   const carte = e.target.closest(".carte-perso[data-personnage-id]");
   if (!carte) return;
   demarrerPartie({ personnageId: carte.dataset.personnageId });
+});
+
+// Suppression définitive d'un personnage (voir POST /api/personnages/supprimer
+// côté serveur) — jamais de native confirm(), on repasse par la modale
+// dédiée ci-dessus puis on recharge la liste pour refléter la suppression.
+let personnageIdASupprimer = null;
+document.getElementById("btn-annuler-suppression-perso").addEventListener("click", () => {
+  personnageIdASupprimer = null;
+  document.getElementById("modale-confirmer-suppression-perso").classList.add("masque");
+});
+document.getElementById("btn-confirmer-suppression-perso").addEventListener("click", async () => {
+  if (!personnageIdASupprimer) return;
+  const idASupprimer = personnageIdASupprimer;
+  document.getElementById("modale-confirmer-suppression-perso").classList.add("masque");
+  personnageIdASupprimer = null;
+  try {
+    await fetch("/api/personnages/supprimer", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ jeton: jetonJoueur, personnageId: idASupprimer }),
+    });
+  } catch {}
+  initialiserEcranAccueil();
 });
 
 document.getElementById("btn-nouveau-perso").addEventListener("click", () => {

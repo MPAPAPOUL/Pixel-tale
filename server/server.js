@@ -321,8 +321,57 @@ const MONSTRES_CONFIG = {
     // redevient une poursuite directe du joueur une fois hostile, voir le
     // branchement dédié dans simulerMonstres qui passe avant ce comportement.
     comportement: "erratique",
+    // Intervalle de changement de direction très allongé (demande explicite :
+    // "parcours beaucoup plus de pixel avant de se retourner") — sans ça le
+    // comportement "erratique" par défaut (0.3-1s) le fait tourner en rond
+    // sur quelques pixels malgré des bornes de patrouille larges.
+    intervalleErratique: { min: 3, max: 6 },
     neutre: true,
     xp: 7,
+  },
+  // Crique des Corsaires (voir genererZonePlage plus bas) : trois monstres
+  // distincts avec leur propre planche de sprites animée (16/20/10 frames,
+  // voir SPRITES_PIRATES côté client) plutôt qu'un gabarit reteinté — assets
+  // fournis. Stats calées entre Crêtes d'Ambre (niveau 10) et Marais de Suin
+  // (niveau 20), la zone étant placée au niveau 15.
+  squidman: {
+    label: "Homme-Calmar",
+    couleur: "#3a7a6b",
+    largeur: 38,
+    hauteur: 52,
+    vitesse: 60, // erratique et vif, comme Fisselo
+    hpMax: 38,
+    degatsContact: 9,
+    delaiRespawn: 8,
+    comportement: "erratique",
+    xp: 9,
+  },
+  pirateZombie: {
+    label: "Pirate Zombie",
+    couleur: "#5a6b4f",
+    largeur: 38,
+    hauteur: 56,
+    vitesse: 38,
+    hpMax: 65,
+    degatsContact: 15,
+    delaiRespawn: 8,
+    comportement: "patrouille",
+    xp: 14,
+  },
+  // Mob élite de la crique (même esprit que Minotaure pour l'Antre) : plus
+  // rare, nettement plus costaud, pour marquer sa place de "chef" parmi les
+  // trois monstres de la zone.
+  pirateLeader: {
+    label: "Capitaine Corsaire",
+    couleur: "#8a2b2b",
+    largeur: 44,
+    hauteur: 62,
+    vitesse: 44,
+    hpMax: 110,
+    degatsContact: 22,
+    delaiRespawn: 12,
+    comportement: "patrouille",
+    xp: 26,
   },
 };
 
@@ -367,7 +416,8 @@ function creerMonstre(type, plateforme) {
     monstre.borneDroite = plateforme.x + plateforme.width - cfg.largeur - 6;
   }
   if (cfg.comportement === "erratique") {
-    monstre.prochainChangement = 0.3 + Math.random() * 0.6;
+    const intervalleInit = cfg.intervalleErratique || { min: 0.3, max: 0.9 };
+    monstre.prochainChangement = intervalleInit.min + Math.random() * (intervalleInit.max - intervalleInit.min);
   }
   if (cfg.tir) {
     // Décalage initial aléatoire pour que plusieurs monstres du même type ne
@@ -995,6 +1045,9 @@ function incrementerQuete(p, type, montant) {
 // ---------------------------------------------------------------------------
 
 const HAUTS_FAITS = [
+  // Récompense de fin de tutoriel (voir terminerTutoriel) — premier titre
+  // que tout nouveau joueur peut obtenir, avant même "Premier Sang".
+  { id: "tutoriel-termine", nom: "Nouveau Héros", titre: "Nouveau Héros", description: "Terminer le tutoriel d'Estenoise-les-Brumes.", cible: 1, stat: "tutorielTermine" },
   { id: "premier-sang", nom: "Premier Sang", titre: "Aspirant", description: "Vaincre son premier monstre.", cible: 1, stat: "monstresTues" },
   { id: "chasseur", nom: "Chasseur Aguerri", titre: "Chasseur", description: "Vaincre 50 monstres.", cible: 50, stat: "monstresTues" },
   { id: "exterminateur", nom: "Exterminateur", titre: "Exterminateur", description: "Vaincre 250 monstres.", cible: 250, stat: "monstresTues" },
@@ -1827,11 +1880,109 @@ function genererZoneVillage() {
     { x: 610, y: 420, width: 170, height: 24 },
     { x: 980, y: 470, width: 170, height: 24 },
   ];
+  // Gobelin neutre du tutoriel (voir avancerTutoriel) : un gobelin normal
+  // (plus de mannequin dédié), placé au milieu de la carte plutôt qu'à
+  // l'entrée pour que le trajet jusqu'à lui fasse partie de l'étape
+  // "déplacement" — patrouille tout de même sur le sol entier comme un
+  // gobelin neutre classique (voir creerMonstre), seule sa position de
+  // départ est recentrée.
+  const gobelinTutoriel = creerMonstre("gobelinNeutre", plateformes[0]);
+  gobelinTutoriel.x = Math.round(largeur / 2 - MONSTRES_CONFIG.gobelinNeutre.largeur / 2);
+  gobelinTutoriel.xApparition = gobelinTutoriel.x;
+
   return {
     id: "village",
     type: "village",
     nom: "Estenoise-les-Brumes",
     blurb: "Le seul coin des Royaumes Brisés où personne ne cherche la bagarre.",
+    plateformes,
+    largeur,
+    hauteur: MONDE_HAUTEUR,
+    monstres: [gobelinTutoriel],
+    projectiles: [],
+    projectilesMonstres: [],
+    effets: [],
+    objetsAuSol: [],
+    sireHano: null,
+    lianes: [],
+    // Plus de marchand ni de PNJ de décor au village (demande explicite) —
+    // liste vide plutôt que suppression du champ, le reste du code
+    // (dessinerPnjs côté client, message "acheterBoutiquePnj" côté serveur)
+    // suppose déjà `zone.pnjs` existant.
+    pnjs: [],
+  };
+}
+
+// Relief dédié à la Crique des Corsaires : même principe "escalier montant"
+// que genererPlateformes (sol pleine largeur + étages), mais des plateformes
+// nettement plus larges/épaisses (demande explicite) pour laisser plus de
+// place aux combats à plusieurs monstres.
+function genererPlateformesPlage(rng, largeur, nbEtages) {
+  const plateformes = [{ x: 0, y: 600, width: largeur, height: 40 }];
+  let x = 70 + Math.floor(rng() * 60);
+  for (let i = 0; i < nbEtages; i++) {
+    const w = 220 + Math.floor(rng() * 220); // 220-440 (vs 130-300 pour les autres biomes)
+    const y = Math.max(150, 520 - i * 52 - Math.floor(rng() * 40));
+    plateformes.push({ x: Math.round(x), y: Math.round(y), width: w, height: 30 });
+    x += w + 50 + Math.floor(rng() * 130);
+    if (x > largeur - 260) x = 60 + Math.floor(rng() * 90);
+  }
+  return plateformes;
+}
+
+// Escalier reliant deux plateformes existantes : quelques petites marches
+// intermédiaires en ligne droite entre le coin haut de la plus basse et le
+// coin bas de la plus haute, pour permettre de monter à pied plutôt que de
+// sauter (deuxième façon de grimper, en plus de la liane) — demande
+// explicite ("essayer escalier pour relier 2 plateformes"). Marquées
+// `escalier: true` pour rester à l'écart du tirage au sort des monstres
+// (trop étroites pour y patrouiller).
+function ajouterEscalierEntre(plateformes, indexBas, indexHaut, nbMarches) {
+  const bas = plateformes[indexBas];
+  const haut = plateformes[indexHaut];
+  const largeurMarche = 48;
+  const xDepart = bas.x + bas.width;
+  const xArrivee = haut.x;
+  for (let i = 1; i <= nbMarches; i++) {
+    const t = i / (nbMarches + 1);
+    plateformes.push({
+      x: Math.round(xDepart + (xArrivee - xDepart) * t - largeurMarche / 2),
+      y: Math.round(bas.y + (haut.y - bas.y) * t),
+      width: largeurMarche,
+      height: 20,
+      escalier: true,
+    });
+  }
+}
+
+// Crique des Corsaires : une map à part plutôt qu'un biome de plus dans
+// BIOMES_DEFINITION, car elle mélange TROIS monstres différents (voir
+// MONSTRES_CONFIG.squidman/pirateZombie/pirateLeader ci-dessus) au lieu d'un
+// seul gabarit reteinté — la génération automatique des biomes ne prévoit
+// qu'un type de monstre par région. Relief généré comme un biome classique
+// (genererPlateformesPlage), placée au niveau 15 (entre Crêtes d'Ambre et
+// Marais de Suin). Assets fournis pour les 3 monstres + le décor plage.
+function genererZonePlage() {
+  const rng = mulberry32(1000 + 999 * 97); // seed dédiée, hors de la plage utilisée par les biomes (indexSeed 0..8)
+  const largeur = 1500 + Math.floor(rng() * 300);
+  const plateformes = genererPlateformesPlage(rng, largeur, 9);
+  // Escalier entre les deux premières plateformes surélevées (indices 1 et
+  // 2, juste au-dessus du sol) — la partie la plus fréquentée en arrivant
+  // dans la zone.
+  if (plateformes.length > 2) ajouterEscalierEntre(plateformes, 1, 2, 4);
+  const plateformesSurelevees = plateformes.slice(1).filter((p) => !p.escalier);
+  const plateformeSommet = plateformes.reduce((sommet, p) => (p.y < sommet.y ? p : sommet), plateformes[0]);
+  const xGrimpe = Math.round(plateformeSommet.x + plateformeSommet.width * (0.3 + rng() * 0.4));
+  const SOL_Y = 600;
+  const MARGE_BAS = 20;
+
+  const zone = {
+    id: "plage-corsaire",
+    type: "biome",
+    nom: "Crique des Corsaires",
+    blurb: "Une plage oubliée où des pirates depuis longtemps décédés montent encore la garde.",
+    niveauMob: 15,
+    tierLoot: 1, // niveau 15 ≤ 20 → même palier d'équipement que Crêtes d'Ambre/Marais de Suin
     plateformes,
     largeur,
     hauteur: MONDE_HAUTEUR,
@@ -1841,57 +1992,38 @@ function genererZoneVillage() {
     effets: [],
     objetsAuSol: [],
     sireHano: null,
-    lianes: [],
-    pnjs: [
-      {
-        id: "vendeur-torvik",
-        nom: "Torvik le Bien-Referré",
-        type: "vendeur",
-        x: 300,
-        y: 552,
-        dialogue: ["Envie d'un peu d'acier neuf ?", "Tout ce que je vends a déjà sauvé une vie. La mienne, surtout."],
-        // Prix x2 (demande explicite) par rapport aux valeurs d'origine
-        // (40/55/25).
-        boutique: [
-          { item: "epee", label: "Épée courte", prix: 80 },
-          { item: "arc", label: "Arc simple", prix: 80 },
-          { item: "baton", label: "Bâton noueux", prix: 80 },
-          { item: "armureT1", label: "Cuirasse rustique", prix: 110 },
-          { item: "casque", label: "Casque cabossé", prix: 50 },
-          { item: "jambieres", label: "Jambières rapiécées", prix: 50 },
-          { item: "anneau", label: "Anneau terni", prix: 50 },
-          { item: "bottes", label: "Bottes usées", prix: 50 },
-          { item: "bracelet", label: "Bracelet simple", prix: 50 },
-        ],
-      },
-      {
-        id: "pnj-oreline",
-        nom: "Oreline la Rieuse",
-        type: "flavor",
-        x: 700,
-        y: 552,
-        dialogue: [
-          "On raconte que Sire-Hano n'a jamais gagné un seul concours de danse, même contre lui-même.",
-          "Ici, même les cailloux ont meilleur caractère qu'à la porte de l'Antre.",
-        ],
-      },
-      {
-        id: "pnj-bramick",
-        nom: "Bramick Trois-Doigts",
-        type: "flavor",
-        x: 1100,
-        y: 552,
-        dialogue: [
-          "J'ai perdu deux doigts contre un Fisselo. Le troisième, c'est une toute autre histoire.",
-          "Le village s'appelle Estenoise-les-Brumes. Ne me demande pas pourquoi, je viens d'arriver moi aussi.",
-        ],
-      },
-    ],
+    lianes: [{
+      x: xGrimpe,
+      y: plateformeSommet.y,
+      hauteur: SOL_Y - plateformeSommet.y - MARGE_BAS,
+      type: "liane",
+    }],
   };
+
+  const plateformesMelangees = plateformesSurelevees.slice();
+  for (let i = plateformesMelangees.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [plateformesMelangees[i], plateformesMelangees[j]] = [plateformesMelangees[j], plateformesMelangees[i]];
+  }
+  // Cycle des 3 types pirates plutôt qu'un tirage aléatoire, pour garantir
+  // qu'on croise bien les trois sur une même génération de zone — le
+  // Capitaine (élite) est volontairement plus rare que les deux autres.
+  // Plusieurs monstres peuvent désormais partager une plateforme (elles sont
+  // bien plus larges qu'avant), d'où un nombre de monstres nettement relevé.
+  const cycleTypesPirates = ["squidman", "pirateZombie", "squidman", "pirateZombie", "pirateLeader", "squidman", "pirateZombie"];
+  const nbMonstres = 11 + Math.floor(rng() * 3);
+  for (let i = 0; i < nbMonstres; i++) {
+    const plateforme = plateformesMelangees[i % plateformesMelangees.length] || plateformes[0];
+    zone.monstres.push(creerMonstre(cycleTypesPirates[i % cycleTypesPirates.length], plateforme));
+  }
+  zone.monstres.push(creerMonstre("gobelinNeutre", plateformes[0]));
+  zone.monstres.push(creerMonstre("gobelinNeutre", plateformes[0]));
+  return zone;
 }
 
 const ZONES_PERSISTANTES = new Map();
 ZONES_PERSISTANTES.set("village", genererZoneVillage());
+ZONES_PERSISTANTES.set("plage-corsaire", genererZonePlage());
 BIOMES_DEFINITION.forEach((biome, i) => ZONES_PERSISTANTES.set(biome.id, genererZoneBiome(biome, i)));
 
 // Le Dragon Noir vit dans Couronne d'Orage, la dernière région du jeu (voir
@@ -1911,8 +2043,17 @@ BIOMES_DEFINITION.forEach((biome, i) => ZONES_PERSISTANTES.set(biome.id, generer
 // message "teleporter" ci-dessous.
 const NIVEAU_REQUIS_PALIER = 3;
 const DESTINATIONS_TELEPORTEUR = [
-  { id: ZONE_VERTHIGE, nom: zoneVerthige.nom, blurb: zoneVerthige.blurb, niveau: 1 },
+  // Estenoise-les-Brumes en tête de liste (demande explicite) : le village
+  // neutre devient le "hub" de référence du réseau de téléporteurs, devant
+  // Berge-Rhak elle-même.
   { id: "village", nom: ZONES_PERSISTANTES.get("village").nom, blurb: ZONES_PERSISTANTES.get("village").blurb, niveau: 1 },
+  { id: ZONE_VERTHIGE, nom: zoneVerthige.nom, blurb: zoneVerthige.blurb, niveau: 1 },
+  {
+    id: "plage-corsaire",
+    nom: ZONES_PERSISTANTES.get("plage-corsaire").nom,
+    blurb: ZONES_PERSISTANTES.get("plage-corsaire").blurb,
+    niveau: ZONES_PERSISTANTES.get("plage-corsaire").niveauMob,
+  },
   ...BIOMES_DEFINITION.map((b) => ({ id: b.id, nom: b.nom, blurb: b.blurb, niveau: b.niveau })),
   // La Salle du Trône n'apparaît PAS ici : contrairement aux biomes, elle ne
   // se rejoint que par sa porte (voir plus bas), pas par le réseau de
@@ -2334,7 +2475,7 @@ function creerJoueur() {
     // Compteurs CUMULATIFS (jamais remis à zéro, contrairement à la
     // progression des quêtes journalières) — servent uniquement de
     // conditions aux hauts faits, voir verifierHautsFaits plus bas.
-    statsVie: { monstresTues: 0, orGagneTotal: 0, questesReclamees: 0, sireHanoVaincus: 0, dragonNoirVaincus: 0, chevalierNoirVaincus: 0, gemmesGagneesTotal: 0 },
+    statsVie: { monstresTues: 0, orGagneTotal: 0, questesReclamees: 0, sireHanoVaincus: 0, dragonNoirVaincus: 0, chevalierNoirVaincus: 0, gemmesGagneesTotal: 0, tutorielTermine: 0 },
     // Hauts faits débloqués (tableau d'ids, voir HAUTS_FAITS) + titre
     // actuellement affiché sous le pseudo (doit être l'un des hauts faits
     // débloqués, ou null) — voir verifierHautsFaits / message "definirTitre".
@@ -2346,7 +2487,49 @@ function creerJoueur() {
     // toast de bienvenue associé, même mécanique.
     connexionQuotidienne: { dernierJour: null, serie: 0 },
     dernierRecompenseConnexion: null,
+    // Tutoriel guidé d'Estenoise-les-Brumes (voir avancerTutoriel plus bas) :
+    // etape 0 déplacement, 1 combat (mannequin), 2 butin, 3 caractéristique,
+    // 4 sorts/mana/cooldowns/vie, 5 = terminé. Par défaut actif pour tout
+    // joueur fraîchement créé par creerJoueur() ; explicitement désactivé
+    // dans appliquerProgression pour les personnages déjà existants (pas
+    // question de l'imposer après coup à quelqu'un qui a déjà commencé
+    // avant l'ajout de cette fonctionnalité).
+    tutoriel: { etape: 0, termine: false },
   };
+}
+
+// Récompense de fin de tutoriel (or/gemmes + titre "Nouveau Héros", voir le
+// haut fait dédié "tutoriel-termine" dans HAUTS_FAITS) — factorisée à part
+// de avancerTutoriel pour être appelable aussi bien en arrivant naturellement
+// à la dernière étape qu'en passant le tutoriel d'un coup (message
+// "tutorielPasser"), sans jamais l'accorder deux fois (`statsVie
+// .tutorielTermine` sert de verrou, en plus de piloter le haut fait
+// lui-même).
+function terminerTutoriel(joueur) {
+  if (!joueur.tutoriel || joueur.tutoriel.termine) return;
+  joueur.tutoriel.etape = 5;
+  joueur.tutoriel.termine = true;
+  if (!joueur.statsVie.tutorielTermine) {
+    joueur.statsVie.tutorielTermine = 1;
+    joueur.or = (joueur.or || 0) + 30;
+    joueur.gemmes = (joueur.gemmes || 0) + 20;
+    verifierHautsFaits(joueur); // débloque le haut fait "tutoriel-termine" (titre "Nouveau Héros"), équipé automatiquement si aucun titre n'est encore choisi
+  }
+}
+
+// Fait avancer le tutoriel de `joueur` à l'étape suivante SI il est
+// actuellement bien à `etapeAttendue` (no-op sinon : tutoriel déjà terminé,
+// joueur pas encore arrivé à cette étape, ou double-déclenchement du même
+// événement) — centralise la logique plutôt que de la dupliquer à chaque
+// point d'accroche (déplacement, combat, butin, caractéristique, sorts).
+function avancerTutoriel(joueur, etapeAttendue) {
+  const t = joueur.tutoriel;
+  if (!t || t.termine || t.etape !== etapeAttendue) return;
+  if (etapeAttendue + 1 >= 5) {
+    terminerTutoriel(joueur);
+  } else {
+    t.etape = etapeAttendue + 1;
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -2378,6 +2561,7 @@ function ramasserObjets(zone, p) {
   for (const objet of ramasses) {
     p.inventaire[objet.type] = (p.inventaire[objet.type] || 0) + 1;
   }
+  avancerTutoriel(p, 2); // étape "butin" : ramasser ce que le mannequin a laissé tomber
   const [premier, ...reste] = ramasses;
   const legendaire = ramasses.some((o) => o.type.endsWith("Legendaire"));
   const mythique = ramasses.some((o) => o.type.endsWith("Mythique")); // jamais au sol en pratique (voir essayerDropLegendaireBoss), gardé par symétrie
@@ -2396,6 +2580,7 @@ function simulerPhysique(dtSecondes) {
     if (!p.alive) continue; // le corps reste figé pendant le K.O.
     const zone = zoneDeJoueur(p);
 
+    if (p.input.left || p.input.right) avancerTutoriel(p, 0); // étape "déplacement"
     if (p.input.f) ramasserObjets(zone, p);
 
     if (p.dashRestant > 0) {
@@ -2561,7 +2746,8 @@ function simulerMonstres(dtSecondes) {
         m.prochainChangement -= dtSecondes;
         if (m.prochainChangement <= 0) {
           m.vx = (Math.random() < 0.5 ? -1 : 1) * cfg.vitesse * (0.5 + Math.random() * 0.5);
-          m.prochainChangement = 0.3 + Math.random() * 0.7;
+          const intervalle = cfg.intervalleErratique || { min: 0.3, max: 1.0 };
+          m.prochainChangement = intervalle.min + Math.random() * (intervalle.max - intervalle.min);
         }
         m.x += m.vx * dtSecondes;
         if (m.x < m.borneGauche) {
@@ -2646,6 +2832,13 @@ function infligerDegatsMonstre(zone, m, degats, joueurId) {
   if (m.morte) return;
   m.hostile = true; // un gobelin neutre (voir MONSTRES_CONFIG.gobelinNeutre) devient hostile dès qu'un joueur le frappe, sans effet sur les autres types (déjà hostiles)
   m.hp = Math.max(0, m.hp - degats);
+  if (zone.id === "village") {
+    // Étape "combat" du tutoriel : validée dès le premier coup porté sur le
+    // gobelin du village, pas besoin d'attendre qu'il tombe à 0 PV (qui peut
+    // prendre plusieurs coups selon la classe).
+    const attaquant = players.get(joueurId);
+    if (attaquant) avancerTutoriel(attaquant, 1);
+  }
   if (m.hp === 0) {
     m.morte = true;
     m.respawnRestant = MONSTRES_CONFIG[m.type].delaiRespawn;
@@ -2682,6 +2875,13 @@ function infligerDegatsMonstre(zone, m, degats, joueurId) {
       essayerDropArmeTiere(zone, m.x + cfg.largeur / 2, m.y + cfg.hauteur / 2);
     } else if (zone.type === "verthige") {
       essayerDropFragment(); // Fisselo / Troubalourd / Tiralark de Berge-Rhak : chance de fragment de clé
+    } else if (zone.id === "village") {
+      // La zone "village" n'est couverte par aucune des branches ci-dessus :
+      // drop garanti (pas de jet aléatoire, voir essayerDropArme) pour que
+      // l'étape "butin" du tutoriel soit toujours possible.
+      const cfg = MONSTRES_CONFIG[m.type];
+      const type = ORDRE_LOOT_BASE[Math.floor(Math.random() * ORDRE_LOOT_BASE.length)];
+      deposerObjetAuSol(zone, type, m.x + cfg.largeur / 2, m.y + cfg.hauteur / 2);
     }
   }
 }
@@ -3169,7 +3369,10 @@ function simulerFoudreMonstresZone(zone, dtSecondes) {
           const distance = Math.hypot(p.x + JOUEUR_LARGEUR / 2 - zoneAoe.x, p.y + JOUEUR_HAUTEUR / 2 - zoneAoe.y);
           if (distance <= zoneAoe.rayon) infligerDegatsJoueur(p, zoneAoe.degats, zoneAoe.x);
         }
-        zone.effets.push({ id: prochainEffetId++, x: zoneAoe.x, y: zoneAoe.y, rayon: zoneAoe.rayon, couleur: "#f0d95a", vie: 0.3, vieMax: 0.3 });
+        // Explosion toxique verte (demande explicite) à la place de l'éclair
+        // jaune d'origine — voir dessinerExplosionToxique côté client, qui
+        // anime les 10 frames du sprite sur la durée de vie de l'effet.
+        zone.effets.push({ id: prochainEffetId++, x: zoneAoe.x, y: zoneAoe.y, rayon: zoneAoe.rayon, couleur: "#7fe05a", effet: "explosion_toxique", vie: 0.5, vieMax: 0.5 });
         m.aoeEnAttente = null;
       }
       continue;
@@ -3552,6 +3755,7 @@ function construireEtatPourJoueur(p, classement) {
       pointsDisponibles: p.pointsDisponibles || 0,
       statsAlouees: p.statsAlouees,
       titreActif: p.titreActif || null,
+      tutoriel: p.tutoriel || null,
     },
     players: Array.from(players.values())
       .filter((autre) => autre.zone === p.zone)
@@ -3934,6 +4138,7 @@ function extraireProgression(p) {
     titreActif: p.titreActif,
     connexionQuotidienne: p.connexionQuotidienne,
     apparence: p.apparence,
+    tutoriel: p.tutoriel,
   };
 }
 
@@ -3995,6 +4200,12 @@ function appliquerProgression(p, sauvegarde) {
   if (sauvegarde.connexionQuotidienne && typeof sauvegarde.connexionQuotidienne.serie === "number") {
     Object.assign(p.connexionQuotidienne, sauvegarde.connexionQuotidienne);
   }
+  // Tutoriel : restauré tel quel si présent (joueur qui s'était déconnecté
+  // en plein milieu), sinon explicitement marqué terminé plutôt que de
+  // laisser le défaut "actif" posé par creerJoueur — un personnage déjà
+  // existant (sauvegarde antérieure à cette fonctionnalité, ou simplement
+  // pas nouveau) n'a pas à se le voir imposer après coup.
+  p.tutoriel = sauvegarde.tutoriel || { etape: 5, termine: true };
   recalculerStatsEquipement(p); // recalcule hpMax/manaMax à partir de la progression restaurée
   p.hp = p.hpMax;
   p.mana = p.manaMax;
@@ -4100,6 +4311,13 @@ wss.on("connection", (ws, req) => {
       recalculerStatsEquipement(joueur);
       joueur.hp = joueur.hpMax;
       joueur.mana = joueur.manaMax;
+      // Tutoriel d'Estenoise-les-Brumes (voir avancerTutoriel) : tout nouveau
+      // personnage y apparaît directement plutôt qu'à Berge-Rhak, avec 5
+      // points de caractéristique d'avance pour pouvoir vivre l'étape
+      // "attribuer un point" sans devoir d'abord monter de niveau.
+      joueur.zone = "village";
+      joueur.x = 60;
+      joueur.pointsDisponibles = 5;
       sauvegarderPersonnage(jeton, joueur); // visible immédiatement dans GET /api/personnages
       sauvegarderComptes();
     } else {
@@ -4223,7 +4441,22 @@ wss.on("connection", (ws, req) => {
         joueur.pointsDisponibles -= applique;
         joueur.statsAlouees[attribut] = (joueur.statsAlouees[attribut] || 0) + applique;
         recalculerStatsEquipement(joueur);
+        avancerTutoriel(joueur, 3); // étape "caractéristique"
       }
+    } else if (message.type === "tutorielEvenement") {
+      // Bouton "Compris" de l'étape sorts/mana/cooldowns/vie (pure
+      // explication, aucune action de jeu à détecter derrière) — voir
+      // avancerTutoriel. `etape` doit correspondre à l'étape actuelle du
+      // joueur, sans quoi le message est ignoré (avancerTutoriel est déjà
+      // un no-op dans ce cas, mais autant éviter un message.etape farfelu).
+      const etape = Number(message.etape);
+      if (Number.isInteger(etape)) avancerTutoriel(joueur, etape);
+    } else if (message.type === "tutorielPasser") {
+      // "Passer le tutoriel" : termine tout de suite, avec la même
+      // récompense que la complétion normale (voir terminerTutoriel) — pas
+      // question de pénaliser un joueur qui connaît déjà le jeu (compte
+      // secondaire, revient après une pause...).
+      terminerTutoriel(joueur);
     } else if (message.type === "teleporter") {
       // Onglet téléporteur (haut droit de l'écran) : voyage instantané vers
       // n'importe quelle destination de DESTINATIONS_TELEPORTEUR, depuis
@@ -4338,6 +4571,52 @@ const server = http.createServer((req, res) => {
     const personnages = (jeton && comptes[jeton] && comptes[jeton].personnages) || [];
     res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
     res.end(JSON.stringify({ personnages: personnages.map(resumePersonnage), max: MAX_PERSONNAGES_PAR_COMPTE }));
+    return;
+  }
+
+  // Supprime définitivement un personnage d'un compte (écran de sélection,
+  // demande explicite "possibilité de supprimer un personnage"). Si ce
+  // personnage est actuellement en jeu (même jeton, même session), on coupe
+  // sa connexion d'abord — sans le sauvegarder, puisqu'il va disparaître —
+  // en reprenant le même nettoyage (players/clients/joueursParJeton/instance
+  // de donjon) que le garde-fou "double session" un peu plus haut.
+  if (req.method === "POST" && req.url === "/api/personnages/supprimer") {
+    lireCorpsJSON(req)
+      .then((corps) => {
+        const jeton = String(corps.jeton || "").trim();
+        const personnageId = String(corps.personnageId || "").trim();
+        if (!jeton || !personnageId) return repondreJSON(res, 400, { erreur: "Requête invalide." });
+
+        const compte = comptes[jeton];
+        const liste = (compte && compte.personnages) || [];
+        const index = liste.findIndex((p) => p.id === personnageId);
+        if (index === -1) return repondreJSON(res, 404, { erreur: "Personnage introuvable." });
+
+        const joueurEnJeu = joueursParJeton.get(jeton);
+        if (joueurEnJeu && joueurEnJeu._personnageId === personnageId) {
+          joueurEnJeu._sessionRemplacee = true;
+          const ws = clients.get(joueurEnJeu.id);
+          if (ws && ws.readyState === ws.OPEN) {
+            try {
+              ws.send(JSON.stringify({ type: "personnageSupprime" }));
+            } catch {}
+            ws.close();
+          }
+          const instance = instancesDonjon.get(joueurEnJeu.zone);
+          if (instance) {
+            instance.joueurs.delete(joueurEnJeu.id);
+            if (instance.joueurs.size === 0) instancesDonjon.delete(instance.id);
+          }
+          players.delete(joueurEnJeu.id);
+          clients.delete(joueurEnJeu.id);
+          joueursParJeton.delete(jeton);
+        }
+
+        liste.splice(index, 1);
+        sauvegarderComptes();
+        repondreJSON(res, 200, { ok: true });
+      })
+      .catch(() => repondreJSON(res, 400, { erreur: "Requête invalide." }));
     return;
   }
 
