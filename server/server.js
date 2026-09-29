@@ -2402,7 +2402,13 @@ function creerJoueur() {
     pseudo: `${infosClasse.label} ${id}`,
     classe,
     couleur: infosClasse.couleur,
-    zone: ZONE_VERTHIGE,
+    // Hub d'accueil par défaut (demande explicite) : Estenoise-les-Brumes
+    // plutôt que Berge-Rhak — la branche "nouveauPersonnage" du handler de
+    // connexion le fixait déjà à "village" séparément, mais un personnage
+    // EXISTANT qui se reconnecte (zone non sauvegardée, voir extraireProgression/
+    // appliquerProgression) ou une connexion temporaire sans jeton retombaient
+    // encore ici sur Berge-Rhak.
+    zone: "village",
     x: 40,
     y: 0,
     vx: 0,
@@ -2957,6 +2963,10 @@ function respawnJoueur(p) {
   p.hp = p.hpMax; // valeur effective (niveau + équipement), voir recalculerStatsEquipement
   p.mana = p.manaMax;
   p.alive = true;
+  // Réapparition au hub (Estenoise-les-Brumes, demande explicite) plutôt
+  // que sur place dans la zone où le joueur est mort — évite de réapparaître
+  // au milieu des monstres qui viennent de le tuer.
+  p.zone = "village";
   p.x = 60 + Math.random() * 300;
   p.y = 600 - JOUEUR_HAUTEUR;
   p.vx = 0;
