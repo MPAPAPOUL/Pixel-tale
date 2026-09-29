@@ -5469,24 +5469,33 @@ function dessinerMonstres() {
     const echelle = ECHELLE_HAUTEUR_REDUITE_MONSTRES.has(m.base || m.type) ? 1.05 : 2.1;
 
     const pose = poseMonstre(m);
+    // dessinerSprite agrandit le sprite à `m.hauteur * echelle` (2.1 pour la
+    // plupart des monstres) ancré par le BAS de la hitbox — le haut du
+    // sprite affiché dépasse donc largement `m.y` (le haut de la hitbox).
+    // Sans ça, la barre de vie (calée sur `m.y`) se retrouvait à mi-hauteur
+    // du sprite au lieu d'être au-dessus (gobelins, Tiralark...) — voir
+    // sommetSpriteAffiche ci-dessous, qui recale sur le haut RÉEL du rendu.
+    let sommetSpriteAffiche = m.y;
     if (pose && imagePrete(pose)) {
       if (filtre) ctx.filter = filtre;
       dessinerSprite(pose, m.x, m.y, m.largeur, m.hauteur, m.facing, echelle);
       if (filtre) ctx.filter = "none";
+      sommetSpriteAffiche = m.y + m.hauteur * (1 - echelle);
     } else {
       if (filtre) ctx.filter = filtre;
       dessinerCorpsMonstreSecours(m);
       if (filtre) ctx.filter = "none";
     }
 
-    // Barre de vie au-dessus
+    // Barre de vie au-dessus du sprite réellement affiché
     const centreX = m.x + m.largeur / 2;
     const barreLargeur = m.largeur * 0.9;
     const ratio = Math.max(0, m.hp / m.hpMax);
+    const barreY = sommetSpriteAffiche - 12;
     ctx.fillStyle = "rgba(18,20,28,0.7)";
-    ctx.fillRect(centreX - barreLargeur / 2, m.y - 12, barreLargeur, 5);
+    ctx.fillRect(centreX - barreLargeur / 2, barreY, barreLargeur, 5);
     ctx.fillStyle = ratio > 0.4 ? "#5fae5a" : "#c1502e";
-    ctx.fillRect(centreX - barreLargeur / 2, m.y - 12, barreLargeur * ratio, 5);
+    ctx.fillRect(centreX - barreLargeur / 2, barreY, barreLargeur * ratio, 5);
   }
 }
 
