@@ -3495,6 +3495,9 @@ function dessinerSprite(img, hitboxX, hitboxY, hitboxLargeur, hitboxHauteur, fac
   }
   ctx.drawImage(img, dx, dy, largeur, hauteur);
   ctx.restore();
+  // Haut réellement visible du sprite (marge transparente exclue) : sert à
+  // poser les barres de vie au-dessus de la tête et non au milieu du dessin.
+  return dy + boiteOpaque(img).y0 * echelle * (squashY || 1);
 }
 
 // --- Animation des boss : échelle uniforme + ancrage aux pieds ---------------
@@ -3562,6 +3565,7 @@ function dessinerSpriteBoss(img, imgRef, hitboxX, hitboxY, hitboxLargeur, hitbox
   }
   ctx.drawImage(img, dx, dy, largeurImg, hauteurImg);
   ctx.restore();
+  return dy + bb.y0 * echelle * sq;
 }
 
 // Respiration douce de l'idle (les boss n'ont qu'une pose de repos figée).
@@ -5663,9 +5667,10 @@ function dessinerMonstres() {
     const echelle = ECHELLE_HAUTEUR_REDUITE_MONSTRES.has(m.base || m.type) ? 1.05 : 2.1;
 
     const pose = poseMonstre(m);
+    let hautSprite = m.y;
     if (pose && imagePrete(pose)) {
       if (filtre) ctx.filter = filtre;
-      dessinerSprite(pose, m.x, m.y, m.largeur, m.hauteur, m.facing, echelle);
+      hautSprite = Math.min(m.y, dessinerSprite(pose, m.x, m.y, m.largeur, m.hauteur, m.facing, echelle));
       if (filtre) ctx.filter = "none";
     } else {
       if (filtre) ctx.filter = filtre;
@@ -5678,9 +5683,9 @@ function dessinerMonstres() {
     const barreLargeur = m.largeur * 0.9;
     const ratio = Math.max(0, m.hp / m.hpMax);
     ctx.fillStyle = "rgba(18,20,28,0.7)";
-    ctx.fillRect(centreX - barreLargeur / 2, m.y - 12, barreLargeur, 5);
+    ctx.fillRect(centreX - barreLargeur / 2, hautSprite - 12, barreLargeur, 5);
     ctx.fillStyle = ratio > 0.4 ? "#5fae5a" : "#c1502e";
-    ctx.fillRect(centreX - barreLargeur / 2, m.y - 12, barreLargeur * ratio, 5);
+    ctx.fillRect(centreX - barreLargeur / 2, hautSprite - 12, barreLargeur * ratio, 5);
   }
 }
 
@@ -5752,11 +5757,12 @@ function dessinerEntiteSireHano(boss, entite) {
   }
 
   const pose = poseBoss(entite);
+  let hautSprite = entite.y;
   ctx.save();
   ctx.filter = TEINTES_SIRE_HANO[boss.phaseIndex] || TEINTES_SIRE_HANO[0];
   if (pose && imagePrete(pose)) {
     const repos = pose === SPRITES_SIREHANO.idle && !entite.enMouvement && !entite.attaque;
-    dessinerSpriteBoss(pose, SPRITES_SIREHANO.idle, entite.x, entite.y, entite.largeur, entite.hauteur, entite.facing, 2.3, repos ? respirationIdle(entite.id || 0) : 1);
+    hautSprite = Math.min(entite.y, dessinerSpriteBoss(pose, SPRITES_SIREHANO.idle, entite.x, entite.y, entite.largeur, entite.hauteur, entite.facing, 2.3, repos ? respirationIdle(entite.id || 0) : 1));
   } else {
     ctx.fillStyle = "#4a2038";
     arrondiRect(entite.x, entite.y, entite.largeur, entite.hauteur, 10);
@@ -5771,14 +5777,14 @@ function dessinerEntiteSireHano(boss, entite) {
   const barreLargeur = Math.max(90, entite.largeur * 2.1);
   const ratio = Math.max(0, entite.hp / entite.hpMax);
   ctx.fillStyle = "rgba(18,20,28,0.75)";
-  ctx.fillRect(centreX - barreLargeur / 2, entite.y - 22, barreLargeur, 7);
+  ctx.fillRect(centreX - barreLargeur / 2, hautSprite - 22, barreLargeur, 7);
   ctx.fillStyle = ratio > 0.4 ? "#8a4fc7" : "#e05a3a";
-  ctx.fillRect(centreX - barreLargeur / 2, entite.y - 22, barreLargeur * ratio, 7);
+  ctx.fillRect(centreX - barreLargeur / 2, hautSprite - 22, barreLargeur * ratio, 7);
 
   ctx.fillStyle = "#12141c";
   ctx.font = "700 12px 'Baloo 2', sans-serif";
   ctx.textAlign = "center";
-  ctx.fillText(`${boss.nom} — phase ${boss.phaseIndex + 1}/${boss.phasesTotal}`, centreX, entite.y - 28);
+  ctx.fillText(`${boss.nom} — phase ${boss.phaseIndex + 1}/${boss.phasesTotal}`, centreX, hautSprite - 28);
 }
 
 // Dragon Noir — une seule entité (boss du monde, pas de répliques comme
@@ -5824,6 +5830,7 @@ function dessinerDragonNoir() {
   }
 
   const pose = poseDragon(dragon);
+  let hautSprite = dragon.y;
   ctx.save();
   ctx.filter = TEINTES_DRAGON_NOIR[dragon.phase - 1] || TEINTES_DRAGON_NOIR[0];
   if (pose && imagePrete(pose)) {
@@ -5833,7 +5840,7 @@ function dessinerDragonNoir() {
     const echelle = dragon.formeHumaine ? 2.6 : 2.1;
     const jeuDragon = dragon.formeHumaine ? SPRITES_DRAGONNOIR_HUMAIN : SPRITES_DRAGONNOIR;
     const repos = pose === jeuDragon.idle;
-    dessinerSpriteBoss(pose, jeuDragon.idle, dragon.x, dragon.y, dragon.largeur, dragon.hauteur, dragon.facing, echelle, repos ? respirationIdle(3) : 1);
+    hautSprite = Math.min(dragon.y, dessinerSpriteBoss(pose, jeuDragon.idle, dragon.x, dragon.y, dragon.largeur, dragon.hauteur, dragon.facing, echelle, repos ? respirationIdle(3) : 1));
   } else {
     ctx.fillStyle = "#231824";
     arrondiRect(dragon.x, dragon.y, dragon.largeur, dragon.hauteur, 12);
@@ -5846,15 +5853,15 @@ function dessinerDragonNoir() {
   const barreLargeur = Math.max(120, dragon.largeur * 1.7);
   const ratio = Math.max(0, dragon.hp / dragon.hpMax);
   ctx.fillStyle = "rgba(18,20,28,0.75)";
-  ctx.fillRect(centreX - barreLargeur / 2, dragon.y - 24, barreLargeur, 8);
+  ctx.fillRect(centreX - barreLargeur / 2, hautSprite - 24, barreLargeur, 8);
   ctx.fillStyle = dragon.phase === 2 ? "#e0392a" : "#7a4fc7";
-  ctx.fillRect(centreX - barreLargeur / 2, dragon.y - 24, barreLargeur * ratio, 8);
+  ctx.fillRect(centreX - barreLargeur / 2, hautSprite - 24, barreLargeur * ratio, 8);
 
   ctx.fillStyle = "#12141c";
   ctx.font = "700 12px 'Baloo 2', sans-serif";
   ctx.textAlign = "center";
   const libellePhase = dragon.phase === 2 ? "Dragon Noir — forme humanoïde, en fureur" : "Dragon Noir";
-  ctx.fillText(libellePhase, centreX, dragon.y - 30);
+  ctx.fillText(libellePhase, centreX, hautSprite - 30);
 }
 
 // Chevalier Noir — boss de la Salle du Trône : une seule phase pour
@@ -5937,11 +5944,12 @@ function dessinerChevalierNoir() {
   }
 
   const pose = poseChevalierNoir(cn);
+  let hautSprite = cn.y;
   ctx.save();
   ctx.filter = "brightness(0.92) saturate(1.15) contrast(1.05)";
   if (pose && imagePrete(pose)) {
     const repos = !cn.attaque && !cn.enMouvement && !cn.aoeEnAttente;
-    dessinerSpriteBoss(pose, SPRITES_CHEVALIER_NOIR.idle1, cn.x, cn.y, cn.largeur, cn.hauteur, cn.facing, ECHELLE_CHEVALIER_NOIR, repos ? respirationIdle(7) : 1, true);
+    hautSprite = Math.min(cn.y, dessinerSpriteBoss(pose, SPRITES_CHEVALIER_NOIR.idle1, cn.x, cn.y, cn.largeur, cn.hauteur, cn.facing, ECHELLE_CHEVALIER_NOIR, repos ? respirationIdle(7) : 1, true));
   } else {
     ctx.fillStyle = "#1c1c26";
     arrondiRect(cn.x, cn.y, cn.largeur, cn.hauteur, 10);
@@ -5954,9 +5962,9 @@ function dessinerChevalierNoir() {
   const barreLargeur = Math.max(120, cn.largeur * 2.4);
   const ratio = Math.max(0, cn.hp / cn.hpMax);
   ctx.fillStyle = "rgba(18,20,28,0.75)";
-  ctx.fillRect(centreX - barreLargeur / 2, cn.y - 24, barreLargeur, 8);
+  ctx.fillRect(centreX - barreLargeur / 2, hautSprite - 24, barreLargeur, 8);
   ctx.fillStyle = "#5a3fae";
-  ctx.fillRect(centreX - barreLargeur / 2, cn.y - 24, barreLargeur * ratio, 8);
+  ctx.fillRect(centreX - barreLargeur / 2, hautSprite - 24, barreLargeur * ratio, 8);
 
   // Texte clair plutôt que le "#12141c" quasi-noir utilisé pour Sire-Hano/
   // Dragon Noir : leurs zones ont un ciel clair en fond, alors que la Salle
@@ -5964,7 +5972,7 @@ function dessinerChevalierNoir() {
   ctx.fillStyle = "#f0e6d0";
   ctx.font = "700 12px 'Baloo 2', sans-serif";
   ctx.textAlign = "center";
-  ctx.fillText("Chevalier Noir", centreX, cn.y - 30);
+  ctx.fillText("Chevalier Noir", centreX, hautSprite - 30);
 }
 
 // Zone au sol télégraphiée par Sire-Hano : un cercle d'avertissement qui se
