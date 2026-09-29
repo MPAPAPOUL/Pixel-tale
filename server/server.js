@@ -1185,15 +1185,25 @@ function creerEntiteSireHano(phaseIndex, xCentre) {
     // demande explicite, la silhouette réduite (échelle 0.62) la rendait trop
     // dure à toucher par le dessus. Purement une extension de collision, la
     // taille du sprite (largeur/hauteur ci-dessus) ne change pas.
-    hitboxSupHaut: phaseIndex === 2 ? 2 : 0,
+    hitboxSupHaut: 0,
+    // Phase 3 : hitbox agrandie de 30 % (largeur et hauteur, pieds et centre
+    // conservés) — demande explicite. Sans effet sur la taille du sprite.
+    hitboxFacteur: phaseIndex === 2 ? 1.3 : 1,
   };
 }
 
 // Rectangle de collision d'une entité de Sire-Hano — voir hitboxSupHaut
 // ci-dessus (uniquement non-nul en phase 3).
 function hitboxEntiteSireHano(entite) {
-  const sup = entite.hitboxSupHaut || 0;
-  return { x: entite.x, y: entite.y - sup, largeur: entite.largeur, hauteur: entite.hauteur + sup };
+  const f = entite.hitboxFacteur || 1;
+  const largeur = entite.largeur * f;
+  const hauteur = entite.hauteur * f;
+  return {
+    x: entite.x - (largeur - entite.largeur) / 2,
+    y: entite.y + entite.hauteur - hauteur,
+    largeur,
+    hauteur,
+  };
 }
 
 // Démarre (ou relance à la phase suivante) le combat de Sire-Hano pour une

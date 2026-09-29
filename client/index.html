@@ -5774,12 +5774,6 @@ function dessinerEntiteSireHano(boss, entite) {
   // Petite barre de vie + nom au-dessus de chaque entité, et indicateur de
   // phase (1/3, 2/3, 3/3) commun à toutes les répliques de la phase.
   const centreX = entite.x + entite.largeur / 2;
-  const barreLargeur = Math.max(90, entite.largeur * 2.1);
-  const ratio = Math.max(0, entite.hp / entite.hpMax);
-  ctx.fillStyle = "rgba(18,20,28,0.75)";
-  ctx.fillRect(centreX - barreLargeur / 2, entite.y - 22, barreLargeur, 7);
-  ctx.fillStyle = ratio > 0.4 ? "#8a4fc7" : "#e05a3a";
-  ctx.fillRect(centreX - barreLargeur / 2, entite.y - 22, barreLargeur * ratio, 7);
 
   ctx.fillStyle = "#12141c";
   ctx.font = "700 12px 'Baloo 2', sans-serif";
@@ -5850,12 +5844,6 @@ function dessinerDragonNoir() {
   ctx.globalAlpha = 1;
 
   const centreX = dragon.x + dragon.largeur / 2;
-  const barreLargeur = Math.max(120, dragon.largeur * 1.7);
-  const ratio = Math.max(0, dragon.hp / dragon.hpMax);
-  ctx.fillStyle = "rgba(18,20,28,0.75)";
-  ctx.fillRect(centreX - barreLargeur / 2, dragon.y - 24, barreLargeur, 8);
-  ctx.fillStyle = dragon.phase === 2 ? "#e0392a" : "#7a4fc7";
-  ctx.fillRect(centreX - barreLargeur / 2, dragon.y - 24, barreLargeur * ratio, 8);
 
   ctx.fillStyle = "#12141c";
   ctx.font = "700 12px 'Baloo 2', sans-serif";
@@ -5959,12 +5947,6 @@ function dessinerChevalierNoir() {
   ctx.globalAlpha = 1;
 
   const centreX = cn.x + cn.largeur / 2;
-  const barreLargeur = Math.max(120, cn.largeur * 2.4);
-  const ratio = Math.max(0, cn.hp / cn.hpMax);
-  ctx.fillStyle = "rgba(18,20,28,0.75)";
-  ctx.fillRect(centreX - barreLargeur / 2, cn.y - 24, barreLargeur, 8);
-  ctx.fillStyle = "#5a3fae";
-  ctx.fillRect(centreX - barreLargeur / 2, cn.y - 24, barreLargeur * ratio, 8);
 
   // Texte clair plutôt que le "#12141c" quasi-noir utilisé pour Sire-Hano/
   // Dragon Noir : leurs zones ont un ciel clair en fond, alors que la Salle
