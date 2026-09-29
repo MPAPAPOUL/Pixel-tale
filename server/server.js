@@ -1761,8 +1761,16 @@ const ART_DEDIE_PAR_BIOME = {
   "dunes-cendrees": { base: "spectre-emergent", teinte: null, largeur: 71, hauteur: 46 }, // spectre très large/aplati, ratio ≈1.54, était 40
   "abysses-luisantes": { base: "bluetentacle", teinte: null, largeur: 29, hauteur: 84 }, // ratio ≈0.69, hauteur ×2 (était 42, initialement 38)
   "jardins-petrifies": { base: "sorcier-4bras", teinte: null, largeur: 69, hauteur: 58 }, // bras écartés, ratio ≈1.18, était 48
-  // Les deux dernières régions gardent le gabarit teinté (le dragon DCSS
-  // dédié qui y était a été retiré, trop pixelisé à l'échelle du jeu).
+  // Couronne d'Orage et Sanctuaire Éclipsé : dernières régions à garder le
+  // gabarit Fisselo/Tiralark simplement reteinté — demande explicite de ne
+  // plus recolorer ces deux-là. Deux variantes du même pack minotaure chibi
+  // (assets fournis), une par région pour rester distinctes malgré la
+  // parenté d'asset. Ratios moyens idle/walk/attack (voir client) : ≈0.89
+  // pour le rouge, ≈0.84 pour le brun ; hauteur portée à 95 (au lieu des
+  // 52/46 du gabarit d'origine) pour une vraie présence à l'écran, cohérente
+  // avec les autres monstres dédiés ci-dessus.
+  "couronne-orage": { base: "minotaure-rouge", teinte: null, largeur: 85, hauteur: 95 },
+  "sanctuaire-eclipse": { base: "minotaure-brun", teinte: null, largeur: 80, hauteur: 95 },
 };
 for (const [id, art] of Object.entries(ART_DEDIE_PAR_BIOME)) {
   if (MONSTRES_CONFIG[id]) Object.assign(MONSTRES_CONFIG[id], art);

@@ -3326,6 +3326,21 @@ const SPRITES_MONSTRES = {
     walk: chargerImage("sprites/sorcier-4bras/walk.png"),
     attack: chargerImage("sprites/sorcier-4bras/attack.png"),
   },
+  // Couronne d'Orage et Sanctuaire Éclipsé gardaient le gabarit Fisselo/
+  // Tiralark simplement reteinté (les deux seules régions sans art dédié) —
+  // demande explicite de ne plus recolorer ces deux-là. Deux variantes
+  // distinctes du même pack minotaure chibi pour rester visuellement
+  // différentes malgré la parenté d'asset.
+  "minotaure-rouge": {
+    idle: chargerImage("sprites/minotaure-rouge/idle.png"),
+    walk: chargerImage("sprites/minotaure-rouge/walk.png"),
+    attack: chargerImage("sprites/minotaure-rouge/attack.png"),
+  },
+  "minotaure-brun": {
+    idle: chargerImage("sprites/minotaure-brun/idle.png"),
+    walk: chargerImage("sprites/minotaure-brun/walk.png"),
+    attack: chargerImage("sprites/minotaure-brun/attack.png"),
+  },
   // Mob élite du donjon (voir TYPES_MOBS_DONJON côté serveur) : a aussi une
   // pose "ko" (couchée), contrairement aux monstres normaux qui disparaissent
   // simplement à 0 PV — poseMonstre() l'ignore pour l'instant (les monstres
