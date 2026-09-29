@@ -376,6 +376,7 @@
     <div class="navlinks">
       <a href="#classes">Classes</a>
       <a href="#univers">Univers</a>
+      <a href="#nouveautes">Nouveautés</a>
       <a href="#extensions">Extensions</a>
       <a href="#bestiaire">Bestiaire</a>
       <a href="#fonctionnalites">Fonctionnalités</a>
@@ -459,8 +460,9 @@
         <h3>De Berge-Rhak aux confins des Royaumes</h3>
         <p>
           Pars de <strong>Berge-Rhak</strong>, l'île de départ, puis
-          débloque un réseau de téléporteurs vers huit régions de plus en
-          plus dangereuses — des Crêtes d'Ambre à la Couronne d'Orage —
+          débloque un réseau de téléporteurs vers onze régions de plus en
+          plus dangereuses — de la Crique des Corsaires à la Crique des
+          Naufrageurs — 
           chacune avec son ambiance, ses monstres et son palier
           d'équipement. Fais une pause à <strong>Estenoise-les-Brumes</strong>,
           le village neutre, pour commercer et discuter.
@@ -491,6 +493,24 @@
           <span>Chevalier Noir</span>
         </div>
       </div>
+    </div>
+  </div>
+</section>
+
+<section id="nouveautes">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="kicker-small">Dernières mises à jour</span>
+      <h2>Nouveautés</h2>
+      <p>Le jeu évolue chaque semaine — voici ce qui vient d'arriver.</p>
+    </div>
+    <div class="features-grid">
+      <div class="feature"><span class="icon">🏴‍☠️</span><h4>Deux nouvelles criques pirates</h4><p>La Crique des Corsaires (niveau 15) et la redoutable Crique des Naufrageurs (niveau 100), avec leurs pirates, leurs décors de plage et un nouveau monstre : le Capitaine Sabrenoir.</p></div>
+      <div class="feature"><span class="icon">💥</span><h4>Sorts de zone animés</h4><p>Cri de guerre nucléaire du Dorken, explosions arcaniques colorées du Krix, météore du Dragon Noir : fini les ronds rouges, place aux vraies animations.</p></div>
+      <div class="feature"><span class="icon">🐉</span><h4>Boss plus fluides</h4><p>Animations des boss retravaillées : taille stable d'une pose à l'autre, pieds bien posés au sol, attaques lues depuis leur première image.</p></div>
+      <div class="feature"><span class="icon">🌄</span><h4>Un décor par région</h4><p>Chaque région a désormais son propre décor en parallaxe : plages, dunes, abysses, jardins pétrifiés, ciel d'orage, sanctuaire éclipsé…</p></div>
+      <div class="feature"><span class="icon">🌱</span><h4>Plus accessible</h4><p>Estenoise-les-Brumes et Berge-Rhak dès le niveau 1, tutoriel guidé, régénération de vie doublée, dégâts subis réduits et premiers niveaux plus rapides.</p></div>
+      <div class="feature"><span class="icon">⚔️</span><h4>Barres de vie lisibles</h4><p>Les barres de vie des monstres se placent au-dessus de leur tête, et Sire-Hano est plus facile à toucher en phase finale (hitbox +30 %).</p></div>
     </div>
   </div>
 </section>
@@ -593,11 +613,38 @@
 
     <!-- Régions / biomes -->
     <div class="beast-panel" id="tab-regions">
-      <p class="beast-note">Huit régions débloquées par téléporteur depuis
+      <p class="beast-note">Onze régions débloquées par téléporteur depuis
         Berge-Rhak, de plus en plus dangereuses. Un palier d'équipement tous
         les ~20 niveaux (Tier 1 à 4) ; chaque monstre garde
         <strong style="color:var(--gold)">10% de chance</strong> de drop sur
         le pool de son tier.</p>
+
+      <div class="beast-region-group">
+        <div class="beast-region-head"><h4>Crique des Corsaires</h4><span class="tier-badge">Niveau 15 · Tier 1</span></div>
+        <div class="beast-grid">
+          <div class="beast-card">
+            <img src="assets/img/enemy-squidman.png" alt="Homme-Calmar">
+            <h5>Homme-Calmar</h5>
+            <div class="beast-role">Erratique</div>
+            <div class="beast-stats"><span>❤️ 38 PV</span><span>⚔️ 9 dégâts</span><span>✨ 9 XP</span></div>
+            <div class="beast-drop"><strong>Drop :</strong> 10% équipement Tier 1 (arme/armure/accessoire).</div>
+          </div>
+          <div class="beast-card">
+            <img src="assets/img/enemy-pirate-zombie.png" alt="Pirate Zombie">
+            <h5>Pirate Zombie</h5>
+            <div class="beast-role">Patrouilleur</div>
+            <div class="beast-stats"><span>❤️ 65 PV</span><span>⚔️ 15 dégâts</span><span>✨ 14 XP</span></div>
+            <div class="beast-drop"><strong>Drop :</strong> 10% équipement Tier 1 (arme/armure/accessoire).</div>
+          </div>
+          <div class="beast-card">
+            <img src="assets/img/enemy-pirate-leader.png" alt="Capitaine Corsaire">
+            <h5>Capitaine Corsaire</h5>
+            <div class="beast-role">Élite</div>
+            <div class="beast-stats"><span>❤️ 110 PV</span><span>⚔️ 22 dégâts</span><span>✨ 26 XP</span></div>
+            <div class="beast-drop"><strong>Drop :</strong> 10% équipement Tier 1 (arme/armure/accessoire).</div>
+          </div>
+        </div>
+      </div>
 
       <div class="beast-region-group">
         <div class="beast-region-head"><h4>Crêtes d'Ambre</h4><span class="tier-badge">Niveau 10 · Tier 1</span></div>
@@ -696,10 +743,38 @@
         <div class="beast-region-head"><h4>Couronne d'Orage</h4><span class="tier-badge">Niveau 80 · Tier 4</span></div>
         <div class="beast-grid">
           <div class="beast-card">
-            <img src="assets/img/enemy-goblin-female.png" alt="Fulgurin" style="filter: drop-shadow(0 8px 12px rgba(0,0,0,0.4)) hue-rotate(45deg) saturate(1.6) brightness(1.2)">
+            <img src="assets/img/enemy-minotaure-rouge.png" alt="Fulgurin">
             <h5>Fulgurin</h5>
             <div class="beast-role">Erratique</div>
             <div class="beast-stats"><span>❤️ 70 PV</span><span>⚔️ 25 dégâts</span><span>✨ 20 XP</span></div>
+            <div class="beast-drop"><strong>Drop :</strong> 10% équipement Tier 4 (arme/armure/accessoire).</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="beast-region-group">
+        <div class="beast-region-head"><h4>Sanctuaire Éclipsé</h4><span class="tier-badge">Niveau 90 · Tier 4</span></div>
+        <div class="beast-grid">
+          <div class="beast-card">
+            <img src="assets/img/enemy-minotaure-brun.png" alt="Voilure">
+            <h5>Voilure</h5>
+            <div class="beast-role">Tireur</div>
+            <div class="beast-stats"><span>❤️ 132 PV</span><span>⚔️ 33 dégâts</span><span>✨ 33 XP</span></div>
+            <p class="beast-behavior">Tire à distance (44 dégâts, portée 500px).</p>
+            <div class="beast-drop"><strong>Drop :</strong> 10% équipement Tier 4 (arme/armure/accessoire).</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="beast-region-group">
+        <div class="beast-region-head"><h4>Crique des Naufrageurs</h4><span class="tier-badge">Niveau 100 · Tier 4</span></div>
+        <div class="beast-grid">
+          <div class="beast-card">
+            <img src="assets/img/enemy-capitaine-sabrenoir.png" alt="Sabrenoir">
+            <h5>Sabrenoir</h5>
+            <div class="beast-role">Patrouilleur</div>
+            <div class="beast-stats"><span>❤️ 240 PV</span><span>⚔️ 60 dégâts</span><span>✨ 48 XP</span></div>
+            <p class="beast-behavior">Capitaine pirate au sabre, la région la plus dangereuse du jeu.</p>
             <div class="beast-drop"><strong>Drop :</strong> 10% équipement Tier 4 (arme/armure/accessoire).</div>
           </div>
         </div>
