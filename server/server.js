@@ -1386,7 +1386,7 @@ function simulerDragonNoir(dtSecondes) {
         const distance = Math.hypot(p.x + JOUEUR_LARGEUR / 2 - zoneAoe.x, p.y + JOUEUR_HAUTEUR / 2 - zoneAoe.y);
         if (distance <= zoneAoe.rayon) infligerDegatsJoueur(p, zoneAoe.degats, zoneAoe.x);
       }
-      zone.effets.push({ id: prochainEffetId++, x: zoneAoe.x, y: zoneAoe.y, rayon: zoneAoe.rayon, couleur: "#ff6a2e", vie: 0.3, vieMax: 0.3 });
+      zone.effets.push({ id: prochainEffetId++, x: zoneAoe.x, y: zoneAoe.y, rayon: zoneAoe.rayon, couleur: "#ff6a2e", effet: "cri_de_guerre", vie: 0.5, vieMax: 0.5 });
       dragon.aoeEnAttente = null;
     }
   }
@@ -3582,7 +3582,7 @@ function simulerUneEntiteSireHano(instance, entite, dtSecondes) {
         const distance = Math.hypot(p.x + JOUEUR_LARGEUR / 2 - zoneAoe.x, p.y + JOUEUR_HAUTEUR / 2 - zoneAoe.y);
         if (distance <= zoneAoe.rayon) infligerDegatsJoueur(p, zoneAoe.degats, zoneAoe.x);
       }
-      instance.effets.push({ id: prochainEffetId++, x: zoneAoe.x, y: zoneAoe.y, rayon: zoneAoe.rayon, couleur: "#e05a3a", vie: 0.3, vieMax: 0.3 });
+      instance.effets.push({ id: prochainEffetId++, x: zoneAoe.x, y: zoneAoe.y, rayon: zoneAoe.rayon, couleur: "#e05a3a", effet: "explosion_arcanique", vie: 0.5, vieMax: 0.5 });
       entite.aoeEnAttente = null;
     }
   }

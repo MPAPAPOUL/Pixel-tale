@@ -5928,6 +5928,36 @@ function dessinerChevalierNoir() {
   ctx.fillText("Chevalier Noir", centreX, cn.y - 30);
 }
 
+// Avertissement d'un sort de zone (à la place de l'ancien rond rouge) : un
+// noyau animé — les premières frames de l'explosion qui va suivre — qui gonfle
+// jusqu'à la taille de l'impact, sur une lueur douce au sol qui pulse.
+function dessinerTelegrapheExplosion(zone) {
+  const p = Math.min(1, Math.max(0, zone.progression || 0));
+  const t = performance.now() / 1000;
+  ctx.save();
+  const pulse = 0.75 + 0.25 * Math.sin(t * 14);
+  const lueur = ctx.createRadialGradient(zone.x, zone.y, 0, zone.x, zone.y, zone.rayon);
+  lueur.addColorStop(0, `rgba(255,120,60,${0.28 * pulse})`);
+  lueur.addColorStop(0.75, `rgba(255,90,50,${0.12 * pulse})`);
+  lueur.addColorStop(1, "rgba(255,90,50,0)");
+  ctx.fillStyle = lueur;
+  ctx.beginPath();
+  ctx.ellipse(zone.x, zone.y, zone.rayon, zone.rayon * 0.9, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  const frames = zone.frames;
+  const img = frames && frames[Math.min(3, Math.floor(p * 4))];
+  if (img && imagePrete(img)) {
+    const taille = zone.rayon * 2.7 * (0.35 + 0.65 * p);
+    const echelle = taille / Math.max(img.naturalWidth, img.naturalHeight);
+    const l = img.naturalWidth * echelle;
+    const h = img.naturalHeight * echelle;
+    ctx.globalAlpha = 0.6 + 0.4 * pulse;
+    ctx.drawImage(img, zone.x - l / 2, zone.y - h / 2, l, h);
+  }
+  ctx.restore();
+}
+
 // Zone au sol télégraphiée par Sire-Hano : un cercle d'avertissement qui se
 // remplit progressivement, pour laisser le temps de s'écarter avant que les
 // dégâts ne s'appliquent réellement (voir aoeEnAttente côté serveur).
@@ -5937,11 +5967,11 @@ function dessinerTelegrapheAoe() {
     // Plusieurs entités peuvent télégraphier une zone en même temps depuis la
     // phase 2 (2 répliques) et la phase 3 (4 répliques).
     for (const entite of state.boss.entites) {
-      if (entite.aoeEnAttente) zonesActives.push(entite.aoeEnAttente);
+      if (entite.aoeEnAttente) zonesActives.push({ ...entite.aoeEnAttente, frames: IMGS_EXPLOSION_ARCANIQUE[0] });
     }
   }
   // Le Dragon Noir télégraphie son météore (phase 1 et 2) de la même façon.
-  if (state.dragon && state.dragon.aoeEnAttente) zonesActives.push(state.dragon.aoeEnAttente);
+  if (state.dragon && state.dragon.aoeEnAttente) zonesActives.push({ ...state.dragon.aoeEnAttente, frames: IMGS_EXPLOSION_NUCLEAIRE });
   // Le Chevalier Noir télégraphie une colonne verticale (voir `colonne` ci-
   // dessous), rendue à part de la boucle circulaire générique.
   if (state.chevalierNoir && state.chevalierNoir.aoeEnAttente) zonesActives.push(state.chevalierNoir.aoeEnAttente);
@@ -5955,20 +5985,7 @@ function dessinerTelegrapheAoe() {
       dessinerTelegrapheColonneEclair(zone);
       continue;
     }
-    ctx.save();
-    ctx.strokeStyle = "rgba(224,90,58,0.9)";
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.arc(zone.x, zone.y, zone.rayon, 0, Math.PI * 2);
-    ctx.stroke();
-
-    ctx.fillStyle = "rgba(224,90,58,0.22)";
-    ctx.beginPath();
-    ctx.moveTo(zone.x, zone.y);
-    ctx.arc(zone.x, zone.y, zone.rayon, -Math.PI / 2, -Math.PI / 2 + zone.progression * Math.PI * 2);
-    ctx.closePath();
-    ctx.fill();
-    ctx.restore();
+    dessinerTelegrapheExplosion(zone);
   }
 }
 
