@@ -1129,7 +1129,7 @@ const SIRE_HANO_LARGEUR_BASE = 60;
 const SIRE_HANO_HAUTEUR_BASE = 70;
 const SIRE_HANO_Y_SOL = 600; // ligne de sol commune, quelle que soit la taille de l'entité
 const SIRE_HANO_VITESSE = 95;
-const SIRE_HANO_HP_ORIGINAL = 480;
+const SIRE_HANO_HP_ORIGINAL = 960;
 
 const PHASES_SIRE_HANO = [
   { nom: "Sire-Hano", ratioHp: 1, nombre: 1, echelle: 1 },
@@ -1229,7 +1229,7 @@ function demarrerPhaseSireHano(instance, phaseIndex) {
 const DRAGON_NOIR_LARGEUR = 84;
 const DRAGON_NOIR_HAUTEUR = 66;
 const DRAGON_NOIR_VITESSE = 70;
-const DRAGON_NOIR_HP = 3600;
+const DRAGON_NOIR_HP = 7200;
 const DRAGON_NOIR_RATIO_TRANSFORMATION = 0.5; // passage en phase 2 sous ce ratio de PV
 const DRAGON_NOIR_DELAI_RESPAWN = 120; // secondes avant réapparition après défaite
 const DRAGON_NOIR_MULTIPLICATEUR_PHASE2 = 2; // +100% dégâts infligés en phase 2
@@ -1801,6 +1801,11 @@ for (const [id, art] of Object.entries(ART_DEDIE_PAR_BIOME)) {
   if (MONSTRES_CONFIG[id]) Object.assign(MONSTRES_CONFIG[id], art);
 }
 
+// +100 % de PV pour tous les monstres (les boss ont leurs propres constantes,
+// doublées elles aussi). Appliqué une seule fois ici : creerMonstre et la
+// réapparition lisent tous deux cfg.hpMax.
+for (const cfg of Object.values(MONSTRES_CONFIG)) cfg.hpMax *= 2;
+
 // Élément grimpable par biome (voir dessinerLianes côté client pour le
 // rendu propre à chaque `type`) — un thème cohérent avec l'ambiance de la
 // région plutôt que la même liane verte partout : liane pour les biomes
@@ -2160,7 +2165,7 @@ function sortirSalleTroneAmbre(p) {
 const CHEVALIER_NOIR_LARGEUR = 50;
 const CHEVALIER_NOIR_HAUTEUR = 118;
 const CHEVALIER_NOIR_VITESSE = 85;
-const CHEVALIER_NOIR_HP = 2800;
+const CHEVALIER_NOIR_HP = 5600;
 const CHEVALIER_NOIR_DELAI_RESPAWN = 90; // secondes avant réapparition après défaite
 
 const CHEVALIER_NOIR_ATTAQUES = {
