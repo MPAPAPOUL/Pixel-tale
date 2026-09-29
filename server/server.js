@@ -83,7 +83,7 @@ const VITESSE_SAUT = -640; // px/s (négatif = vers le haut)
 const VITESSE_CHUTE_MAX = 900; // px/s
 
 const TICK_MS = 1000 / 30; // 30 mises à jour physiques par seconde
-const HP_REGEN_PAR_SECONDE = 2; // régénération de vie passive de base (PV/s) — voir aussi le bonus "regenPv" de l'équipement légendaire/mythique
+const HP_REGEN_PAR_SECONDE = 4; // régénération de vie passive de base (PV/s) — voir aussi le bonus "regenPv" de l'équipement légendaire/mythique
 
 // Plateformes statiques de la zone (rectangles). La première est le sol
 // général de l'île — cohérent avec le GDD : les bords sont sécurisés, on ne
@@ -837,8 +837,12 @@ function recalculerStatsEquipement(p) {
 
 // Coût en XP pour passer du niveau n à n+1 (croissance douce et linéaire —
 // largement suffisant pour une verticale-slice).
+// Courbe adoucie pour les joueurs occasionnels : les premiers niveaux
+// s'enchaînent vite (Berge-Rhak → premières zones en quelques minutes), puis
+// la pente reprend un rythme normal.
 function xpRequisPourNiveau(niveau) {
-  return Math.round(40 + niveau * 25);
+  const base = Math.round(40 + niveau * 25);
+  return niveau <= 10 ? Math.round(base * 0.6) : base;
 }
 
 const XP_SIRE_HANO_ENTITE = 15; // par réplique tuée, quelle que soit la phase
@@ -2058,7 +2062,9 @@ const DESTINATIONS_TELEPORTEUR = [
   // La Salle du Trône n'apparaît PAS ici : contrairement aux biomes, elle ne
   // se rejoint que par sa porte (voir plus bas), pas par le réseau de
   // téléporteurs — cohérent avec le fait que l'entrée s'y paie.
-].map((destination, index) => ({ ...destination, niveauRequis: 1 + index * NIVEAU_REQUIS_PALIER }));
+// Estenoise (hub) et Berge-Rhak (zone de départ) sont accessibles dès le niveau 1 ;
+// ensuite +3 niveaux par zone.
+].map((destination, index) => ({ ...destination, niveauRequis: 1 + Math.max(0, index - 1) * NIVEAU_REQUIS_PALIER }));
 
 // ---------------------------------------------------------------------------
 // Donjon : Salle du Trône (Crêtes d'Ambre) — entrée payante, pas de fragments
@@ -2930,13 +2936,16 @@ function infligerDegatsSireHano(zone, entite, degats, joueurId) {
   }
 }
 
+const FACTEUR_DEGATS_SUBIS = 0.8;
 function infligerDegatsJoueur(p, degats, sourceX) {
   if (!p.alive || p.invulnerableRestant > 0) return false;
   // Réduction de dégâts subis (armure légendaire) : appliquée ici, au
   // moment de l'impact, pour couvrir toutes les sources (mobs, boss).
-  const degatsEffectifs = Math.round(degats * (1 - statsEquipement(p).reductionDegatsPct));
+  // Facteur "casual" : tous les dégâts subis (mobs, boss) sont réduits de 20 %
+  // pour que le jeu reste jouable sans optimiser son build.
+  const degatsEffectifs = Math.max(1, Math.round(degats * FACTEUR_DEGATS_SUBIS * (1 - statsEquipement(p).reductionDegatsPct)));
   p.hp = Math.max(0, p.hp - degatsEffectifs);
-  p.invulnerableRestant = 1.0;
+  p.invulnerableRestant = 1.3;
 
   // Petit recul pour ressentir l'impact : on pousse le joueur à l'opposé de
   // la source du coup, avec un petit rebond vertical.

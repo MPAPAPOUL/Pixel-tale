@@ -3497,6 +3497,93 @@ function dessinerSprite(img, hitboxX, hitboxY, hitboxLargeur, hitboxHauteur, fac
   ctx.restore();
 }
 
+// --- Animation des boss : échelle uniforme + ancrage aux pieds ---------------
+// Les frames d'un même boss n'ont pas toutes la même taille (le souffle du
+// dragon est plus haut, l'idle plus large, les marges transparentes varient…).
+// Les redimensionner chacune à la même hauteur faisait "sauter" la taille du
+// boss et flotter/glisser ses pieds d'une pose à l'autre. Ici toutes les
+// poses d'un boss partagent l'échelle de sa pose de référence (idle) et sont
+// ancrées sur le bas de leur contenu opaque réel, pas sur le bas de l'image.
+const CACHE_BBOX_SPRITE = new WeakMap();
+function boiteOpaque(img) {
+  let bb = CACHE_BBOX_SPRITE.get(img);
+  if (bb) return bb;
+  const w = img.naturalWidth || img.width;
+  const h = img.naturalHeight || img.height;
+  bb = { x0: 0, y0: 0, x1: w, y1: h };
+  try {
+    const off = document.createElement("canvas");
+    off.width = w; off.height = h;
+    const octx = off.getContext("2d");
+    octx.drawImage(img, 0, 0);
+    const d = octx.getImageData(0, 0, w, h).data;
+    let x0 = w, y0 = h, x1 = 0, y1 = 0;
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        if (d[(y * w + x) * 4 + 3] > 16) {
+          if (x < x0) x0 = x;
+          if (x > x1) x1 = x;
+          if (y < y0) y0 = y;
+          if (y > y1) y1 = y;
+        }
+      }
+    }
+    if (x1 > x0 && y1 > y0) bb = { x0, y0, x1: x1 + 1, y1: y1 + 1 };
+  } catch (e) { /* canvas "taché" : on garde l'image entière */ }
+  CACHE_BBOX_SPRITE.set(img, bb);
+  return bb;
+}
+
+function dessinerSpriteBoss(img, imgRef, hitboxX, hitboxY, hitboxLargeur, hitboxHauteur, facing, echelleHauteur, squashY, lissage) {
+  const ref = imgRef && imagePrete(imgRef) ? imgRef : img;
+  const refH = ref.naturalHeight || ref.height;
+  const echelle = (hitboxHauteur * echelleHauteur) / refH;
+  const bb = boiteOpaque(img);
+  const bbRef = boiteOpaque(ref);
+  const contenuL = (bb.x1 - bb.x0) * echelle;
+  const refL = (bbRef.x1 - bbRef.x0) * echelle;
+  const centreX = hitboxX + hitboxLargeur / 2;
+  // Pose de taille normale : contenu centré sur la hitbox. Pose très étendue
+  // (sabre/flamme tendus) : on garde le "dos" en place et l'extension part
+  // vers l'avant, au lieu de décaler tout le corps.
+  const debutContenu = contenuL <= refL * 1.3 ? centreX - contenuL / 2 : centreX - refL / 2;
+  const sq = squashY || 1;
+  const bas = hitboxY + hitboxHauteur;
+  const dy = bas - bb.y1 * echelle * sq;
+  const dx = debutContenu - bb.x0 * echelle;
+  const largeurImg = (img.naturalWidth || img.width) * echelle;
+  const hauteurImg = (img.naturalHeight || img.height) * echelle * sq;
+  ctx.save();
+  ctx.imageSmoothingEnabled = !!lissage;
+  if (facing < 0) {
+    ctx.translate(centreX, 0);
+    ctx.scale(-1, 1);
+    ctx.translate(-centreX, 0);
+  }
+  ctx.drawImage(img, dx, dy, largeurImg, hauteurImg);
+  ctx.restore();
+}
+
+// Respiration douce de l'idle (les boss n'ont qu'une pose de repos figée).
+function respirationIdle(cle) {
+  return 1 + Math.sin(performance.now() / 520 + cle) * 0.012;
+}
+
+// Début d'attaque vu du client : permet de jouer les frames d'attaque dans
+// l'ordre depuis la première (au lieu d'une horloge globale qui démarre au
+// milieu de la séquence).
+const debutsAttaque = new Map();
+function tempsDepuisDebutAttaque(cle, actif) {
+  if (!actif) { debutsAttaque.delete(cle); return 0; }
+  const maintenant = performance.now();
+  if (!debutsAttaque.has(cle)) debutsAttaque.set(cle, maintenant);
+  return maintenant - debutsAttaque.get(cle);
+}
+function frameDeSequence(frames, tMs, dureeMs) {
+  const i = Math.min(frames.length - 1, Math.floor(tMs / (dureeMs / frames.length)));
+  return frames[Math.max(0, i)];
+}
+
 let ws = null;
 let delaiReconnexion = 1000; // recul progressif jusqu'à RECONNEXION_DELAI_MAX
 const RECONNEXION_DELAI_MAX = 8000;
@@ -4279,6 +4366,101 @@ function dessinerDecorZone(idZoneDecor, camX) {
   }
 }
 
+// Décors parallax procéduraux pour les zones sans pack d'images : ciel en
+// dégradé, astre lointain, 3 silhouettes (loin / milieu / proche) qui
+// défilent à des vitesses différentes, teintées selon l'ambiance de la zone.
+const THEMES_DECOR_PROCEDURAL = {
+  "cretes-ambre": { ciel: ["#ffe9b8", "#f7c479", "#e58f4f"], astre: { x: 0.72, y: 0.2, r: 46, c: "#fff3c4" }, couches: [["#d99a45", "pics", 0.75, 130], ["#b87a2b", "pics", 0.82, 100], ["#8a5618", "collines", 0.9, 60]] },
+  "dunes-cendrees": { ciel: ["#c9bcae", "#9a8a7b", "#6c5f54"], astre: { x: 0.3, y: 0.22, r: 38, c: "#ece3d8" }, couches: [["#857567", "dunes", 0.72, 90], ["#6d6054", "dunes", 0.8, 80], ["#51463d", "dunes", 0.9, 55]] },
+  "abysses-luisantes": { ciel: ["#071a35", "#0f3a66", "#1a6fa0"], etoiles: true, couches: [["#12406b", "cristaux", 0.72, 150], ["#0d3157", "cristaux", 0.82, 110], ["#092444", "cristaux", 0.92, 80]], lueur: "#59d8ff" },
+  "jardins-petrifies": { ciel: ["#f6cfe2", "#cf94b8", "#94456a"], astre: { x: 0.68, y: 0.24, r: 40, c: "#fff0f6" }, couches: [["#b46a8e", "colonnes", 0.72, 140], ["#87476b", "colonnes", 0.82, 110], ["#5e2e4f", "collines", 0.92, 65]] },
+  "couronne-orage": { ciel: ["#171936", "#383c72", "#6a70b4"], orage: true, couches: [["#2c3060", "pics", 0.72, 150], ["#20244f", "pics", 0.82, 110], ["#161a3c", "pics", 0.92, 70]] },
+  "sanctuaire-eclipse": { ciel: ["#0b081c", "#291552", "#5a3a7a"], etoiles: true, astre: { x: 0.5, y: 0.25, r: 52, c: "#0a0714", anneau: "#d9b8ff" }, couches: [["#38235f", "colonnes", 0.72, 160], ["#271748", "colonnes", 0.82, 120], ["#180d31", "colonnes", 0.92, 80]] },
+  "village": { ciel: ["#cfe9ff", "#e6f4ff", "#fff6e0"], astre: { x: 0.78, y: 0.18, r: 42, c: "#fff7c2" }, couches: [["#a8d6a2", "collines", 0.74, 100], ["#86c17d", "collines", 0.83, 80], ["#63a35f", "collines", 0.92, 55]] },
+};
+const VITESSES_PARALLAXE_PROCEDURAL = [0.12, 0.24, 0.4];
+
+function profilSilhouette(x, type, graine) {
+  const u = x + graine * 977;
+  switch (type) {
+    case "pics": { const t = (Math.abs(((u * 0.011) % 2) - 1)); return t * 0.7 + Math.sin(u * 0.0047) * 0.25; }
+    case "cristaux": { const t = Math.abs(((u * 0.017) % 2) - 1); return Math.pow(t, 0.6) * 0.8 + Math.sin(u * 0.006) * 0.15; }
+    case "dunes": return 0.5 + Math.sin(u * 0.006) * 0.3 + Math.sin(u * 0.0021 + 1.7) * 0.2;
+    case "colonnes": { const b = Math.floor(u / 90); const h = 0.35 + ((Math.sin(b * 12.9898) * 43758.5453) % 1 + 1) % 1 * 0.6; return (u % 90) < 58 ? h : 0.1; }
+    default: return 0.5 + Math.sin(u * 0.0045) * 0.28 + Math.sin(u * 0.013 + 2.1) * 0.12;
+  }
+}
+
+function dessinerDecorProcedural(idZone, camX) {
+  const theme = THEMES_DECOR_PROCEDURAL[idZone];
+  const W = canvas.width, H = canvas.height;
+  const t = performance.now() / 1000;
+  const g = ctx.createLinearGradient(0, 0, 0, H);
+  g.addColorStop(0, theme.ciel[0]);
+  g.addColorStop(0.55, theme.ciel[1]);
+  g.addColorStop(1, theme.ciel[2]);
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, W, H);
+
+  if (theme.etoiles) {
+    ctx.fillStyle = "rgba(255,255,255,0.85)";
+    for (let i = 0; i < 60; i++) {
+      const sx = ((i * 197 + 31) % 1000) / 1000 * W;
+      const sy = ((i * 89 + 13) % 600) / 600 * H * 0.55;
+      const tw = 0.4 + 0.6 * Math.abs(Math.sin(t * 0.8 + i));
+      ctx.globalAlpha = tw;
+      ctx.fillRect(sx, sy, 2, 2);
+    }
+    ctx.globalAlpha = 1;
+  }
+  if (theme.astre) {
+    const a = theme.astre;
+    const ax = mod(a.x * W - camX * 0.02, W + 120) - 60;
+    ctx.fillStyle = a.c;
+    ctx.beginPath(); ctx.arc(ax, a.y * H, a.r, 0, Math.PI * 2); ctx.fill();
+    if (a.anneau) {
+      ctx.strokeStyle = a.anneau; ctx.lineWidth = 4; ctx.globalAlpha = 0.8;
+      ctx.beginPath(); ctx.arc(ax, a.y * H, a.r + 4, 0, Math.PI * 2); ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
+  }
+  if (theme.orage) {
+    ctx.fillStyle = "rgba(20,22,50,0.55)";
+    for (let i = 0; i < 5; i++) {
+      const cx = mod(i * 300 - camX * 0.05 - t * 8, W + 400) - 200;
+      ctx.beginPath(); ctx.ellipse(cx, 70 + (i % 3) * 45, 190, 42, 0, 0, Math.PI * 2); ctx.fill();
+    }
+    const cycle = t % 6;
+    if (cycle < 0.18) { ctx.fillStyle = `rgba(230,235,255,${0.35 * (1 - cycle / 0.18)})`; ctx.fillRect(0, 0, W, H); }
+  }
+
+  theme.couches.forEach(([couleur, type, horizon, amplitude], i) => {
+    const vitesse = VITESSES_PARALLAXE_PROCEDURAL[i];
+    ctx.fillStyle = couleur;
+    ctx.beginPath();
+    ctx.moveTo(0, H);
+    const base = H * horizon;
+    for (let x = 0; x <= W + 8; x += 8) {
+      const y = base - profilSilhouette(x + camX * vitesse, type, i + 1) * amplitude;
+      ctx.lineTo(x, y);
+    }
+    ctx.lineTo(W, H);
+    ctx.closePath();
+    ctx.fill();
+  });
+
+  if (theme.lueur) {
+    ctx.fillStyle = theme.lueur;
+    for (let i = 0; i < 18; i++) {
+      const px = mod(i * 137 - camX * 0.3, W);
+      const py = H * 0.35 + ((i * 71) % 300) + Math.sin(t + i) * 10;
+      ctx.globalAlpha = 0.25 + 0.25 * Math.abs(Math.sin(t * 0.9 + i));
+      ctx.beginPath(); ctx.arc(px, py, 2 + (i % 3), 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  }
+}
+
 // Berge-Rhak est une île céleste posée sur les nuages : le ciel doit se
 // sentir plus "rêve pastel" que "beau temps ordinaire" (inspiré de
 // l'ambiance MapleStory 2), avec d'autres îles flottantes au loin et des
@@ -4300,6 +4482,10 @@ function dessinerCiel(camera) {
   const idZoneActuelle = state && state.zoneActuelle && state.zoneActuelle.id;
   if (idZoneActuelle && DECORS_ZONES[idZoneActuelle]) {
     dessinerDecorZone(idZoneActuelle, camX);
+    return;
+  }
+  if (idZoneActuelle && THEMES_DECOR_PROCEDURAL[idZoneActuelle]) {
+    dessinerDecorProcedural(idZoneActuelle, camX);
     return;
   }
 
@@ -5569,7 +5755,8 @@ function dessinerEntiteSireHano(boss, entite) {
   ctx.save();
   ctx.filter = TEINTES_SIRE_HANO[boss.phaseIndex] || TEINTES_SIRE_HANO[0];
   if (pose && imagePrete(pose)) {
-    dessinerSprite(pose, entite.x, entite.y, entite.largeur, entite.hauteur, entite.facing, 2.3);
+    const repos = pose === SPRITES_SIREHANO.idle && !entite.enMouvement && !entite.attaque;
+    dessinerSpriteBoss(pose, SPRITES_SIREHANO.idle, entite.x, entite.y, entite.largeur, entite.hauteur, entite.facing, 2.3, repos ? respirationIdle(entite.id || 0) : 1);
   } else {
     ctx.fillStyle = "#4a2038";
     arrondiRect(entite.x, entite.y, entite.largeur, entite.hauteur, 10);
@@ -5603,6 +5790,7 @@ const TEINTES_DRAGON_NOIR = [
 ];
 
 function poseDragon(dragon) {
+  if (!dragon.attaque) tempsDepuisDebutAttaque("dragon", false);
   // Forme humanoïde (phase 2, voir formeHumaine côté serveur) : planche de
   // sprites dédiée, même schéma idle/walk1/walk2/attack.
   const jeu = dragon.formeHumaine ? SPRITES_DRAGONNOIR_HUMAIN : SPRITES_DRAGONNOIR;
@@ -5615,7 +5803,7 @@ function poseDragon(dragon) {
     // pose "attack" unique, inchangée.
     if (!dragon.formeHumaine && dragon.attaqueType === "souffle") {
       const frames = SEQUENCE_ATTAQUE_DRAGONNOIR.map((cle) => jeu[cle]).filter(Boolean);
-      if (frames.length > 0) return frames[Math.floor(performance.now() / 90) % frames.length];
+      if (frames.length > 0) return frameDeSequence(frames, tempsDepuisDebutAttaque("dragon", true), 350);
     }
     return jeu.attack || jeu.idle;
   }
@@ -5643,7 +5831,9 @@ function dessinerDragonNoir() {
     // un peu plus généreuse que la forme draconique lui garde une bonne
     // présence à l'écran malgré sa hitbox plus étroite.
     const echelle = dragon.formeHumaine ? 2.6 : 2.1;
-    dessinerSprite(pose, dragon.x, dragon.y, dragon.largeur, dragon.hauteur, dragon.facing, echelle);
+    const jeuDragon = dragon.formeHumaine ? SPRITES_DRAGONNOIR_HUMAIN : SPRITES_DRAGONNOIR;
+    const repos = pose === jeuDragon.idle;
+    dessinerSpriteBoss(pose, jeuDragon.idle, dragon.x, dragon.y, dragon.largeur, dragon.hauteur, dragon.facing, echelle, repos ? respirationIdle(3) : 1);
   } else {
     ctx.fillStyle = "#231824";
     arrondiRect(dragon.x, dragon.y, dragon.largeur, dragon.hauteur, 12);
@@ -5676,6 +5866,7 @@ function dessinerDragonNoir() {
 function poseChevalierNoir(cn) {
   const jeu = SPRITES_CHEVALIER_NOIR;
   if (!jeu) return null;
+  if (!cn.attaque) tempsDepuisDebutAttaque("chevalier", false);
 
   // Pendant toute la charge de l'éclair (télégraphe en cours), il rugit —
   // bien plus lisible qu'une pose de lancer figée pour un sort qui prend
@@ -5689,7 +5880,7 @@ function poseChevalierNoir(cn) {
     // "tranchant" (mêlée) : un vrai combo à 3 frames (windup → levée →
     // grand arc) plutôt qu'une simple alternance à deux poses.
     const frames = [jeu.attack1, jeu.attack2, jeu.attack3].filter(Boolean);
-    if (frames.length > 0) return frames[Math.floor(performance.now() / 100) % frames.length];
+    if (frames.length > 0) return frameDeSequence(frames, tempsDepuisDebutAttaque("chevalier", true), 280);
     return jeu.idle1;
   }
 
@@ -5734,7 +5925,7 @@ function dessinerChevalierNoir() {
     ctx.globalAlpha = Math.max(0, Math.min(1, cn.vaincuRestant / 3));
     ctx.filter = "brightness(0.8) saturate(0.7)";
     if (pose && imagePrete(pose)) {
-      dessinerSprite(pose, cn.x, cn.y, cn.largeur, cn.hauteur, cn.facing, ECHELLE_CHEVALIER_NOIR);
+      dessinerSpriteBoss(pose, jeu.idle1, cn.x, cn.y, cn.largeur, cn.hauteur, cn.facing, ECHELLE_CHEVALIER_NOIR, 1, true);
     }
     ctx.restore();
     return;
@@ -5749,7 +5940,8 @@ function dessinerChevalierNoir() {
   ctx.save();
   ctx.filter = "brightness(0.92) saturate(1.15) contrast(1.05)";
   if (pose && imagePrete(pose)) {
-    dessinerSprite(pose, cn.x, cn.y, cn.largeur, cn.hauteur, cn.facing, ECHELLE_CHEVALIER_NOIR);
+    const repos = !cn.attaque && !cn.enMouvement && !cn.aoeEnAttente;
+    dessinerSpriteBoss(pose, SPRITES_CHEVALIER_NOIR.idle1, cn.x, cn.y, cn.largeur, cn.hauteur, cn.facing, ECHELLE_CHEVALIER_NOIR, repos ? respirationIdle(7) : 1, true);
   } else {
     ctx.fillStyle = "#1c1c26";
     arrondiRect(cn.x, cn.y, cn.largeur, cn.hauteur, 10);
