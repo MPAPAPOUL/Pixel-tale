@@ -2780,10 +2780,10 @@ function rectanglesSeChevauchent(x1, y1, w1, h1, x2, y2, w2, h2) {
 // hauteur) pour permettre d'agrandir la zone où un coup compte sans changer
 // le rendu. Si le type définit son propre hitboxLargeur/hitboxHauteur (voir
 // fisselo, doublé dans les deux dimensions, centré), ceux-ci priment. Sinon,
-// par défaut pour TOUS les monstres (demande explicite) : +30% de hauteur
-// UNIQUEMENT VERS LE HAUT — la largeur et le bas de la hitbox restent
-// exactement ceux du sprite.
-const MULTIPLICATEUR_HITBOX_DEFAUT = 1.3;
+// par défaut pour TOUS les monstres (demande explicite, relevé de 30% à 40%) :
+// +40% de hauteur UNIQUEMENT VERS LE HAUT — la largeur et le bas de la
+// hitbox restent exactement ceux du sprite.
+const MULTIPLICATEUR_HITBOX_DEFAUT = 1.4;
 
 function hitboxMonstre(m, cfg) {
   if (cfg.hitboxLargeur || cfg.hitboxHauteur) {
