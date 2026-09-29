@@ -151,7 +151,7 @@ const CLASSES = {
       a: { nom: "Coup d'épée", type: "melee", degats: 14, cooldown: 0.5, portee: 54, coutMana: 8 },
       z: { nom: "Frappe lourde", type: "melee", degats: 26, cooldown: 1.1, portee: 54, coutMana: 18 },
       e: { nom: "Charge", type: "dash", degats: 10, cooldown: 2.5, duree: 0.22, vitesseDash: 900, coutMana: 20 },
-      r: { nom: "Cri de guerre", type: "aoe", degats: 40, cooldown: 9, portee: 0, rayon: 110, coutMana: 45 },
+      r: { nom: "Cri de guerre", type: "aoe", degats: 40, cooldown: 9, portee: 0, rayon: 110, coutMana: 45, effet: "cri_de_guerre" },
     },
   },
   quater: {
