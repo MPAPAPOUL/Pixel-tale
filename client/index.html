@@ -5777,14 +5777,14 @@ function dessinerEntiteSireHano(boss, entite) {
   const barreLargeur = Math.max(90, entite.largeur * 2.1);
   const ratio = Math.max(0, entite.hp / entite.hpMax);
   ctx.fillStyle = "rgba(18,20,28,0.75)";
-  ctx.fillRect(centreX - barreLargeur / 2, hautSprite - 22, barreLargeur, 7);
+  ctx.fillRect(centreX - barreLargeur / 2, entite.y - 22, barreLargeur, 7);
   ctx.fillStyle = ratio > 0.4 ? "#8a4fc7" : "#e05a3a";
-  ctx.fillRect(centreX - barreLargeur / 2, hautSprite - 22, barreLargeur * ratio, 7);
+  ctx.fillRect(centreX - barreLargeur / 2, entite.y - 22, barreLargeur * ratio, 7);
 
   ctx.fillStyle = "#12141c";
   ctx.font = "700 12px 'Baloo 2', sans-serif";
   ctx.textAlign = "center";
-  ctx.fillText(`${boss.nom} — phase ${boss.phaseIndex + 1}/${boss.phasesTotal}`, centreX, hautSprite - 28);
+  ctx.fillText(`${boss.nom} — phase ${boss.phaseIndex + 1}/${boss.phasesTotal}`, centreX, entite.y - 28);
 }
 
 // Dragon Noir — une seule entité (boss du monde, pas de répliques comme
@@ -5853,15 +5853,15 @@ function dessinerDragonNoir() {
   const barreLargeur = Math.max(120, dragon.largeur * 1.7);
   const ratio = Math.max(0, dragon.hp / dragon.hpMax);
   ctx.fillStyle = "rgba(18,20,28,0.75)";
-  ctx.fillRect(centreX - barreLargeur / 2, hautSprite - 24, barreLargeur, 8);
+  ctx.fillRect(centreX - barreLargeur / 2, dragon.y - 24, barreLargeur, 8);
   ctx.fillStyle = dragon.phase === 2 ? "#e0392a" : "#7a4fc7";
-  ctx.fillRect(centreX - barreLargeur / 2, hautSprite - 24, barreLargeur * ratio, 8);
+  ctx.fillRect(centreX - barreLargeur / 2, dragon.y - 24, barreLargeur * ratio, 8);
 
   ctx.fillStyle = "#12141c";
   ctx.font = "700 12px 'Baloo 2', sans-serif";
   ctx.textAlign = "center";
   const libellePhase = dragon.phase === 2 ? "Dragon Noir — forme humanoïde, en fureur" : "Dragon Noir";
-  ctx.fillText(libellePhase, centreX, hautSprite - 30);
+  ctx.fillText(libellePhase, centreX, dragon.y - 30);
 }
 
 // Chevalier Noir — boss de la Salle du Trône : une seule phase pour
@@ -5962,9 +5962,9 @@ function dessinerChevalierNoir() {
   const barreLargeur = Math.max(120, cn.largeur * 2.4);
   const ratio = Math.max(0, cn.hp / cn.hpMax);
   ctx.fillStyle = "rgba(18,20,28,0.75)";
-  ctx.fillRect(centreX - barreLargeur / 2, hautSprite - 24, barreLargeur, 8);
+  ctx.fillRect(centreX - barreLargeur / 2, cn.y - 24, barreLargeur, 8);
   ctx.fillStyle = "#5a3fae";
-  ctx.fillRect(centreX - barreLargeur / 2, hautSprite - 24, barreLargeur * ratio, 8);
+  ctx.fillRect(centreX - barreLargeur / 2, cn.y - 24, barreLargeur * ratio, 8);
 
   // Texte clair plutôt que le "#12141c" quasi-noir utilisé pour Sire-Hano/
   // Dragon Noir : leurs zones ont un ciel clair en fond, alors que la Salle
@@ -5972,7 +5972,7 @@ function dessinerChevalierNoir() {
   ctx.fillStyle = "#f0e6d0";
   ctx.font = "700 12px 'Baloo 2', sans-serif";
   ctx.textAlign = "center";
-  ctx.fillText("Chevalier Noir", centreX, hautSprite - 30);
+  ctx.fillText("Chevalier Noir", centreX, cn.y - 30);
 }
 
 // Zone au sol télégraphiée par Sire-Hano : un cercle d'avertissement qui se
