@@ -83,7 +83,7 @@ const VITESSE_SAUT = -640; // px/s (négatif = vers le haut)
 const VITESSE_CHUTE_MAX = 900; // px/s
 
 const TICK_MS = 1000 / 30; // 30 mises à jour physiques par seconde
-const HP_REGEN_PAR_SECONDE = 2; // régénération de vie passive de base (PV/s) — voir aussi le bonus "regenPv" de l'équipement légendaire/mythique
+const HP_REGEN_PAR_SECONDE = 4; // régénération de vie passive de base (PV/s) — voir aussi le bonus "regenPv" de l'équipement légendaire/mythique
 
 // Plateformes statiques de la zone (rectangles). La première est le sol
 // général de l'île — cohérent avec le GDD : les bords sont sécurisés, on ne
@@ -151,7 +151,7 @@ const CLASSES = {
       a: { nom: "Coup d'épée", type: "melee", degats: 14, cooldown: 0.5, portee: 54, coutMana: 8 },
       z: { nom: "Frappe lourde", type: "melee", degats: 26, cooldown: 1.1, portee: 54, coutMana: 18 },
       e: { nom: "Charge", type: "dash", degats: 10, cooldown: 2.5, duree: 0.22, vitesseDash: 900, coutMana: 20 },
-      r: { nom: "Cri de guerre", type: "aoe", degats: 40, cooldown: 9, portee: 0, rayon: 110, coutMana: 45 },
+      r: { nom: "Cri de guerre", type: "aoe", degats: 40, cooldown: 9, portee: 0, rayon: 110, coutMana: 45, effet: "cri_de_guerre" },
     },
   },
   quater: {
@@ -837,8 +837,12 @@ function recalculerStatsEquipement(p) {
 
 // Coût en XP pour passer du niveau n à n+1 (croissance douce et linéaire —
 // largement suffisant pour une verticale-slice).
+// Courbe adoucie pour les joueurs occasionnels : les premiers niveaux
+// s'enchaînent vite (Berge-Rhak → premières zones en quelques minutes), puis
+// la pente reprend un rythme normal.
 function xpRequisPourNiveau(niveau) {
-  return Math.round(40 + niveau * 25);
+  const base = Math.round(40 + niveau * 25);
+  return niveau <= 10 ? Math.round(base * 0.6) : base;
 }
 
 const XP_SIRE_HANO_ENTITE = 15; // par réplique tuée, quelle que soit la phase
@@ -1181,15 +1185,25 @@ function creerEntiteSireHano(phaseIndex, xCentre) {
     // demande explicite, la silhouette réduite (échelle 0.62) la rendait trop
     // dure à toucher par le dessus. Purement une extension de collision, la
     // taille du sprite (largeur/hauteur ci-dessus) ne change pas.
-    hitboxSupHaut: phaseIndex === 2 ? 2 : 0,
+    hitboxSupHaut: 0,
+    // Phase 3 : hitbox agrandie de 30 % (largeur et hauteur, pieds et centre
+    // conservés) — demande explicite. Sans effet sur la taille du sprite.
+    hitboxFacteur: phaseIndex === 2 ? 1.3 : 1,
   };
 }
 
 // Rectangle de collision d'une entité de Sire-Hano — voir hitboxSupHaut
 // ci-dessus (uniquement non-nul en phase 3).
 function hitboxEntiteSireHano(entite) {
-  const sup = entite.hitboxSupHaut || 0;
-  return { x: entite.x, y: entite.y - sup, largeur: entite.largeur, hauteur: entite.hauteur + sup };
+  const f = entite.hitboxFacteur || 1;
+  const largeur = entite.largeur * f;
+  const hauteur = entite.hauteur * f;
+  return {
+    x: entite.x - (largeur - entite.largeur) / 2,
+    y: entite.y + entite.hauteur - hauteur,
+    largeur,
+    hauteur,
+  };
 }
 
 // Démarre (ou relance à la phase suivante) le combat de Sire-Hano pour une
@@ -1686,6 +1700,9 @@ const BIOMES_DEFINITION = [
   { id: "jardins-petrifies", nom: "Jardins Pétrifiés", blurb: "Un ancien verger dont chaque fruit s'est changé en pierre précieuse.", niveau: 70, monstreNom: "Gravide", couleur: "#8a3a5f", teinte: "hue-rotate(300deg) saturate(1.4) brightness(0.95)" },
   { id: "couronne-orage", nom: "Couronne d'Orage", blurb: "Le sommet du monde connu, où le tonnerre gronde plus bas que les nuages.", niveau: 80, monstreNom: "Fulgurin", couleur: "#d4af37", teinte: "hue-rotate(45deg) saturate(1.6) brightness(1.2)" },
   { id: "sanctuaire-eclipse", nom: "Sanctuaire Éclipsé", blurb: "Un temple englouti par une nuit permanente, où même les échos ont peur de résonner.", niveau: 90, monstreNom: "Voilure", couleur: "#5a3a7a", teinte: "hue-rotate(260deg) saturate(1.5) brightness(0.85)" },
+  // Art dédié fourni par le joueur (pack "Pirate Boss", voir
+  // ART_DEDIE_PAR_BIOME plus bas) plutôt qu'un gabarit reteinté.
+  { id: "crique-naufrageurs", nom: "Crique des Naufrageurs", blurb: "Une baie où les coques éventrées dorment sous le sable, gardées par ceux qui les y ont menées.", niveau: 100, monstreNom: "Sabrenoir", couleur: "#7a2733", teinte: "hue-rotate(340deg) saturate(1.2) brightness(0.95)" },
 ];
 
 // Chaque biome reprend l'un des 3 gabarits de comportement déjà éprouvés
@@ -1761,6 +1778,13 @@ const ART_DEDIE_PAR_BIOME = {
   "dunes-cendrees": { base: "spectre-emergent", teinte: null, largeur: 71, hauteur: 46 }, // spectre très large/aplati, ratio ≈1.54, était 40
   "abysses-luisantes": { base: "bluetentacle", teinte: null, largeur: 29, hauteur: 84 }, // ratio ≈0.69, hauteur ×2 (était 42, initialement 38)
   "jardins-petrifies": { base: "sorcier-4bras", teinte: null, largeur: 69, hauteur: 58 }, // bras écartés, ratio ≈1.18, était 48
+  // "sanctuaire-eclipse" garde le gabarit teinté (le dragon DCSS dédié qui y
+  // était a été retiré, trop pixelisé à l'échelle du jeu).
+  // Capitaine Sabrenoir (pack "Pirate Boss" fourni par le joueur) — ratio
+  // moyen idle/marche/attaque ≈0.60 (idle et marche ≈0.53, attaque plus
+  // large ≈0.72 sabre tendu) ; même groupe d'échelle que sorcier-4bras
+  // (pas dans ECHELLE_HAUTEUR_REDUITE_MONSTRES côté client → échelle ×2.1).
+  "crique-naufrageurs": { base: "capitaine-pirate", teinte: null, largeur: 36, hauteur: 60 },
   // Couronne d'Orage et Sanctuaire Éclipsé : dernières régions à garder le
   // gabarit Fisselo/Tiralark simplement reteinté — demande explicite de ne
   // plus recolorer ces deux-là. Deux variantes du même pack minotaure chibi
@@ -1793,6 +1817,7 @@ const TYPE_GRIMPE_PAR_BIOME = {
   "jardins-petrifies": "racine",
   "couronne-orage": "chaine",
   "sanctuaire-eclipse": "cristal",
+  "crique-naufrageurs": "corde", // cordage de gréement, thème naval
 };
 
 // Génère la zone persistante d'un biome : plateformes procédurales (seed
@@ -2058,7 +2083,9 @@ const DESTINATIONS_TELEPORTEUR = [
   // La Salle du Trône n'apparaît PAS ici : contrairement aux biomes, elle ne
   // se rejoint que par sa porte (voir plus bas), pas par le réseau de
   // téléporteurs — cohérent avec le fait que l'entrée s'y paie.
-].map((destination, index) => ({ ...destination, niveauRequis: 1 + index * NIVEAU_REQUIS_PALIER }));
+// Estenoise (hub) et Berge-Rhak (zone de départ) sont accessibles dès le niveau 1 ;
+// ensuite +3 niveaux par zone.
+].map((destination, index) => ({ ...destination, niveauRequis: 1 + Math.max(0, index - 1) * NIVEAU_REQUIS_PALIER }));
 
 // ---------------------------------------------------------------------------
 // Donjon : Salle du Trône (Crêtes d'Ambre) — entrée payante, pas de fragments
@@ -2936,13 +2963,16 @@ function infligerDegatsSireHano(zone, entite, degats, joueurId) {
   }
 }
 
+const FACTEUR_DEGATS_SUBIS = 0.8;
 function infligerDegatsJoueur(p, degats, sourceX) {
   if (!p.alive || p.invulnerableRestant > 0) return false;
   // Réduction de dégâts subis (armure légendaire) : appliquée ici, au
   // moment de l'impact, pour couvrir toutes les sources (mobs, boss).
-  const degatsEffectifs = Math.round(degats * (1 - statsEquipement(p).reductionDegatsPct));
+  // Facteur "casual" : tous les dégâts subis (mobs, boss) sont réduits de 20 %
+  // pour que le jeu reste jouable sans optimiser son build.
+  const degatsEffectifs = Math.max(1, Math.round(degats * FACTEUR_DEGATS_SUBIS * (1 - statsEquipement(p).reductionDegatsPct)));
   p.hp = Math.max(0, p.hp - degatsEffectifs);
-  p.invulnerableRestant = 1.0;
+  p.invulnerableRestant = 1.3;
 
   // Petit recul pour ressentir l'impact : on pousse le joueur à l'opposé de
   // la source du coup, avec un petit rebond vertical.

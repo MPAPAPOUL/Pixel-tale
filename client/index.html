@@ -2866,6 +2866,7 @@ const TEINTES_BIOMES = {
   "abysses-luisantes": "hue-rotate(165deg) saturate(1.5) brightness(1.05)",
   "jardins-petrifies": "hue-rotate(280deg) saturate(1.3) brightness(0.95)",
   "couronne-orage": "saturate(1.7) brightness(1.3) contrast(1.1)",
+  "crique-naufrageurs": "hue-rotate(190deg) saturate(1.3) brightness(1.05)",
   "plage-corsaire": "hue-rotate(20deg) saturate(1.15) brightness(1.1)",
 };
 const COULEURS_BIOMES = {
@@ -2878,6 +2879,7 @@ const COULEURS_BIOMES = {
   "abysses-luisantes": "#3a5f8a",
   "jardins-petrifies": "#8a3a5f",
   "couronne-orage": "#d4af37",
+  "crique-naufrageurs": "#2f8a9e",
 };
 const IMG_TUILE_PIERRE = chargerImage("sprites/dcss-dungeon/pierre.png");
 const IMG_TUILE_PIERRE_SOMBRE = chargerImage("sprites/dcss-dungeon/pierre-sombre.png");
@@ -3278,6 +3280,23 @@ const IMGS_EXPLOSION_TOXIQUE = Array.from({ length: 10 }, (_, i) =>
   chargerImage(`sprites/explosion-toxique/frame_${String(i).padStart(2, "0")}.png`)
 );
 
+// Cri de guerre du Dorken (R) : champignon atomique façon explosion nucléaire
+// (demande explicite), même principe de lecture que IMGS_EXPLOSION_TOXIQUE.
+const IMGS_EXPLOSION_NUCLEAIRE = Array.from({ length: 10 }, (_, i) =>
+  chargerImage(`sprites/explosion-nucleaire/frame_${String(i).padStart(2, "0")}.png`)
+);
+
+// Explosion arcanique du Krix (R) : 3 variantes colorées (demande explicite
+// "des explosions colorées") tirées au sort par instance d'effet — voir
+// dessinerExplosionArcanique, qui choisit la variante via `e.id % 3` (stable
+// sur toute la durée de vie d'un même effet, contrairement à Math.random()
+// qui ferait scintiller les frames à chaque rendu).
+const IMGS_EXPLOSION_ARCANIQUE = [
+  Array.from({ length: 10 }, (_, i) => chargerImage(`sprites/explosion-arcane-1/frame_${String(i).padStart(2, "0")}.png`)),
+  Array.from({ length: 10 }, (_, i) => chargerImage(`sprites/explosion-arcane-2/frame_${String(i).padStart(2, "0")}.png`)),
+  Array.from({ length: 10 }, (_, i) => chargerImage(`sprites/explosion-arcane-3/frame_${String(i).padStart(2, "0")}.png`)),
+];
+
 const SPRITES_MONSTRES = {
   troubalourd: {
     idle: chargerImage("sprites/troubalourd/idle.png"),
@@ -3357,6 +3376,13 @@ const SPRITES_MONSTRES = {
     idle: chargerImage("sprites/gobelin-neutre/idle.png"),
     walk: chargerImage("sprites/gobelin-neutre/walk.png"),
     attack: chargerImage("sprites/gobelin-neutre/attack.png"),
+  },
+  // Capitaine Sabrenoir — Crique des Naufrageurs (pack "Pirate Boss" fourni
+  // par le joueur, voir ART_DEDIE_PAR_BIOME.crique-naufrageurs côté serveur).
+  "capitaine-pirate": {
+    idle: chargerImage("sprites/capitaine-pirate/idle.png"),
+    walk: chargerImage("sprites/capitaine-pirate/walk.png"),
+    attack: chargerImage("sprites/capitaine-pirate/attack.png"),
   },
 };
 
@@ -3501,6 +3527,97 @@ function dessinerSprite(img, hitboxX, hitboxY, hitboxLargeur, hitboxHauteur, fac
   }
   ctx.drawImage(img, dx, dy, largeur, hauteur);
   ctx.restore();
+  // Haut réellement visible du sprite (marge transparente exclue) : sert à
+  // poser les barres de vie au-dessus de la tête et non au milieu du dessin.
+  return dy + boiteOpaque(img).y0 * echelle * (squashY || 1);
+}
+
+// --- Animation des boss : échelle uniforme + ancrage aux pieds ---------------
+// Les frames d'un même boss n'ont pas toutes la même taille (le souffle du
+// dragon est plus haut, l'idle plus large, les marges transparentes varient…).
+// Les redimensionner chacune à la même hauteur faisait "sauter" la taille du
+// boss et flotter/glisser ses pieds d'une pose à l'autre. Ici toutes les
+// poses d'un boss partagent l'échelle de sa pose de référence (idle) et sont
+// ancrées sur le bas de leur contenu opaque réel, pas sur le bas de l'image.
+const CACHE_BBOX_SPRITE = new WeakMap();
+function boiteOpaque(img) {
+  let bb = CACHE_BBOX_SPRITE.get(img);
+  if (bb) return bb;
+  const w = img.naturalWidth || img.width;
+  const h = img.naturalHeight || img.height;
+  bb = { x0: 0, y0: 0, x1: w, y1: h };
+  try {
+    const off = document.createElement("canvas");
+    off.width = w; off.height = h;
+    const octx = off.getContext("2d");
+    octx.drawImage(img, 0, 0);
+    const d = octx.getImageData(0, 0, w, h).data;
+    let x0 = w, y0 = h, x1 = 0, y1 = 0;
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        if (d[(y * w + x) * 4 + 3] > 16) {
+          if (x < x0) x0 = x;
+          if (x > x1) x1 = x;
+          if (y < y0) y0 = y;
+          if (y > y1) y1 = y;
+        }
+      }
+    }
+    if (x1 > x0 && y1 > y0) bb = { x0, y0, x1: x1 + 1, y1: y1 + 1 };
+  } catch (e) { /* canvas "taché" : on garde l'image entière */ }
+  CACHE_BBOX_SPRITE.set(img, bb);
+  return bb;
+}
+
+function dessinerSpriteBoss(img, imgRef, hitboxX, hitboxY, hitboxLargeur, hitboxHauteur, facing, echelleHauteur, squashY, lissage) {
+  const ref = imgRef && imagePrete(imgRef) ? imgRef : img;
+  const refH = ref.naturalHeight || ref.height;
+  const echelle = (hitboxHauteur * echelleHauteur) / refH;
+  const bb = boiteOpaque(img);
+  const bbRef = boiteOpaque(ref);
+  const contenuL = (bb.x1 - bb.x0) * echelle;
+  const refL = (bbRef.x1 - bbRef.x0) * echelle;
+  const centreX = hitboxX + hitboxLargeur / 2;
+  // Pose de taille normale : contenu centré sur la hitbox. Pose très étendue
+  // (sabre/flamme tendus) : on garde le "dos" en place et l'extension part
+  // vers l'avant, au lieu de décaler tout le corps.
+  const debutContenu = contenuL <= refL * 1.3 ? centreX - contenuL / 2 : centreX - refL / 2;
+  const sq = squashY || 1;
+  const bas = hitboxY + hitboxHauteur;
+  const dy = bas - bb.y1 * echelle * sq;
+  const dx = debutContenu - bb.x0 * echelle;
+  const largeurImg = (img.naturalWidth || img.width) * echelle;
+  const hauteurImg = (img.naturalHeight || img.height) * echelle * sq;
+  ctx.save();
+  ctx.imageSmoothingEnabled = !!lissage;
+  if (facing < 0) {
+    ctx.translate(centreX, 0);
+    ctx.scale(-1, 1);
+    ctx.translate(-centreX, 0);
+  }
+  ctx.drawImage(img, dx, dy, largeurImg, hauteurImg);
+  ctx.restore();
+  return dy + bb.y0 * echelle * sq;
+}
+
+// Respiration douce de l'idle (les boss n'ont qu'une pose de repos figée).
+function respirationIdle(cle) {
+  return 1 + Math.sin(performance.now() / 520 + cle) * 0.012;
+}
+
+// Début d'attaque vu du client : permet de jouer les frames d'attaque dans
+// l'ordre depuis la première (au lieu d'une horloge globale qui démarre au
+// milieu de la séquence).
+const debutsAttaque = new Map();
+function tempsDepuisDebutAttaque(cle, actif) {
+  if (!actif) { debutsAttaque.delete(cle); return 0; }
+  const maintenant = performance.now();
+  if (!debutsAttaque.has(cle)) debutsAttaque.set(cle, maintenant);
+  return maintenant - debutsAttaque.get(cle);
+}
+function frameDeSequence(frames, tMs, dureeMs) {
+  const i = Math.min(frames.length - 1, Math.floor(tMs / (dureeMs / frames.length)));
+  return frames[Math.max(0, i)];
 }
 
 let ws = null;
@@ -4236,18 +4353,19 @@ function calculerCamera() {
 // ciel) : chaque set choisi ci-dessous a été assorti à l'ambiance décrite
 // dans BIOMES_DEFINITION/zoneVerthige côté serveur (jungle pour Berge-Rhak,
 // marécage/cascade pour le Marais de Suin, forêt mauve mystique pour la
-// Forêt Chuchote, arbres gelés pour les Pics Verglacés). Les zones absentes
-// de cette liste gardent le ciel procédural existant (voir dessinerCiel) —
-// pas de bon set disponible pour elles pour l'instant.
+// Forêt Chuchote, arbres gelés pour les Pics Verglacés, plage pour la
+// Crique). Les zones absentes de cette liste gardent le ciel procédural
+// existant (voir dessinerCiel).
 // Nombre de calques numérotés (1.png, 2.png, ...) disponibles par zone — pas
-// forcément 7 : la plage n'en a que 5 (decor/land/sea/cloud/sky, pas d'île
-// ni de soleil dédié), les autres packs utilisés jusqu'ici en ont 7.
+// forcément 7 : la plage n'en a que 5, les autres packs en ont 7. Les calques
+// manquants (fichier absent) sont ignorés par dessinerDecorZone.
 const ZONES_AVEC_DECOR = {
   verthige: 7,
   "marais-de-suin": 7,
   "foret-chuchote": 7,
   "pics-verglaces": 7,
   "plage-corsaire": 5,
+  "crique-naufrageurs": 7,
   "dunes-cendrees": 5,
   "jardins-petrifies": 7,
   "sanctuaire-eclipse": 8,
@@ -4256,6 +4374,9 @@ const ZONES_AVEC_DECOR = {
   village: 7,
   "cretes-ambre": 5,
 };
+// Index 0 = calque "1.png" (avant-plan, défile vite) → index 6 = calque
+// "7.png" (ciel plat, quasi immobile), pour une sensation de profondeur.
+const VITESSES_PARALLAXE_DECOR = [0.5, 0.4, 0.32, 0.24, 0.17, 0.1, 0.03];
 const DECORS_ZONES = {};
 for (const idZoneDecor in ZONES_AVEC_DECOR) {
   const nbCalques = ZONES_AVEC_DECOR[idZoneDecor];
@@ -5607,10 +5728,12 @@ function dessinerEntiteSireHano(boss, entite) {
   }
 
   const pose = poseBoss(entite);
+  let hautSprite = entite.y;
   ctx.save();
   ctx.filter = TEINTES_SIRE_HANO[boss.phaseIndex] || TEINTES_SIRE_HANO[0];
   if (pose && imagePrete(pose)) {
-    dessinerSprite(pose, entite.x, entite.y, entite.largeur, entite.hauteur, entite.facing, 2.3);
+    const repos = pose === SPRITES_SIREHANO.idle && !entite.enMouvement && !entite.attaque;
+    hautSprite = Math.min(entite.y, dessinerSpriteBoss(pose, SPRITES_SIREHANO.idle, entite.x, entite.y, entite.largeur, entite.hauteur, entite.facing, 2.3, repos ? respirationIdle(entite.id || 0) : 1));
   } else {
     ctx.fillStyle = "#4a2038";
     arrondiRect(entite.x, entite.y, entite.largeur, entite.hauteur, 10);
@@ -5622,12 +5745,6 @@ function dessinerEntiteSireHano(boss, entite) {
   // Petite barre de vie + nom au-dessus de chaque entité, et indicateur de
   // phase (1/3, 2/3, 3/3) commun à toutes les répliques de la phase.
   const centreX = entite.x + entite.largeur / 2;
-  const barreLargeur = Math.max(90, entite.largeur * 2.1);
-  const ratio = Math.max(0, entite.hp / entite.hpMax);
-  ctx.fillStyle = "rgba(18,20,28,0.75)";
-  ctx.fillRect(centreX - barreLargeur / 2, entite.y - 22, barreLargeur, 7);
-  ctx.fillStyle = ratio > 0.4 ? "#8a4fc7" : "#e05a3a";
-  ctx.fillRect(centreX - barreLargeur / 2, entite.y - 22, barreLargeur * ratio, 7);
 
   ctx.fillStyle = "#12141c";
   ctx.font = "700 12px 'Baloo 2', sans-serif";
@@ -5644,6 +5761,7 @@ const TEINTES_DRAGON_NOIR = [
 ];
 
 function poseDragon(dragon) {
+  if (!dragon.attaque) tempsDepuisDebutAttaque("dragon", false);
   // Forme humanoïde (phase 2, voir formeHumaine côté serveur) : planche de
   // sprites dédiée, même schéma idle/walk1/walk2/attack.
   const jeu = dragon.formeHumaine ? SPRITES_DRAGONNOIR_HUMAIN : SPRITES_DRAGONNOIR;
@@ -5656,7 +5774,7 @@ function poseDragon(dragon) {
     // pose "attack" unique, inchangée.
     if (!dragon.formeHumaine && dragon.attaqueType === "souffle") {
       const frames = SEQUENCE_ATTAQUE_DRAGONNOIR.map((cle) => jeu[cle]).filter(Boolean);
-      if (frames.length > 0) return frames[Math.floor(performance.now() / 90) % frames.length];
+      if (frames.length > 0) return frameDeSequence(frames, tempsDepuisDebutAttaque("dragon", true), 350);
     }
     return jeu.attack || jeu.idle;
   }
@@ -5677,6 +5795,7 @@ function dessinerDragonNoir() {
   }
 
   const pose = poseDragon(dragon);
+  let hautSprite = dragon.y;
   ctx.save();
   ctx.filter = TEINTES_DRAGON_NOIR[dragon.phase - 1] || TEINTES_DRAGON_NOIR[0];
   if (pose && imagePrete(pose)) {
@@ -5684,7 +5803,9 @@ function dessinerDragonNoir() {
     // un peu plus généreuse que la forme draconique lui garde une bonne
     // présence à l'écran malgré sa hitbox plus étroite.
     const echelle = dragon.formeHumaine ? 2.6 : 2.1;
-    dessinerSprite(pose, dragon.x, dragon.y, dragon.largeur, dragon.hauteur, dragon.facing, echelle);
+    const jeuDragon = dragon.formeHumaine ? SPRITES_DRAGONNOIR_HUMAIN : SPRITES_DRAGONNOIR;
+    const repos = pose === jeuDragon.idle;
+    hautSprite = Math.min(dragon.y, dessinerSpriteBoss(pose, jeuDragon.idle, dragon.x, dragon.y, dragon.largeur, dragon.hauteur, dragon.facing, echelle, repos ? respirationIdle(3) : 1));
   } else {
     ctx.fillStyle = "#231824";
     arrondiRect(dragon.x, dragon.y, dragon.largeur, dragon.hauteur, 12);
@@ -5694,12 +5815,6 @@ function dessinerDragonNoir() {
   ctx.globalAlpha = 1;
 
   const centreX = dragon.x + dragon.largeur / 2;
-  const barreLargeur = Math.max(120, dragon.largeur * 1.7);
-  const ratio = Math.max(0, dragon.hp / dragon.hpMax);
-  ctx.fillStyle = "rgba(18,20,28,0.75)";
-  ctx.fillRect(centreX - barreLargeur / 2, dragon.y - 24, barreLargeur, 8);
-  ctx.fillStyle = dragon.phase === 2 ? "#e0392a" : "#7a4fc7";
-  ctx.fillRect(centreX - barreLargeur / 2, dragon.y - 24, barreLargeur * ratio, 8);
 
   ctx.fillStyle = "#12141c";
   ctx.font = "700 12px 'Baloo 2', sans-serif";
@@ -5717,6 +5832,7 @@ function dessinerDragonNoir() {
 function poseChevalierNoir(cn) {
   const jeu = SPRITES_CHEVALIER_NOIR;
   if (!jeu) return null;
+  if (!cn.attaque) tempsDepuisDebutAttaque("chevalier", false);
 
   // Pendant toute la charge de l'éclair (télégraphe en cours), il rugit —
   // bien plus lisible qu'une pose de lancer figée pour un sort qui prend
@@ -5730,7 +5846,7 @@ function poseChevalierNoir(cn) {
     // "tranchant" (mêlée) : un vrai combo à 3 frames (windup → levée →
     // grand arc) plutôt qu'une simple alternance à deux poses.
     const frames = [jeu.attack1, jeu.attack2, jeu.attack3].filter(Boolean);
-    if (frames.length > 0) return frames[Math.floor(performance.now() / 100) % frames.length];
+    if (frames.length > 0) return frameDeSequence(frames, tempsDepuisDebutAttaque("chevalier", true), 280);
     return jeu.idle1;
   }
 
@@ -5775,7 +5891,7 @@ function dessinerChevalierNoir() {
     ctx.globalAlpha = Math.max(0, Math.min(1, cn.vaincuRestant / 3));
     ctx.filter = "brightness(0.8) saturate(0.7)";
     if (pose && imagePrete(pose)) {
-      dessinerSprite(pose, cn.x, cn.y, cn.largeur, cn.hauteur, cn.facing, ECHELLE_CHEVALIER_NOIR);
+      dessinerSpriteBoss(pose, jeu.idle1, cn.x, cn.y, cn.largeur, cn.hauteur, cn.facing, ECHELLE_CHEVALIER_NOIR, 1, true);
     }
     ctx.restore();
     return;
@@ -5787,10 +5903,12 @@ function dessinerChevalierNoir() {
   }
 
   const pose = poseChevalierNoir(cn);
+  let hautSprite = cn.y;
   ctx.save();
   ctx.filter = "brightness(0.92) saturate(1.15) contrast(1.05)";
   if (pose && imagePrete(pose)) {
-    dessinerSprite(pose, cn.x, cn.y, cn.largeur, cn.hauteur, cn.facing, ECHELLE_CHEVALIER_NOIR);
+    const repos = !cn.attaque && !cn.enMouvement && !cn.aoeEnAttente;
+    hautSprite = Math.min(cn.y, dessinerSpriteBoss(pose, SPRITES_CHEVALIER_NOIR.idle1, cn.x, cn.y, cn.largeur, cn.hauteur, cn.facing, ECHELLE_CHEVALIER_NOIR, repos ? respirationIdle(7) : 1, true));
   } else {
     ctx.fillStyle = "#1c1c26";
     arrondiRect(cn.x, cn.y, cn.largeur, cn.hauteur, 10);
@@ -5800,12 +5918,6 @@ function dessinerChevalierNoir() {
   ctx.globalAlpha = 1;
 
   const centreX = cn.x + cn.largeur / 2;
-  const barreLargeur = Math.max(120, cn.largeur * 2.4);
-  const ratio = Math.max(0, cn.hp / cn.hpMax);
-  ctx.fillStyle = "rgba(18,20,28,0.75)";
-  ctx.fillRect(centreX - barreLargeur / 2, cn.y - 24, barreLargeur, 8);
-  ctx.fillStyle = "#5a3fae";
-  ctx.fillRect(centreX - barreLargeur / 2, cn.y - 24, barreLargeur * ratio, 8);
 
   // Texte clair plutôt que le "#12141c" quasi-noir utilisé pour Sire-Hano/
   // Dragon Noir : leurs zones ont un ciel clair en fond, alors que la Salle
@@ -6390,6 +6502,8 @@ function dessinerEffets() {
   for (const e of state.effets || []) {
     if (e.effet === "explosion_arcanique") {
       dessinerExplosionArcanique(e);
+    } else if (e.effet === "cri_de_guerre") {
+      dessinerExplosionNucleaire(e);
     } else if (e.effet === "lameImpactCN") {
       dessinerImpactLameChevalier(e);
     } else if (e.effet === "bouleFeuExplosionCN") {
@@ -6411,35 +6525,39 @@ function dessinerEffets() {
   }
 }
 
-// Explosion arcanique (ultime du Krix) : anneau violet + éclats rayonnants
-// façon étoile magique, plutôt qu'un simple cercle générique.
+// Explosion arcanique (ultime du Krix) : une des 3 variantes colorées
+// (IMGS_EXPLOSION_ARCANIQUE, demande explicite "des explosions colorées"),
+// choisie une fois pour toute la durée de vie de CET effet via `e.id % 3` —
+// remplace l'ancien rendu procédural (anneau + éclats vectoriels).
 function dessinerExplosionArcanique(e) {
-  const rayonActuel = e.rayon * (1.15 - e.opacite * 0.15);
+  const progression = Math.min(0.999, Math.max(0, 1 - e.opacite));
+  const frames = IMGS_EXPLOSION_ARCANIQUE[e.id % IMGS_EXPLOSION_ARCANIQUE.length];
+  const img = frames[Math.floor(progression * frames.length)];
+  if (!imagePrete(img)) return;
+  const tailleCible = e.rayon * 2.7;
+  const echelle = tailleCible / Math.max(img.naturalWidth, img.naturalHeight);
+  const largeur = img.naturalWidth * echelle;
+  const hauteur = img.naturalHeight * echelle;
   ctx.save();
-  ctx.globalAlpha = e.opacite * 0.7;
-  ctx.strokeStyle = "#caa3ff";
-  ctx.shadowColor = "#b98bff";
-  ctx.shadowBlur = 14;
-  ctx.lineWidth = 4;
-  ctx.beginPath();
-  ctx.arc(e.x, e.y, rayonActuel, 0, Math.PI * 2);
-  ctx.stroke();
+  ctx.globalAlpha = Math.min(1, e.opacite + 0.35);
+  ctx.drawImage(img, e.x - largeur / 2, e.y - hauteur / 2, largeur, hauteur);
+  ctx.restore();
+}
 
-  const pointes = 8;
-  const rotation = (1 - e.opacite) * Math.PI;
-  ctx.strokeStyle = "#e8d4ff";
-  ctx.lineWidth = 2.4;
-  for (let i = 0; i < pointes; i++) {
-    const angle = rotation + (i / pointes) * Math.PI * 2;
-    const xInt = e.x + Math.cos(angle) * rayonActuel * 0.5;
-    const yInt = e.y + Math.sin(angle) * rayonActuel * 0.5;
-    const xExt = e.x + Math.cos(angle) * rayonActuel;
-    const yExt = e.y + Math.sin(angle) * rayonActuel;
-    ctx.beginPath();
-    ctx.moveTo(xInt, yInt);
-    ctx.lineTo(xExt, yExt);
-    ctx.stroke();
-  }
+// Cri de guerre du Dorken (R) : champignon atomique (demande explicite),
+// même principe de lecture que dessinerExplosionToxique.
+function dessinerExplosionNucleaire(e) {
+  const progression = Math.min(0.999, Math.max(0, 1 - e.opacite));
+  const frames = IMGS_EXPLOSION_NUCLEAIRE;
+  const img = frames[Math.floor(progression * frames.length)];
+  if (!imagePrete(img)) return;
+  const tailleCible = e.rayon * 2.7;
+  const echelle = tailleCible / Math.max(img.naturalWidth, img.naturalHeight);
+  const largeur = img.naturalWidth * echelle;
+  const hauteur = img.naturalHeight * echelle;
+  ctx.save();
+  ctx.globalAlpha = Math.min(1, e.opacite + 0.35);
+  ctx.drawImage(img, e.x - largeur / 2, e.y - hauteur / 2, largeur, hauteur);
   ctx.restore();
 }
 
