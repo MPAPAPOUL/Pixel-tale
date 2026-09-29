@@ -1766,10 +1766,11 @@ const ART_DEDIE_PAR_BIOME = {
   // plus recolorer ces deux-là. Deux variantes du même pack minotaure chibi
   // (assets fournis), une par région pour rester distinctes malgré la
   // parenté d'asset. Ratios moyens idle/walk/attack (voir client) : ≈0.89
-  // pour le rouge, ≈0.84 pour le brun. Hauteur/largeur réduites de 30%
-  // (demande explicite, taille initiale 95/85/80 jugée trop grande).
-  "couronne-orage": { base: "minotaure-rouge", teinte: null, largeur: 60, hauteur: 67 },
-  "sanctuaire-eclipse": { base: "minotaure-brun", teinte: null, largeur: 56, hauteur: 67 },
+  // pour le rouge, ≈0.84 pour le brun. Hauteur/largeur réduites de 30% deux
+  // fois de suite (demande explicite, taille initiale 95/85/80 jugée trop
+  // grande, puis encore trop grande à 67/60/56).
+  "couronne-orage": { base: "minotaure-rouge", teinte: null, largeur: 42, hauteur: 47 },
+  "sanctuaire-eclipse": { base: "minotaure-brun", teinte: null, largeur: 39, hauteur: 47 },
 };
 for (const [id, art] of Object.entries(ART_DEDIE_PAR_BIOME)) {
   if (MONSTRES_CONFIG[id]) Object.assign(MONSTRES_CONFIG[id], art);
