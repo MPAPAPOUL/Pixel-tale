@@ -5459,6 +5459,23 @@ function dessinerPortraitChevalierNoir(salle) {
 // à ces 4 types, tandis que tous les autres monstres gardent 2.1.
 const ECHELLE_HAUTEUR_REDUITE_MONSTRES = new Set(["epineux", "tentacule-vert", "faucheur", "bluetentacle"]);
 
+// Petit hash stable à partir de l'id du monstre (ex. "mob-troubalourd-42")
+// pour déphaser l'effet de respiration d'un monstre à l'autre — sans ça,
+// tous les monstres statiques d'une même zone léviteraient exactement en
+// même temps, ce qui casse l'illusion de vie individuelle.
+function hashIdMonstre(id) {
+  let h = 0;
+  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
+  return h;
+}
+
+// Effet de respiration (légère lévitation verticale) pour les monstres au
+// sprite STATIQUE (une seule image par pose, voir SPRITES_MONSTRES — par
+// opposition aux monstres animés de la Crique des Corsaires, voir
+// SPRITES_PIRATES, déjà vivants via leurs propres frames d'idle/marche) —
+// demande explicite, sauf Tiralark (et ses reskins de région, même sprite
+// réutilisé via `base`, voir GABARITS_MONSTRES_BIOME) qui reste immobile,
+// posture d'archer à l'affût.
 function dessinerMonstres() {
   const maintenant = performance.now();
   for (const m of state.monsters || []) {
@@ -5471,6 +5488,12 @@ function dessinerMonstres() {
     const echelle = ECHELLE_HAUTEUR_REDUITE_MONSTRES.has(m.base || m.type) ? 1.05 : 2.1;
 
     const pose = poseMonstre(m);
+    const estAnime = !!SPRITES_PIRATES[m.base || m.type];
+    const estTiralark = (m.base || m.type) === "tiralark";
+    const respire = !estAnime && !estTiralark;
+    const bobY = respire
+      ? Math.sin(maintenant / 500 + (hashIdMonstre(m.id) % 1000) / 1000 * Math.PI * 2) * m.hauteur * 0.06
+      : 0;
     // dessinerSprite agrandit le sprite à `m.hauteur * echelle` (2.1 pour la
     // plupart des monstres) ancré par le BAS de la hitbox — le haut du
     // sprite affiché dépasse donc largement `m.y` (le haut de la hitbox).
@@ -5480,9 +5503,9 @@ function dessinerMonstres() {
     let sommetSpriteAffiche = m.y;
     if (pose && imagePrete(pose)) {
       if (filtre) ctx.filter = filtre;
-      dessinerSprite(pose, m.x, m.y, m.largeur, m.hauteur, m.facing, echelle);
+      dessinerSprite(pose, m.x, m.y + bobY, m.largeur, m.hauteur, m.facing, echelle);
       if (filtre) ctx.filter = "none";
-      sommetSpriteAffiche = m.y + m.hauteur * (1 - echelle);
+      sommetSpriteAffiche = m.y + bobY + m.hauteur * (1 - echelle);
     } else {
       if (filtre) ctx.filter = filtre;
       dessinerCorpsMonstreSecours(m);
