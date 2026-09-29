@@ -3328,6 +3328,21 @@ const SPRITES_MONSTRES = {
     walk: chargerImage("sprites/sorcier-4bras/walk.png"),
     attack: chargerImage("sprites/sorcier-4bras/attack.png"),
   },
+  // Couronne d'Orage et Sanctuaire Éclipsé gardaient le gabarit Fisselo/
+  // Tiralark simplement reteinté (les deux seules régions sans art dédié) —
+  // demande explicite de ne plus recolorer ces deux-là. Deux variantes
+  // distinctes du même pack minotaure chibi pour rester visuellement
+  // différentes malgré la parenté d'asset.
+  "minotaure-rouge": {
+    idle: chargerImage("sprites/minotaure-rouge/idle.png"),
+    walk: chargerImage("sprites/minotaure-rouge/walk.png"),
+    attack: chargerImage("sprites/minotaure-rouge/attack.png"),
+  },
+  "minotaure-brun": {
+    idle: chargerImage("sprites/minotaure-brun/idle.png"),
+    walk: chargerImage("sprites/minotaure-brun/walk.png"),
+    attack: chargerImage("sprites/minotaure-brun/attack.png"),
+  },
   // Mob élite du donjon (voir TYPES_MOBS_DONJON côté serveur) : a aussi une
   // pose "ko" (couchée), contrairement aux monstres normaux qui disparaissent
   // simplement à 0 PV — poseMonstre() l'ignore pour l'instant (les monstres
@@ -4334,6 +4349,13 @@ const ZONES_AVEC_DECOR = {
   "pics-verglaces": 7,
   "plage-corsaire": 5,
   "crique-naufrageurs": 7,
+  "dunes-cendrees": 5,
+  "jardins-petrifies": 7,
+  "sanctuaire-eclipse": 8,
+  "couronne-orage": 7,
+  "abysses-luisantes": 8,
+  village: 7,
+  "cretes-ambre": 5,
 };
 // Index 0 = calque "1.png" (avant-plan, défile vite) → index 6 = calque
 // "7.png" (ciel plat, quasi immobile), pour une sensation de profondeur.
@@ -4370,101 +4392,6 @@ function dessinerDecorZone(idZoneDecor, camX) {
   }
 }
 
-// Décors parallax procéduraux pour les zones sans pack d'images : ciel en
-// dégradé, astre lointain, 3 silhouettes (loin / milieu / proche) qui
-// défilent à des vitesses différentes, teintées selon l'ambiance de la zone.
-const THEMES_DECOR_PROCEDURAL = {
-  "cretes-ambre": { ciel: ["#ffe9b8", "#f7c479", "#e58f4f"], astre: { x: 0.72, y: 0.2, r: 46, c: "#fff3c4" }, couches: [["#d99a45", "pics", 0.75, 130], ["#b87a2b", "pics", 0.82, 100], ["#8a5618", "collines", 0.9, 60]] },
-  "dunes-cendrees": { ciel: ["#c9bcae", "#9a8a7b", "#6c5f54"], astre: { x: 0.3, y: 0.22, r: 38, c: "#ece3d8" }, couches: [["#857567", "dunes", 0.72, 90], ["#6d6054", "dunes", 0.8, 80], ["#51463d", "dunes", 0.9, 55]] },
-  "abysses-luisantes": { ciel: ["#071a35", "#0f3a66", "#1a6fa0"], etoiles: true, couches: [["#12406b", "cristaux", 0.72, 150], ["#0d3157", "cristaux", 0.82, 110], ["#092444", "cristaux", 0.92, 80]], lueur: "#59d8ff" },
-  "jardins-petrifies": { ciel: ["#f6cfe2", "#cf94b8", "#94456a"], astre: { x: 0.68, y: 0.24, r: 40, c: "#fff0f6" }, couches: [["#b46a8e", "colonnes", 0.72, 140], ["#87476b", "colonnes", 0.82, 110], ["#5e2e4f", "collines", 0.92, 65]] },
-  "couronne-orage": { ciel: ["#171936", "#383c72", "#6a70b4"], orage: true, couches: [["#2c3060", "pics", 0.72, 150], ["#20244f", "pics", 0.82, 110], ["#161a3c", "pics", 0.92, 70]] },
-  "sanctuaire-eclipse": { ciel: ["#0b081c", "#291552", "#5a3a7a"], etoiles: true, astre: { x: 0.5, y: 0.25, r: 52, c: "#0a0714", anneau: "#d9b8ff" }, couches: [["#38235f", "colonnes", 0.72, 160], ["#271748", "colonnes", 0.82, 120], ["#180d31", "colonnes", 0.92, 80]] },
-  "village": { ciel: ["#cfe9ff", "#e6f4ff", "#fff6e0"], astre: { x: 0.78, y: 0.18, r: 42, c: "#fff7c2" }, couches: [["#a8d6a2", "collines", 0.74, 100], ["#86c17d", "collines", 0.83, 80], ["#63a35f", "collines", 0.92, 55]] },
-};
-const VITESSES_PARALLAXE_PROCEDURAL = [0.12, 0.24, 0.4];
-
-function profilSilhouette(x, type, graine) {
-  const u = x + graine * 977;
-  switch (type) {
-    case "pics": { const t = (Math.abs(((u * 0.011) % 2) - 1)); return t * 0.7 + Math.sin(u * 0.0047) * 0.25; }
-    case "cristaux": { const t = Math.abs(((u * 0.017) % 2) - 1); return Math.pow(t, 0.6) * 0.8 + Math.sin(u * 0.006) * 0.15; }
-    case "dunes": return 0.5 + Math.sin(u * 0.006) * 0.3 + Math.sin(u * 0.0021 + 1.7) * 0.2;
-    case "colonnes": { const b = Math.floor(u / 90); const h = 0.35 + ((Math.sin(b * 12.9898) * 43758.5453) % 1 + 1) % 1 * 0.6; return (u % 90) < 58 ? h : 0.1; }
-    default: return 0.5 + Math.sin(u * 0.0045) * 0.28 + Math.sin(u * 0.013 + 2.1) * 0.12;
-  }
-}
-
-function dessinerDecorProcedural(idZone, camX) {
-  const theme = THEMES_DECOR_PROCEDURAL[idZone];
-  const W = canvas.width, H = canvas.height;
-  const t = performance.now() / 1000;
-  const g = ctx.createLinearGradient(0, 0, 0, H);
-  g.addColorStop(0, theme.ciel[0]);
-  g.addColorStop(0.55, theme.ciel[1]);
-  g.addColorStop(1, theme.ciel[2]);
-  ctx.fillStyle = g;
-  ctx.fillRect(0, 0, W, H);
-
-  if (theme.etoiles) {
-    ctx.fillStyle = "rgba(255,255,255,0.85)";
-    for (let i = 0; i < 60; i++) {
-      const sx = ((i * 197 + 31) % 1000) / 1000 * W;
-      const sy = ((i * 89 + 13) % 600) / 600 * H * 0.55;
-      const tw = 0.4 + 0.6 * Math.abs(Math.sin(t * 0.8 + i));
-      ctx.globalAlpha = tw;
-      ctx.fillRect(sx, sy, 2, 2);
-    }
-    ctx.globalAlpha = 1;
-  }
-  if (theme.astre) {
-    const a = theme.astre;
-    const ax = mod(a.x * W - camX * 0.02, W + 120) - 60;
-    ctx.fillStyle = a.c;
-    ctx.beginPath(); ctx.arc(ax, a.y * H, a.r, 0, Math.PI * 2); ctx.fill();
-    if (a.anneau) {
-      ctx.strokeStyle = a.anneau; ctx.lineWidth = 4; ctx.globalAlpha = 0.8;
-      ctx.beginPath(); ctx.arc(ax, a.y * H, a.r + 4, 0, Math.PI * 2); ctx.stroke();
-      ctx.globalAlpha = 1;
-    }
-  }
-  if (theme.orage) {
-    ctx.fillStyle = "rgba(20,22,50,0.55)";
-    for (let i = 0; i < 5; i++) {
-      const cx = mod(i * 300 - camX * 0.05 - t * 8, W + 400) - 200;
-      ctx.beginPath(); ctx.ellipse(cx, 70 + (i % 3) * 45, 190, 42, 0, 0, Math.PI * 2); ctx.fill();
-    }
-    const cycle = t % 6;
-    if (cycle < 0.18) { ctx.fillStyle = `rgba(230,235,255,${0.35 * (1 - cycle / 0.18)})`; ctx.fillRect(0, 0, W, H); }
-  }
-
-  theme.couches.forEach(([couleur, type, horizon, amplitude], i) => {
-    const vitesse = VITESSES_PARALLAXE_PROCEDURAL[i];
-    ctx.fillStyle = couleur;
-    ctx.beginPath();
-    ctx.moveTo(0, H);
-    const base = H * horizon;
-    for (let x = 0; x <= W + 8; x += 8) {
-      const y = base - profilSilhouette(x + camX * vitesse, type, i + 1) * amplitude;
-      ctx.lineTo(x, y);
-    }
-    ctx.lineTo(W, H);
-    ctx.closePath();
-    ctx.fill();
-  });
-
-  if (theme.lueur) {
-    ctx.fillStyle = theme.lueur;
-    for (let i = 0; i < 18; i++) {
-      const px = mod(i * 137 - camX * 0.3, W);
-      const py = H * 0.35 + ((i * 71) % 300) + Math.sin(t + i) * 10;
-      ctx.globalAlpha = 0.25 + 0.25 * Math.abs(Math.sin(t * 0.9 + i));
-      ctx.beginPath(); ctx.arc(px, py, 2 + (i % 3), 0, Math.PI * 2); ctx.fill();
-    }
-    ctx.globalAlpha = 1;
-  }
-}
-
 // Berge-Rhak est une île céleste posée sur les nuages : le ciel doit se
 // sentir plus "rêve pastel" que "beau temps ordinaire" (inspiré de
 // l'ambiance MapleStory 2), avec d'autres îles flottantes au loin et des
@@ -4486,10 +4413,6 @@ function dessinerCiel(camera) {
   const idZoneActuelle = state && state.zoneActuelle && state.zoneActuelle.id;
   if (idZoneActuelle && DECORS_ZONES[idZoneActuelle]) {
     dessinerDecorZone(idZoneActuelle, camX);
-    return;
-  }
-  if (idZoneActuelle && THEMES_DECOR_PROCEDURAL[idZoneActuelle]) {
-    dessinerDecorProcedural(idZoneActuelle, camX);
     return;
   }
 
@@ -5655,6 +5578,23 @@ function dessinerPortraitChevalierNoir(salle) {
 // à ces 4 types, tandis que tous les autres monstres gardent 2.1.
 const ECHELLE_HAUTEUR_REDUITE_MONSTRES = new Set(["epineux", "tentacule-vert", "faucheur", "bluetentacle"]);
 
+// Petit hash stable à partir de l'id du monstre (ex. "mob-troubalourd-42")
+// pour déphaser l'effet de respiration d'un monstre à l'autre — sans ça,
+// tous les monstres statiques d'une même zone léviteraient exactement en
+// même temps, ce qui casse l'illusion de vie individuelle.
+function hashIdMonstre(id) {
+  let h = 0;
+  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
+  return h;
+}
+
+// Effet de respiration (légère lévitation verticale) pour les monstres au
+// sprite STATIQUE (une seule image par pose, voir SPRITES_MONSTRES — par
+// opposition aux monstres animés de la Crique des Corsaires, voir
+// SPRITES_PIRATES, déjà vivants via leurs propres frames d'idle/marche) —
+// demande explicite, sauf Tiralark (et ses reskins de région, même sprite
+// réutilisé via `base`, voir GABARITS_MONSTRES_BIOME) qui reste immobile,
+// posture d'archer à l'affût.
 function dessinerMonstres() {
   const maintenant = performance.now();
   for (const m of state.monsters || []) {
@@ -5667,25 +5607,39 @@ function dessinerMonstres() {
     const echelle = ECHELLE_HAUTEUR_REDUITE_MONSTRES.has(m.base || m.type) ? 1.05 : 2.1;
 
     const pose = poseMonstre(m);
-    let hautSprite = m.y;
+    const estAnime = !!SPRITES_PIRATES[m.base || m.type];
+    const estTiralark = (m.base || m.type) === "tiralark";
+    const respire = !estAnime && !estTiralark;
+    const bobY = respire
+      ? Math.sin(maintenant / 500 + (hashIdMonstre(m.id) % 1000) / 1000 * Math.PI * 2) * m.hauteur * 0.06
+      : 0;
+    // dessinerSprite agrandit le sprite à `m.hauteur * echelle` (2.1 pour la
+    // plupart des monstres) ancré par le BAS de la hitbox — le haut du
+    // sprite affiché dépasse donc largement `m.y` (le haut de la hitbox).
+    // Sans ça, la barre de vie (calée sur `m.y`) se retrouvait à mi-hauteur
+    // du sprite au lieu d'être au-dessus (gobelins, Tiralark...) — voir
+    // sommetSpriteAffiche ci-dessous, qui recale sur le haut RÉEL du rendu.
+    let sommetSpriteAffiche = m.y;
     if (pose && imagePrete(pose)) {
       if (filtre) ctx.filter = filtre;
-      hautSprite = Math.min(m.y, dessinerSprite(pose, m.x, m.y, m.largeur, m.hauteur, m.facing, echelle));
+      dessinerSprite(pose, m.x, m.y + bobY, m.largeur, m.hauteur, m.facing, echelle);
       if (filtre) ctx.filter = "none";
+      sommetSpriteAffiche = m.y + bobY + m.hauteur * (1 - echelle);
     } else {
       if (filtre) ctx.filter = filtre;
       dessinerCorpsMonstreSecours(m);
       if (filtre) ctx.filter = "none";
     }
 
-    // Barre de vie au-dessus
+    // Barre de vie au-dessus du sprite réellement affiché
     const centreX = m.x + m.largeur / 2;
     const barreLargeur = m.largeur * 0.9;
     const ratio = Math.max(0, m.hp / m.hpMax);
+    const barreY = sommetSpriteAffiche - 12;
     ctx.fillStyle = "rgba(18,20,28,0.7)";
-    ctx.fillRect(centreX - barreLargeur / 2, hautSprite - 12, barreLargeur, 5);
+    ctx.fillRect(centreX - barreLargeur / 2, barreY, barreLargeur, 5);
     ctx.fillStyle = ratio > 0.4 ? "#5fae5a" : "#c1502e";
-    ctx.fillRect(centreX - barreLargeur / 2, hautSprite - 12, barreLargeur * ratio, 5);
+    ctx.fillRect(centreX - barreLargeur / 2, barreY, barreLargeur * ratio, 5);
   }
 }
 
@@ -6903,6 +6857,20 @@ const ICONES_SORTS_IMG = {
     z: "sprites/icones-sorts/quater/z.png",
     e: "sprites/icones-sorts/quater/e.png",
     r: "sprites/icones-sorts/quater/r.png",
+  },
+  // Découpées par nos soins depuis deux planches d'icônes fournies par
+  // l'utilisateur (une par classe) — même repli image -> emoji que Quater.
+  dorken: {
+    a: "sprites/icones-sorts/dorken/a.png", // Coup d'épée
+    z: "sprites/icones-sorts/dorken/z.png", // Frappe lourde
+    e: "sprites/icones-sorts/dorken/e.png", // Charge
+    r: "sprites/icones-sorts/dorken/r.png", // Cri de guerre
+  },
+  krix: {
+    a: "sprites/icones-sorts/krix/a.png", // Griffe arcane
+    z: "sprites/icones-sorts/krix/z.png", // Éclair
+    e: "sprites/icones-sorts/krix/e.png", // Boule de feu
+    r: "sprites/icones-sorts/krix/r.png", // Explosion arcanique
   },
 };
 // Variante mobile : illustrations distinctes, déjà recadrées en cercle par

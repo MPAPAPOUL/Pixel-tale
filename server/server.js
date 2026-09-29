@@ -1785,6 +1785,17 @@ const ART_DEDIE_PAR_BIOME = {
   // large ≈0.72 sabre tendu) ; même groupe d'échelle que sorcier-4bras
   // (pas dans ECHELLE_HAUTEUR_REDUITE_MONSTRES côté client → échelle ×2.1).
   "crique-naufrageurs": { base: "capitaine-pirate", teinte: null, largeur: 36, hauteur: 60 },
+  // Couronne d'Orage et Sanctuaire Éclipsé : dernières régions à garder le
+  // gabarit Fisselo/Tiralark simplement reteinté — demande explicite de ne
+  // plus recolorer ces deux-là. Deux variantes du même pack minotaure chibi
+  // (assets fournis), une par région pour rester distinctes malgré la
+  // parenté d'asset. Ratios moyens idle/walk/attack (voir client) : ≈0.89
+  // pour le rouge, ≈0.84 pour le brun. Taille alignée sur celle du gobelin
+  // neutre (largeur:36, hauteur:JOUEUR_HAUTEUR/2, voir MONSTRES_CONFIG.
+  // gobelinNeutre) — demande explicite, après deux réductions de 30%
+  // toujours jugées trop grandes.
+  "couronne-orage": { base: "minotaure-rouge", teinte: null, largeur: 36, hauteur: Math.round(JOUEUR_HAUTEUR / 2) },
+  "sanctuaire-eclipse": { base: "minotaure-brun", teinte: null, largeur: 36, hauteur: Math.round(JOUEUR_HAUTEUR / 2) },
 };
 for (const [id, art] of Object.entries(ART_DEDIE_PAR_BIOME)) {
   if (MONSTRES_CONFIG[id]) Object.assign(MONSTRES_CONFIG[id], art);
@@ -2418,7 +2429,13 @@ function creerJoueur() {
     pseudo: `${infosClasse.label} ${id}`,
     classe,
     couleur: infosClasse.couleur,
-    zone: ZONE_VERTHIGE,
+    // Hub d'accueil par défaut (demande explicite) : Estenoise-les-Brumes
+    // plutôt que Berge-Rhak — la branche "nouveauPersonnage" du handler de
+    // connexion le fixait déjà à "village" séparément, mais un personnage
+    // EXISTANT qui se reconnecte (zone non sauvegardée, voir extraireProgression/
+    // appliquerProgression) ou une connexion temporaire sans jeton retombaient
+    // encore ici sur Berge-Rhak.
+    zone: "village",
     x: 40,
     y: 0,
     vx: 0,
@@ -2805,10 +2822,10 @@ function rectanglesSeChevauchent(x1, y1, w1, h1, x2, y2, w2, h2) {
 // hauteur) pour permettre d'agrandir la zone où un coup compte sans changer
 // le rendu. Si le type définit son propre hitboxLargeur/hitboxHauteur (voir
 // fisselo, doublé dans les deux dimensions, centré), ceux-ci priment. Sinon,
-// par défaut pour TOUS les monstres (demande explicite) : +30% de hauteur
-// UNIQUEMENT VERS LE HAUT — la largeur et le bas de la hitbox restent
-// exactement ceux du sprite.
-const MULTIPLICATEUR_HITBOX_DEFAUT = 1.3;
+// par défaut pour TOUS les monstres (demande explicite, relevé de 30% à 40%) :
+// +40% de hauteur UNIQUEMENT VERS LE HAUT — la largeur et le bas de la
+// hitbox restent exactement ceux du sprite.
+const MULTIPLICATEUR_HITBOX_DEFAUT = 1.4;
 
 function hitboxMonstre(m, cfg) {
   if (cfg.hitboxLargeur || cfg.hitboxHauteur) {
@@ -2976,6 +2993,10 @@ function respawnJoueur(p) {
   p.hp = p.hpMax; // valeur effective (niveau + équipement), voir recalculerStatsEquipement
   p.mana = p.manaMax;
   p.alive = true;
+  // Réapparition au hub (Estenoise-les-Brumes, demande explicite) plutôt
+  // que sur place dans la zone où le joueur est mort — évite de réapparaître
+  // au milieu des monstres qui viennent de le tuer.
+  p.zone = "village";
   p.x = 60 + Math.random() * 300;
   p.y = 600 - JOUEUR_HAUTEUR;
   p.vx = 0;
