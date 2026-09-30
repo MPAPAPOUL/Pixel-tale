@@ -1,6 +1,6 @@
 ---
 import Base from "../../layouts/Base.astro";
-import { getUi, langPaths, API_URL, GAME_URL, type Lang } from "../../i18n";
+import { getUi, langPaths, localePath, API_URL, GAME_URL, type Lang } from "../../i18n";
 export function getStaticPaths() { return langPaths(); }
 const lang = Astro.params.lang as Lang;
 const ui = getUi(lang);
@@ -12,6 +12,11 @@ const cls = ui.ranking.classNames;
 
   <section class="page-section">
     <div class="wrap">
+      <div id="auth-panel">
+      <div class="auth-tabs" role="tablist">
+        <button type="button" role="tab" id="tab-login" class="active" aria-selected="true">{a.tabLogin}</button>
+        <button type="button" role="tab" id="tab-signup" aria-selected="false">{a.tabSignup}</button>
+      </div>
       <form id="login-form" class="account-card" autocomplete="on">
         <label for="acc-email">{a.email}</label>
         <input id="acc-email" name="email" type="email" required autocomplete="username" />
@@ -22,11 +27,27 @@ const cls = ui.ranking.classNames;
         <p class="account-note">{a.privacy}</p>
       </form>
 
+      <form id="signup-form" class="account-card" autocomplete="on" hidden>
+        <label for="su-email">{a.email}</label>
+        <input id="su-email" name="email" type="email" required maxlength="120" autocomplete="username" />
+        <label for="su-pass">{a.password} <small>({a.passwordHint})</small></label>
+        <input id="su-pass" name="password" type="password" required minlength="8" maxlength="72" autocomplete="new-password" />
+        <label for="su-pass2">{a.passwordConfirm}</label>
+        <input id="su-pass2" name="password2" type="password" required minlength="8" maxlength="72" autocomplete="new-password" />
+        <div class="hp-field" aria-hidden="true"><label for="su-site">Website</label><input id="su-site" name="siteweb" type="text" tabindex="-1" autocomplete="off" /></div>
+        <label class="consent"><input id="su-consent" type="checkbox" required /> <span>{a.consent} (<a href={localePath(lang, "confidentialite")}>{a.privacyLink}</a>)</span></label>
+        <p class="account-error" id="signup-error" role="alert" hidden></p>
+        <button class="btn btn-primary" type="submit" id="signup-btn">{a.signup}</button>
+        <p class="account-note">{a.privacy}</p>
+      </form>
+      </div>
+
       <div id="profile" hidden>
         <div class="profile-head">
           <h2>{a.characters}</h2>
           <button class="btn btn-secondary" type="button" id="logout-btn">{a.logout}</button>
         </div>
+        <p class="account-welcome" id="welcome" hidden>{a.welcome}</p>
         <p class="account-error" id="profile-error" role="alert" hidden></p>
         <div class="char-grid" id="char-grid"></div>
         <p class="rank-status" id="char-empty" hidden>{a.none}</p>
@@ -37,10 +58,10 @@ const cls = ui.ranking.classNames;
     </div>
   </section>
 
-  <script define:vars={{ api: API_URL, msg: { errorLogin: a.errorLogin, errorLocked: a.errorLocked, errorNetwork: a.errorNetwork, expired: a.expired, level: a.level, xp: a.xp, gold: a.gold, gems: a.gems, achievements: a.achievements, rank: a.rank, noTitle: a.noTitle, logging: a.logging, login: a.login }, classNames: cls }}>
+  <script define:vars={{ api: API_URL, msg: { errorLogin: a.errorLogin, errorLocked: a.errorLocked, errorNetwork: a.errorNetwork, expired: a.expired, mismatch: a.mismatch, errorExists: a.errorExists, errorInvalid: a.errorInvalid, errorRateSignup: a.errorRateSignup, signup: a.signup, signingUp: a.signingUp, level: a.level, xp: a.xp, gold: a.gold, gems: a.gems, achievements: a.achievements, rank: a.rank, noTitle: a.noTitle, logging: a.logging, login: a.login }, classNames: cls }}>
     const KEY = "pixelfe_site_session";
     const $ = (id) => document.getElementById(id);
-    const loginForm = $("login-form"), profile = $("profile"), grid = $("char-grid");
+    const loginForm = $("login-form"), signupForm = $("signup-form"), authPanel = $("auth-panel"), profile = $("profile"), grid = $("char-grid");
     const store = { get: () => { try { return sessionStorage.getItem(KEY); } catch { return null; } }, set: (v) => { try { sessionStorage.setItem(KEY, v); } catch {} }, del: () => { try { sessionStorage.removeItem(KEY); } catch {} } };
     const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
     const show = (node, msg) => { node.textContent = msg; node.hidden = !msg; };
@@ -67,9 +88,9 @@ const cls = ui.ranking.classNames;
         card.append(stats);
         grid.append(card);
       }
-      loginForm.hidden = true; profile.hidden = false;
+      authPanel.hidden = true; profile.hidden = false;
     }
-    function logoutLocal(message) { store.del(); profile.hidden = true; loginForm.hidden = false; show($("login-error"), message || ""); }
+    function logoutLocal(message) { store.del(); profile.hidden = true; authPanel.hidden = false; $("welcome").hidden = true; setTab("login"); show($("login-error"), message || ""); }
 
     async function loadProfile(token) {
       try {
@@ -77,8 +98,32 @@ const cls = ui.ranking.classNames;
         if (res.status === 401) return logoutLocal(msg.expired);
         if (!res.ok) throw new Error();
         renderProfile(await res.json());
-      } catch { loginForm.hidden = true; profile.hidden = false; show($("profile-error"), msg.errorNetwork); }
+      } catch { authPanel.hidden = true; profile.hidden = false; show($("profile-error"), msg.errorNetwork); }
     }
+
+    function setTab(which) {
+      const login = which === "login";
+      loginForm.hidden = !login; signupForm.hidden = login;
+      $("tab-login").classList.toggle("active", login); $("tab-signup").classList.toggle("active", !login);
+      $("tab-login").setAttribute("aria-selected", String(login)); $("tab-signup").setAttribute("aria-selected", String(!login));
+    }
+    $("tab-login").addEventListener("click", () => setTab("login"));
+    $("tab-signup").addEventListener("click", () => setTab("signup"));
+
+    signupForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      show($("signup-error"), "");
+      if ($("su-pass").value !== $("su-pass2").value) return show($("signup-error"), msg.mismatch);
+      const btn = $("signup-btn"); btn.disabled = true; btn.textContent = msg.signingUp;
+      try {
+        const res = await fetch(api + "/api/site/inscription", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: $("su-email").value, motDePasse: $("su-pass").value, siteweb: $("su-site").value }) });
+        if (res.status === 409) show($("signup-error"), msg.errorExists);
+        else if (res.status === 429) show($("signup-error"), msg.errorRateSignup);
+        else if (!res.ok) show($("signup-error"), msg.errorInvalid);
+        else { const { token } = await res.json(); $("su-pass").value = ""; $("su-pass2").value = ""; store.set(token); await loadProfile(token); $("welcome").hidden = false; }
+      } catch { show($("signup-error"), msg.errorNetwork); }
+      btn.disabled = false; btn.textContent = msg.signup;
+    });
 
     loginForm.addEventListener("submit", async (e) => {
       e.preventDefault();

@@ -4657,15 +4657,17 @@ function ipClient(req) {
   const transfert = String(req.headers["x-forwarded-for"] || "").split(",")[0].trim();
   return transfert || req.socket.remoteAddress || "?";
 }
-function connexionBloquee(cle) {
+const MAX_INSCRIPTIONS_PAR_HEURE = 5;
+const FENETRE_INSCRIPTIONS_MS = 60 * 60 * 1000;
+function connexionBloquee(cle, max = MAX_ECHECS_CONNEXION) {
   const e = ECHECS_CONNEXION_SITE.get(cle);
   if (!e) return false;
   if (Date.now() > e.expire) { ECHECS_CONNEXION_SITE.delete(cle); return false; }
-  return e.nb >= MAX_ECHECS_CONNEXION;
+  return e.nb >= max;
 }
-function noterEchecConnexion(cle) {
+function noterEchecConnexion(cle, fenetre = FENETRE_ECHECS_MS) {
   const e = ECHECS_CONNEXION_SITE.get(cle);
-  if (!e || Date.now() > e.expire) ECHECS_CONNEXION_SITE.set(cle, { nb: 1, expire: Date.now() + FENETRE_ECHECS_MS });
+  if (!e || Date.now() > e.expire) ECHECS_CONNEXION_SITE.set(cle, { nb: 1, expire: Date.now() + fenetre });
   else e.nb++;
 }
 function sessionSiteDepuisRequete(req) {
@@ -4731,6 +4733,30 @@ const server = http.createServer((req, res) => {
             noterEchecConnexion(cleEmail);
             return repondre(401, { erreur: "Email ou mot de passe incorrect." });
           }
+          const token = require("crypto").randomBytes(32).toString("hex");
+          SESSIONS_SITE.set(token, { jeton, expire: Date.now() + DUREE_SESSION_SITE_MS });
+          repondre(200, { ok: true, token, expireDans: DUREE_SESSION_SITE_MS / 1000 });
+        })
+        .catch(() => repondre(400, { erreur: "Requête invalide." }));
+      return;
+    }
+    if (req.method === "POST" && req.url === "/api/site/inscription") {
+      lireCorpsJSON(req)
+        .then(async (corps) => {
+          // Champ piège invisible pour les humains : un robot qui le remplit
+          // reçoit une réponse de succès factice, sans compte créé.
+          if (corps.siteweb) return repondre(200, { ok: true, token: "0".repeat(64), expireDans: 1 });
+          const email = String(corps.email || "").trim().toLowerCase();
+          const motDePasse = String(corps.motDePasse || "");
+          if (!REGEX_EMAIL.test(email) || email.length > 120) return repondre(400, { erreur: "Email invalide." });
+          if (motDePasse.length < 8 || motDePasse.length > 72) return repondre(400, { erreur: "Le mot de passe doit faire entre 8 et 72 caractères." });
+          const cleIp = "inscription:" + ipClient(req);
+          if (connexionBloquee(cleIp, MAX_INSCRIPTIONS_PAR_HEURE)) return repondre(429, { erreur: "Trop de créations de compte. Réessaie plus tard." });
+          if (trouverJetonParEmail(email)) return repondre(409, { erreur: "Cet email est déjà utilisé." });
+          noterEchecConnexion(cleIp, FENETRE_INSCRIPTIONS_MS);
+          const jeton = require("crypto").randomUUID();
+          comptes[jeton] = { personnages: [], email, motDePasseHache: await bcrypt.hash(motDePasse, 10) };
+          sauvegarderComptes();
           const token = require("crypto").randomBytes(32).toString("hex");
           SESSIONS_SITE.set(token, { jeton, expire: Date.now() + DUREE_SESSION_SITE_MS });
           repondre(200, { ok: true, token, expireDans: DUREE_SESSION_SITE_MS / 1000 });
