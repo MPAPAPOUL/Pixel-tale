@@ -7,7 +7,7 @@
     "role": "patrol",
     "hp": 80,
     "dmg": 10,
-    "xp": 8,
+    "xp": 3,
     "behavior": [
      "lightning",
      18,
@@ -23,7 +23,7 @@
     "role": "scoutErratic",
     "hp": 28,
     "dmg": 5,
-    "xp": 4,
+    "xp": 1,
     "behavior": [
      "spit",
      6
@@ -38,7 +38,7 @@
     "role": "turret",
     "hp": 48,
     "dmg": 6,
-    "xp": 6,
+    "xp": 2,
     "behavior": [
      "turret",
      8,
@@ -54,7 +54,7 @@
     "role": "neutral",
     "hp": 60,
     "dmg": 8,
-    "xp": 7,
+    "xp": 2,
     "behavior": [
      "neutral"
     ],
@@ -77,7 +77,7 @@
       "role": "erratic",
       "hp": 76,
       "dmg": 9,
-      "xp": 9,
+      "xp": 3,
       "drop": [
        "tier",
        1
@@ -89,7 +89,7 @@
       "role": "patrol",
       "hp": 130,
       "dmg": 15,
-      "xp": 14,
+      "xp": 5,
       "drop": [
        "tier",
        1
@@ -101,7 +101,7 @@
       "role": "elite",
       "hp": 220,
       "dmg": 22,
-      "xp": 26,
+      "xp": 9,
       "drop": [
        "tier",
        1
@@ -120,7 +120,7 @@
       "role": "patrol",
       "hp": 154,
       "dmg": 19,
-      "xp": 15,
+      "xp": 5,
       "drop": [
        "tier",
        1
@@ -139,7 +139,7 @@
       "role": "erratic",
       "hp": 62,
       "dmg": 11,
-      "xp": 9,
+      "xp": 3,
       "drop": [
        "tier",
        1
@@ -158,7 +158,7 @@
       "role": "shooter",
       "hp": 118,
       "dmg": 15,
-      "xp": 15,
+      "xp": 5,
       "behavior": [
        "shoots",
        20,
@@ -182,7 +182,7 @@
       "role": "patrol",
       "hp": 218,
       "dmg": 27,
-      "xp": 22,
+      "xp": 7,
       "drop": [
        "tier",
        2
@@ -202,7 +202,7 @@
       "role": "erratic",
       "hp": 84,
       "dmg": 15,
-      "xp": 12,
+      "xp": 4,
       "drop": [
        "tier",
        2
@@ -221,7 +221,7 @@
       "role": "shooter",
       "hp": 156,
       "dmg": 20,
-      "xp": 20,
+      "xp": 7,
       "behavior": [
        "shoots",
        26,
@@ -245,7 +245,7 @@
       "role": "patrol",
       "hp": 282,
       "dmg": 35,
-      "xp": 28,
+      "xp": 9,
       "drop": [
        "tier",
        3
@@ -264,7 +264,7 @@
       "role": "erratic",
       "hp": 106,
       "dmg": 19,
-      "xp": 15,
+      "xp": 5,
       "drop": [
        "tier",
        3
@@ -283,7 +283,7 @@
       "role": "shooter",
       "hp": 196,
       "dmg": 24,
-      "xp": 24,
+      "xp": 8,
       "behavior": [
        "shoots",
        33,
@@ -307,7 +307,7 @@
       "role": "patrol",
       "hp": 346,
       "dmg": 43,
-      "xp": 35,
+      "xp": 12,
       "behavior": [
        "sabrenoir"
       ],
@@ -328,7 +328,7 @@
     "role": "patrol",
     "hp": 80,
     "dmg": 10,
-    "xp": 8,
+    "xp": 3,
     "drop": [
      "baseKey"
     ]
@@ -339,7 +339,7 @@
     "role": "scoutErratic",
     "hp": 28,
     "dmg": 5,
-    "xp": 4,
+    "xp": 1,
     "drop": [
      "baseKey"
     ]
@@ -350,7 +350,7 @@
     "role": "turret",
     "hp": 48,
     "dmg": 6,
-    "xp": 6,
+    "xp": 2,
     "drop": [
      "baseKey"
     ]
@@ -361,7 +361,7 @@
     "role": "dungeonElite",
     "hp": 180,
     "dmg": 16,
-    "xp": 18,
+    "xp": 6,
     "behavior": [
      "minotaur"
     ],

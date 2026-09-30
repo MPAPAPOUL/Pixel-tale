@@ -176,10 +176,10 @@ const CLASSES = {
     manaMax: 100,
     manaRegen: 12,
     attaques: {
-      a: { nom: "Griffe arcane", type: "projectile", degats: 10, cooldown: 0.4, vitesse: 700, rayon: 5, porteeMax: 150, coutMana: 8, effet: "griffe_arcane" },
-      z: { nom: "Éclair", type: "projectile", degats: 18, cooldown: 0.85, vitesse: 500, rayon: 7, porteeMax: 650, coutMana: 16, effet: "eclair" },
-      e: { nom: "Boule de feu", type: "projectile", degats: 30, cooldown: 1.6, vitesse: 320, rayon: 12, porteeMax: 700, coutMana: 26, effet: "boule_feu" },
-      r: { nom: "Explosion arcanique", type: "aoe", degats: 45, cooldown: 9, portee: 160, rayon: 90, coutMana: 45, effet: "explosion_arcanique" },
+      a: { nom: "Griffe arcane", type: "projectile", degats: 10, cooldown: 0.4, vitesse: 700, rayon: 5, porteeMax: 300, coutMana: 8, effet: "griffe_arcane" },
+      z: { nom: "Éclair", type: "projectile", degats: 18, cooldown: 0.85, vitesse: 500, rayon: 7, porteeMax: 1300, coutMana: 16, effet: "eclair" },
+      e: { nom: "Boule de feu", type: "projectile", degats: 30, cooldown: 1.6, vitesse: 320, rayon: 12, porteeMax: 1400, coutMana: 26, effet: "boule_feu" },
+      r: { nom: "Explosion arcanique", type: "aoe", degats: 45, cooldown: 9, portee: 320, rayon: 90, coutMana: 45, effet: "explosion_arcanique", cibleLaPlusProche: true },
     },
   },
 };
@@ -2947,6 +2947,13 @@ function sireHanoEstCiblable(zone) {
   return !!zone.sireHano && !zone.sireHano.vaincu && zone.sireHano.entites.length > 0;
 }
 
+// XP d'un monstre commun divisée par 3 (demande explicite : trop d'XP) — ne
+// touche ni l'or (calculé sur l'XP de base), ni les boss, ni les succès/quêtes.
+const DIVISEUR_XP_MONSTRES = 3;
+function xpMonstre(xpBase) {
+  return xpBase > 0 ? Math.max(1, Math.round(xpBase / DIVISEUR_XP_MONSTRES)) : 0;
+}
+
 function infligerDegatsMonstre(zone, m, degats, joueurId) {
   if (m.morte) return;
   m.hostile = true; // un gobelin neutre (voir MONSTRES_CONFIG.gobelinNeutre) devient hostile dès qu'un joueur le frappe, sans effet sur les autres types (déjà hostiles)
@@ -2963,7 +2970,7 @@ function infligerDegatsMonstre(zone, m, degats, joueurId) {
     m.respawnRestant = MONSTRES_CONFIG[m.type].delaiRespawn;
     const joueur = players.get(joueurId);
     if (joueur) {
-      gainerXp(joueur, MONSTRES_CONFIG[m.type].xp || 0); // tout monstre tué rapporte de l'XP, quelle que soit la zone
+      gainerXp(joueur, xpMonstre(MONSTRES_CONFIG[m.type].xp)); // tout monstre tué rapporte de l'XP, quelle que soit la zone
       // Pièces d'or : auto-collectées (contrairement à l'équipement, qui
       // reste au sol pour le ramassage à F) — toutes zones confondues.
       const orBase = Math.max(1, Math.round((MONSTRES_CONFIG[m.type].xp || 1) * 2.5));
@@ -3214,8 +3221,30 @@ function declencherAttaque(p, zone, touche) {
     p.dashDejaTouches = [];
   } else if (attaque.type === "aoe") {
     const hbAoe = hitboxAttaqueJoueur(p);
-    const centreX = p.x + JOUEUR_LARGEUR / 2 + attaque.portee * p.facing;
-    const centreY = hbAoe.y + hbAoe.hauteur / 2;
+    let centreX = p.x + JOUEUR_LARGEUR / 2 + attaque.portee * p.facing;
+    let centreY = hbAoe.y + hbAoe.hauteur / 2;
+    // Explosion arcanique du Krix : se centre sur l'ennemi le PLUS PROCHE
+    // dans un rayon de `portee` autour du joueur (monstres, répliques de
+    // Sire-Hano, Dragon Noir, Chevalier Noir) ; sans ennemi à portée, elle
+    // retombe devant lui comme un sort de zone classique.
+    if (attaque.cibleLaPlusProche) {
+      const px = p.x + JOUEUR_LARGEUR / 2;
+      const py = p.y + JOUEUR_HAUTEUR / 2;
+      let meilleure = null;
+      const considerer = (cx, cy) => {
+        const d = Math.hypot(cx - px, cy - py);
+        if (d <= attaque.portee && (!meilleure || d < meilleure.d)) meilleure = { x: cx, y: cy, d };
+      };
+      for (const m of zone.monstres) {
+        if (m.morte) continue;
+        const c = MONSTRES_CONFIG[m.type];
+        considerer(m.x + c.largeur / 2, m.y + c.hauteur / 2);
+      }
+      if (sireHanoEstCiblable(zone)) for (const e of zone.sireHano.entites) considerer(e.x + e.largeur / 2, e.y + e.hauteur / 2);
+      if (dragonNoirEstCiblable(zone)) considerer(zone.dragonNoir.x + zone.dragonNoir.largeur / 2, zone.dragonNoir.y + zone.dragonNoir.hauteur / 2);
+      if (chevalierNoirEstCiblable(zone)) considerer(zone.chevalierNoir.x + zone.chevalierNoir.largeur / 2, zone.chevalierNoir.y + zone.chevalierNoir.hauteur / 2);
+      if (meilleure) { centreX = meilleure.x; centreY = meilleure.y; }
+    }
     for (const m of zone.monstres) {
       if (m.morte) continue;
       const cfgMonstre = MONSTRES_CONFIG[m.type];
