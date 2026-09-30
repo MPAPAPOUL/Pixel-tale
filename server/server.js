@@ -3121,8 +3121,29 @@ function xpMonstre(xpBase) {
   return xpBase > 0 ? Math.max(1, Math.round(xpBase / DIVISEUR_XP_MONSTRES)) : 0;
 }
 
+// Écart de niveau monstre/joueur (niveau du monstre = niveauMob de sa zone ;
+// zones sans niveauMob : aucun effet).
+// Dégâts infligés PAR le joueur à un monstre plus haut niveau :
+// -20 % (5+ niveaux d'écart), -40 % (10+), -60 % (15+), -90 % (20+).
+function facteurDegatsJoueurContreMonstre(niveauMob, niveauJoueur) {
+  if (!niveauMob) return 1;
+  const ecart = niveauMob - niveauJoueur;
+  if (ecart >= 20) return 0.1;
+  if (ecart >= 15) return 0.4;
+  if (ecart >= 10) return 0.6;
+  if (ecart >= 5) return 0.8;
+  return 1;
+}
+// Dégâts subis PAR le joueur : +10 % si le monstre a 5 niveaux ou plus de plus que lui.
+function facteurDegatsMonstreContreJoueur(niveauMob, niveauJoueur) {
+  if (!niveauMob) return 1;
+  return niveauMob - niveauJoueur >= 5 ? 1.1 : 1;
+}
+
 function infligerDegatsMonstre(zone, m, degats, joueurId) {
   if (m.morte) return;
+  const attaquantNiv = players.get(joueurId);
+  if (attaquantNiv) degats = Math.max(1, Math.round(degats * facteurDegatsJoueurContreMonstre(zone.niveauMob, attaquantNiv.niveau)));
   m.hostile = true; // un gobelin neutre (voir MONSTRES_CONFIG.gobelinNeutre) devient hostile dès qu'un joueur le frappe, sans effet sur les autres types (déjà hostiles)
   m.hp = Math.max(0, m.hp - degats);
   if (zone.id === "village") {
@@ -3226,7 +3247,7 @@ function infligerDegatsSireHano(zone, entite, degats, joueurId) {
 
 const PRIX_RENOMMAGE = 50; // gemmes, pour tout renommage après le nom choisi à la création
 const FACTEUR_DEGATS_SUBIS = 0.8;
-function infligerDegatsJoueur(p, degats, sourceX) {
+function infligerDegatsJoueur(p, degats, sourceX, niveauMob) {
   if (!p.alive || p.invulnerableRestant > 0) return false;
   // Réduction de dégâts subis (armure légendaire) : appliquée ici, au
   // moment de l'impact, pour couvrir toutes les sources (mobs, boss).
@@ -3238,7 +3259,7 @@ function infligerDegatsJoueur(p, degats, sourceX) {
     p.esquiveA = Date.now(); // affiché "Esquive !" côté client
     return false;
   }
-  const degatsEffectifs = Math.max(1, Math.round(degats * FACTEUR_DEGATS_SUBIS * (1 - statsEquipement(p).reductionDegatsPct)));
+  const degatsEffectifs = Math.max(1, Math.round(degats * facteurDegatsMonstreContreJoueur(niveauMob, p.niveau) * FACTEUR_DEGATS_SUBIS * (1 - statsEquipement(p).reductionDegatsPct)));
   p.hp = Math.max(0, p.hp - degatsEffectifs);
   p.invulnerableRestant = 1.3;
 
@@ -3697,7 +3718,7 @@ function simulerFoudreMonstresZone(zone, dtSecondes) {
         for (const p of players.values()) {
           if (!p.alive || p.zone !== zone.id) continue;
           const distance = Math.hypot(p.x + JOUEUR_LARGEUR / 2 - zoneAoe.x, p.y + JOUEUR_HAUTEUR / 2 - zoneAoe.y);
-          if (distance <= zoneAoe.rayon) infligerDegatsJoueur(p, zoneAoe.degats, zoneAoe.x);
+          if (distance <= zoneAoe.rayon) infligerDegatsJoueur(p, zoneAoe.degats, zoneAoe.x, zone.niveauMob);
         }
         // Explosion toxique verte (demande explicite) à la place de l'éclair
         // jaune d'origine — voir dessinerExplosionToxique côté client, qui
@@ -3752,7 +3773,7 @@ function simulerProjectilesMonstresZone(zone, dtSecondes) {
       if (!p.alive || p.zone !== zone.id) continue;
       const hbP = hurtboxJoueur(p);
       if (cercleRectangleSeChevauchent(proj.x, proj.y, proj.rayon, p.x, hbP.y, JOUEUR_LARGEUR, hbP.hauteur)) {
-        infligerDegatsJoueur(p, proj.degats, proj.x);
+        infligerDegatsJoueur(p, proj.degats, proj.x, zone.niveauMob);
         aTouche = true;
         break;
       }
@@ -3793,7 +3814,7 @@ function simulerContactsMonstresZone(zone, dtSecondes) {
       if (!p.alive || p.zone !== zone.id) continue;
       const hbP = hurtboxJoueur(p);
       if (rectanglesSeChevauchent(p.x, hbP.y, JOUEUR_LARGEUR, hbP.hauteur, m.x, m.y, cfgMonstre.largeur, cfgMonstre.hauteur)) {
-        if (infligerDegatsJoueur(p, Math.round(cfgMonstre.degatsContact * MULT_DEGATS_MONSTRES), m.x + cfgMonstre.largeur / 2)) {
+        if (infligerDegatsJoueur(p, Math.round(cfgMonstre.degatsContact * MULT_DEGATS_MONSTRES), m.x + cfgMonstre.largeur / 2, zone.niveauMob)) {
           m.attaqueAnimRestant = 0.25;
         }
       }
