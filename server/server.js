@@ -14,6 +14,7 @@ const fs = require("fs");
 const path = require("path");
 const { URL } = require("url");
 const bcrypt = require("bcryptjs");
+const anticheat = require("./anticheat"); // anti-automatisation, voir server/anticheat.js
 const idle = require("./idle"); // backend séparé pour Pixelfe-Idle (Godot), voir server/idle.js
 const { WebSocketServer } = require("ws");
 
@@ -4467,9 +4468,30 @@ setInterval(() => {
   if (joueursParJeton.size > 0) sauvegarderComptes();
 }, 30000);
 
-const wss = new WebSocketServer({ noServer: true });
+const suivisAntiTriche = new Set();
+setInterval(() => {
+  for (const suivi of suivisAntiTriche) {
+    try { anticheat.tick(suivi); } catch (err) { console.error("Anti-triche :", err.message); }
+  }
+}, 1000);
+
+const wss = new WebSocketServer({ noServer: true, maxPayload: 16 * 1024 });
 
 wss.on("connection", (ws, req) => {
+  // Anti-triche : joueur suspendu ou trop de sockets depuis la même IP.
+  const ipSocket = ipClient(req);
+  let jetonBrut = null;
+  try {
+    jetonBrut = new URL(req.url, `http://${req.headers.host}`).searchParams.get("jeton");
+  } catch {}
+  const refus = anticheat.verifierConnexion(jetonBrut, ipSocket);
+  if (refus) {
+    try {
+      ws.send(JSON.stringify({ type: "sanction", texte: refus.raison, ban: refus.code === anticheat.CODE_BANNI }));
+      ws.close(refus.code, refus.raison.slice(0, 120));
+    } catch {}
+    return;
+  }
   const joueur = creerJoueur();
   // Point de spawn : sur le sol, position X aléatoire raisonnable.
   joueur.x = 60 + Math.random() * 300;
@@ -4591,6 +4613,9 @@ wss.on("connection", (ws, req) => {
   // recréerait un autre à chaque coupure — voir connecter() côté client.
   ws.send(JSON.stringify({ type: "welcome", selfId: joueur.id, classes: CLASSES, personnageId: joueur._personnageId || null }));
 
+  const suiviAntiTriche = anticheat.creerSuivi(ws, joueur, jeton, ipSocket);
+  suivisAntiTriche.add(suiviAntiTriche);
+
   ws.on("message", (data) => {
     let message;
     try {
@@ -4598,6 +4623,8 @@ wss.on("connection", (ws, req) => {
     } catch {
       return;
     }
+    if (!message || typeof message !== "object") return;
+    if (!anticheat.noterMessage(suiviAntiTriche, message)) return;
     if (message.type === "input") {
       joueur.input.left = !!message.left;
       joueur.input.right = !!message.right;
@@ -4780,6 +4807,8 @@ wss.on("connection", (ws, req) => {
   });
 
   ws.on("close", () => {
+    suivisAntiTriche.delete(suiviAntiTriche);
+    anticheat.liberer(suiviAntiTriche);
     const instance = instancesDonjon.get(joueur.zone);
     if (instance) {
       instance.joueurs.delete(joueur.id);

@@ -2524,6 +2524,12 @@
 
       <!-- Bandeau de reconnexion (coupure réseau / retour d'arrière-plan
            mobile) — voir connecter()/afficherBanniereReconnexion. -->
+      <div id="verif-humain" class="masque" style="position:absolute;inset:0;z-index:9999;background:rgba(10,8,20,.88);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;color:#f3e9c8;text-align:center;padding:20px">
+        <div id="verif-consigne" style="font-size:20px;max-width:460px"></div>
+        <div id="verif-options" style="display:flex;gap:14px;flex-wrap:wrap;justify-content:center"></div>
+        <div id="verif-temps" style="font-size:14px;opacity:.75"></div>
+      </div>
+      <div id="sanction-ecran" class="masque" style="position:absolute;inset:0;z-index:10000;background:rgba(10,8,20,.95);display:flex;align-items:center;justify-content:center;color:#ff9a9a;text-align:center;padding:24px;font-size:20px"></div>
       <div class="banniere-reconnexion masque" id="banniere-reconnexion">Connexion perdue — reconnexion en cours…</div>
 
       <!-- Message d'accueil, une seule fois pour un tout nouveau personnage
@@ -3708,7 +3714,12 @@ function connecter(options) {
     }
   });
   ws.addEventListener("message", gererMessageServeur);
-  ws.addEventListener("close", () => {
+  ws.addEventListener("close", (ev) => {
+    if (ev && (ev.code === 4001 || ev.code === 4003)) {
+      // Expulsé / suspendu par l'anti-triche : pas de reconnexion automatique.
+      afficherSanction(ev.reason);
+      return;
+    }
     if (deconnexionVolontaire) { deconnexionVolontaire = false; return; }
     afficherBanniereReconnexion(true);
     setTimeout(connecter, delaiReconnexion);
@@ -3848,8 +3859,60 @@ function detecterImpacts(nouvelEtat) {
   }
 }
 
+// --- Anti-triche : vérification humaine + signal d'environnement ---------
+function afficherSanction(texte) {
+  const el = document.getElementById("sanction-ecran");
+  if (!el) return;
+  if (texte && !el.textContent) el.textContent = texte;
+  el.classList.remove("masque");
+  const v = document.getElementById("verif-humain");
+  if (v) v.classList.add("masque");
+}
+
+let verifMinuteur = null;
+function afficherVerif(msg) {
+  const boite = document.getElementById("verif-humain");
+  if (!boite) return;
+  document.getElementById("verif-consigne").textContent = msg.consigne || "Vérification anti-bot";
+  const zone = document.getElementById("verif-options");
+  zone.textContent = "";
+  for (const o of msg.options || []) {
+    const b = document.createElement("button");
+    b.textContent = o.emoji;
+    b.style.cssText = "font-size:44px;padding:12px 20px;border-radius:12px;border:2px solid #b9a6e0;background:#2a2340;cursor:pointer";
+    b.addEventListener("click", (e) => {
+      envoyer({ type: "verif", nonce: msg.nonce, choix: o.id, fiable: e.isTrusted });
+      boite.classList.add("masque");
+      clearInterval(verifMinuteur);
+    });
+    zone.appendChild(b);
+  }
+  // Coupe les touches en cours pour ne pas repartir en courant.
+  for (const k in touches) touches[k] = false;
+  envoyerInput();
+  const fin = performance.now() + (msg.delai || 45000);
+  const temps = document.getElementById("verif-temps");
+  clearInterval(verifMinuteur);
+  verifMinuteur = setInterval(() => {
+    temps.textContent = `Temps restant : ${Math.max(0, Math.ceil((fin - performance.now()) / 1000))} s`;
+  }, 250);
+  boite.classList.remove("masque");
+}
+
+// Événements clavier/souris synthétiques (scripts, agents pilotant la page).
+let evenementsNonFiables = 0;
+for (const nom of ["keydown", "keyup", "mousedown", "click"]) {
+  window.addEventListener(nom, (e) => { if (!e.isTrusted) evenementsNonFiables++; }, true);
+}
+setInterval(() => {
+  if (!ws || ws.readyState !== WebSocket.OPEN) return;
+  envoyer({ type: "env", webdriver: navigator.webdriver === true, nonFiables: evenementsNonFiables });
+}, 30000);
+
 function gererMessageServeur(event) {
   const msg = JSON.parse(event.data);
+  if (msg.type === "verif") { afficherVerif(msg); return; }
+  if (msg.type === "sanction") { afficherSanction(msg.texte); return; }
   if (msg.type === "welcome") {
     selfId = msg.selfId;
     classesInfo = msg.classes;
