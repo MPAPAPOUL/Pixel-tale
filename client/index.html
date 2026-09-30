@@ -2942,6 +2942,7 @@ const COULEURS_BIOMES = {
   "couronne-orage": "#d4af37",
   "crique-naufrageurs": "#2f8a9e",
 };
+const IMG_AILES_ANGE = chargerImage("sprites/ailes/ailes-ange.png");
 const IMG_TUILE_PIERRE = chargerImage("sprites/dcss-dungeon/pierre.png");
 const IMG_TUILE_PIERRE_SOMBRE = chargerImage("sprites/dcss-dungeon/pierre-sombre.png");
 
@@ -6923,6 +6924,25 @@ function dessinerJoueurs() {
     // donc on aplatit verticalement le sprite déjà sélectionné (voir le
     // commentaire dans dessinerSprite) — pieds ancrés, pas de saut visuel.
     const squashY = p.accroupi ? 0.62 : 1;
+    // Ailes équipées : dessinées AVANT le sprite pour rester derrière lui,
+    // miroir selon la direction du regard (l'image regarde vers la droite).
+    if (p.ailes && imagePrete(IMG_AILES_ANGE)) {
+      const largeurAiles = 78;
+      const hauteurAiles = largeurAiles * IMG_AILES_ANGE.naturalHeight / IMG_AILES_ANGE.naturalWidth;
+      const yAiles = p.y + (p.accroupi ? 30 : 10);
+      const lissagePrecedent = ctx.imageSmoothingEnabled;
+      ctx.imageSmoothingEnabled = false;
+      ctx.save();
+      if (p.facing >= 0) {
+        ctx.drawImage(IMG_AILES_ANGE, p.x + LARGEUR / 2 + 6 - largeurAiles, yAiles, largeurAiles, hauteurAiles);
+      } else {
+        ctx.translate(p.x + LARGEUR / 2 - 6, yAiles);
+        ctx.scale(-1, 1);
+        ctx.drawImage(IMG_AILES_ANGE, -largeurAiles, 0, largeurAiles, hauteurAiles);
+      }
+      ctx.restore();
+      ctx.imageSmoothingEnabled = lissagePrecedent;
+    }
     if (pose && imagePrete(pose)) {
       // Recoloration cheveux/yeux/vêtements (écran de création) — voir
       // obtenirSpriteRecolore ; apparence par défaut si absente (ancien
@@ -7688,6 +7708,7 @@ const BOUTIQUE_GEMMES_CLIENT = [
   { item: "potionAventurier1j", prix: 200, duree: "1 jour", nom: "Potion de l'Aventurier — 1 jour" },
   { item: "potionAventurier7j", prix: 1000, duree: "7 jours", nom: "Potion de l'Aventurier — 7 jours" },
   { item: "potionAventurier30j", prix: 3500, duree: "30 jours", nom: "Potion de l'Aventurier — 30 jours" },
+  { item: "ailesAnge1h", prix: 30, nom: "Ailes angéliques — 1 heure", cosmetique: true },
 ];
 
 function texteTempsRestant(ms) {
@@ -7702,12 +7723,20 @@ function mettreAJourBoutiqueGemmes() {
   const conteneur = document.getElementById("liste-boutique-gemmes");
   const gemmes = state.gemmes || 0;
   const expire = state.perso && state.perso.potionExpire;
+  const expireAiles = state.perso && state.perso.ailesExpire;
   const actif = expire && expire > Date.now();
   const statut = document.getElementById("boutique-gemmes-statut");
   statut.textContent = actif ? `🧪 Potion active — il reste ${texteTempsRestant(expire - Date.now())} (racheter une potion prolonge la durée).` : "";
   statut.classList.toggle("masque", !actif);
   conteneur.innerHTML = `<div class="gemme-grille">${BOUTIQUE_GEMMES_CLIENT
-    .map((offre) => `
+    .map((offre) => offre.cosmetique ? `
+      <div class="gemme-carte" data-item="${offre.item}">
+        <div class="gemme-icone"><img src="sprites/ailes/ailes-ange.png" alt="" style="height:44px;image-rendering:pixelated"></div>
+        <h3>${offre.nom}</h3>
+        <ul class="gemme-effets"><li>🪽 Ailes dans le dos, équipées directement</li><li>🦘 Double saut (non cumulable avec la potion)</li><li>👀 Visibles par tous les joueurs</li></ul>
+        <p class="gemme-duree">Durée : 1 heure${expireAiles && expireAiles > Date.now() ? " — restant : " + texteTempsRestant(expireAiles - Date.now()) : ""}</p>
+        <button type="button" class="btn-acheter" data-item="${offre.item}" ${gemmes >= offre.prix ? "" : "disabled"}>💎 ${offre.prix.toLocaleString("fr-FR")}</button>
+      </div>` : `
       <div class="gemme-carte" data-item="${offre.item}">
         <div class="gemme-icone">🧪</div>
         <h3>${offre.nom}</h3>

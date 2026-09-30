@@ -966,8 +966,12 @@ const BOUTIQUE_GEMMES = [
   { item: "potionAventurier1j", prix: 200, potion: { jours: 1 } },
   { item: "potionAventurier7j", prix: 1000, potion: { jours: 7 } },
   { item: "potionAventurier30j", prix: 3500, potion: { jours: 30 } },
+  { item: "ailesAnge1h", prix: 30, ailes: { heures: 1 } }, // cosmétique temporaire, actif dès l'achat
 ];
 
+function ailesActives(p) {
+  return !!(p.ailes && p.ailes.expire > Date.now());
+}
 function potionActive(p) {
   return !!(p.potion && p.potion.expire > Date.now());
 }
@@ -2869,7 +2873,7 @@ function simulerPhysique(dtSecondes) {
     if (p.input.jump && p.onGround) {
       p.vy = VITESSE_SAUT;
       p.onGround = false;
-    } else if (nouvelAppuiSaut && !p.onGround && p.doubleSautDispo && potionActive(p)) {
+    } else if (nouvelAppuiSaut && !p.onGround && p.doubleSautDispo && (potionActive(p) || ailesActives(p))) {
       p.vy = VITESSE_SAUT;
       p.doubleSautDispo = false;
     }
@@ -4071,6 +4075,7 @@ function construireEtatPourJoueur(p, classement) {
       xpRequis: xpRequisPourNiveau(p.niveau),
       niveauMax: NIVEAU_MAX,
       potionExpire: potionActive(p) ? p.potion.expire : null,
+      ailesExpire: ailesActives(p) ? p.ailes.expire : null,
       esquiveA: p.esquiveA || 0,
       esquivePct: Math.min(ESQUIVE_MAX, statsEquipement(p).esquivePct),
       equipement: p.equipement,
@@ -4098,6 +4103,7 @@ function construireEtatPourJoueur(p, classement) {
         facing: autre.facing,
         onGround: autre.onGround,
         accroupi: !!autre.accroupi,
+        ailes: ailesActives(autre),
         hp: Math.round(autre.hp),
         hpMax: autre.hpMax,
         mana: Math.round(autre.mana),
@@ -4466,6 +4472,7 @@ function extraireProgression(p) {
     hautsFaitsDebloques: p.hautsFaitsDebloques,
     titreActif: p.titreActif,
     potion: potionActive(p) ? p.potion : null,
+    ailes: ailesActives(p) ? p.ailes : null,
     connexionQuotidienne: p.connexionQuotidienne,
     apparence: p.apparence,
     tutoriel: p.tutoriel,
@@ -4514,6 +4521,7 @@ function appliquerProgression(p, sauvegarde) {
   if (sauvegarde.statsVie) Object.assign(p.statsVie, sauvegarde.statsVie);
   if (Array.isArray(sauvegarde.hautsFaitsDebloques)) p.hautsFaitsDebloques = sauvegarde.hautsFaitsDebloques;
   if (sauvegarde.titreActif) p.titreActif = String(sauvegarde.titreActif).slice(0, 40);
+  if (sauvegarde.ailes && Number(sauvegarde.ailes.expire) > Date.now()) p.ailes = { expire: Number(sauvegarde.ailes.expire) };
   if (sauvegarde.potion && Number(sauvegarde.potion.expire) > Date.now()) p.potion = { expire: Number(sauvegarde.potion.expire) };
   // Apparence — absente des sauvegardes antérieures à cette fonctionnalité,
   // d'où les valeurs par défaut déjà posées par creerJoueur conservées
@@ -4858,7 +4866,10 @@ wss.on("connection", (ws, req) => {
         const monnaie = offre.monnaie === "or" ? "or" : "gemmes";
         if ((joueur[monnaie] || 0) >= offre.prix) {
           joueur[monnaie] -= offre.prix;
-          if (offre.potion) {
+          if (offre.ailes) {
+            const base = ailesActives(joueur) ? joueur.ailes.expire : Date.now();
+            joueur.ailes = { expire: base + offre.ailes.heures * 3600000 };
+          } else if (offre.potion) {
             activerPotion(joueur, offre.potion.jours);
           } else if (offre.niveaux) {
             ajouterNiveaux(joueur, offre.niveaux);
