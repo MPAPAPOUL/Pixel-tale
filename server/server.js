@@ -83,6 +83,7 @@ const VITESSE_SAUT = -640; // px/s (négatif = vers le haut)
 const VITESSE_CHUTE_MAX = 900; // px/s
 
 const TICK_MS = 1000 / 30; // 30 mises à jour physiques par seconde
+const FACTEUR_REGEN_PV = 0.5; // régénération de vie totale (base + équipement) divisée par 2 — demande explicite
 const HP_REGEN_PAR_SECONDE = 4; // régénération de vie passive de base (PV/s) — voir aussi le bonus "regenPv" de l'équipement légendaire/mythique
 
 // Plateformes statiques de la zone (rectangles). La première est le sol
@@ -3323,7 +3324,7 @@ function simulerCombat(dtSecondes) {
     // Régénération de vie continue (5 PV/s), plafonnée au maximum.
     // Bonus de régénération des objets légendaires/mythiques équipés (voir
     // le champ "regenPv" de STATS_ARME/STATS_ARMURE/etc. et statsEquipement).
-    const regenEffective = HP_REGEN_PAR_SECONDE + statsEquipement(p).regenPv;
+    const regenEffective = (HP_REGEN_PAR_SECONDE + statsEquipement(p).regenPv) * FACTEUR_REGEN_PV;
     p.hp = Math.min(p.hpMax, p.hp + regenEffective * dtSecondes);
 
     const zone = zoneDeJoueur(p);
