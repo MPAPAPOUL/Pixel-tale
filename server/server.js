@@ -16,6 +16,8 @@ const { URL } = require("url");
 const bcrypt = require("bcryptjs");
 // Dégâts de TOUTES les attaques de boss (Sire-Hano, Dragon Noir, Chevalier Noir) : ×3 au total (+50 % puis +100 %).
 const MULT_DEGATS_BOSS = 3;
+// Dégâts de tous les monstres COMMUNS (contact, tirs, foudre) : ×3.
+const MULT_DEGATS_MONSTRES = 3;
 const anticheat = require("./anticheat"); // anti-automatisation, voir server/anticheat.js
 const idle = require("./idle"); // backend séparé pour Pixelfe-Idle (Godot), voir server/idle.js
 const { WebSocketServer } = require("ws");
@@ -3658,7 +3660,7 @@ function simulerTirsMonstresZone(zone, dtSecondes) {
         x: m.x + (direction >= 0 ? cfgMonstre.largeur : 0),
         y: m.y + cfgMonstre.hauteur / 2,
         vx: cfgMonstre.tir.vitesse * direction,
-        degats: cfgMonstre.tir.degats,
+        degats: Math.round(cfgMonstre.tir.degats * MULT_DEGATS_MONSTRES),
         rayon: cfgMonstre.tir.rayon,
         porteeMax: cfgMonstre.tir.porteeMax,
         distanceParcourue: 0,
@@ -3722,7 +3724,7 @@ function simulerFoudreMonstresZone(zone, dtSecondes) {
         x: cible.x + JOUEUR_LARGEUR / 2,
         y: cible.y + JOUEUR_HAUTEUR / 2,
         rayon: cfg.foudre.rayon,
-        degats: cfg.foudre.degats,
+        degats: Math.round(cfg.foudre.degats * MULT_DEGATS_MONSTRES),
         tempsRestant: cfg.foudre.telegraphe,
         telegrapheMax: cfg.foudre.telegraphe,
       };
@@ -3786,7 +3788,7 @@ function simulerContactsMonstresZone(zone, dtSecondes) {
       if (!p.alive || p.zone !== zone.id) continue;
       const hbP = hurtboxJoueur(p);
       if (rectanglesSeChevauchent(p.x, hbP.y, JOUEUR_LARGEUR, hbP.hauteur, m.x, m.y, cfgMonstre.largeur, cfgMonstre.hauteur)) {
-        if (infligerDegatsJoueur(p, cfgMonstre.degatsContact, m.x + cfgMonstre.largeur / 2)) {
+        if (infligerDegatsJoueur(p, Math.round(cfgMonstre.degatsContact * MULT_DEGATS_MONSTRES), m.x + cfgMonstre.largeur / 2)) {
           m.attaqueAnimRestant = 0.25;
         }
       }
