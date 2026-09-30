@@ -60,7 +60,7 @@ export default {
     worldText: "Pars de Berge-Rhak, l'île de départ, puis débloque un réseau de téléporteurs vers onze régions de plus en plus dangereuses — de la Crique des Corsaires à la Crique des Naufrageurs. Fais une pause à Estenoise-les-Brumes, le village neutre, pour discuter et te préparer.",
     worldPoints: [
       "Progression : niveaux, XP, points de caractéristique à répartir librement (force, agilité, intelligence, vitalité)",
-      "Équipement : armes et armures légendaires (et un set mythique) à looter ou à obtenir contre des gemmes",
+      "Équipement : armes et armures légendaires (et un set mythique) à looter sur les monstres et les boss",
       "Quêtes journalières et hauts faits à débloquer, avec des titres à afficher fièrement",
       "Trois boss avec leurs propres mécaniques : phases, zones télégraphiées, volées de projectiles",
     ],

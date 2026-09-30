@@ -62,7 +62,7 @@ const es: typeof fr = {
     worldText: "Empieza en Berge-Rhak, la isla inicial, y desbloquea una red de teletransportes hacia once regiones cada vez más peligrosas, desde la Cala de los Corsarios hasta la Cala de los Naufragadores. Descansa en Estenoise-les-Brumes, el pueblo neutral, para charlar y prepararte.",
     worldPoints: [
       "Progresión: niveles, XP, puntos de característica para repartir libremente (fuerza, agilidad, inteligencia, vitalidad)",
-      "Equipo: armas y armaduras legendarias (y un conjunto mítico) que conseguir o comprar con gemas",
+      "Equipo: armas y armaduras legendarias (y un conjunto mítico) que conseguir de monstruos y jefes",
       "Misiones diarias y logros por desbloquear, con títulos para lucir",
       "Tres jefes con sus propias mecánicas: fases, zonas telegrafiadas, ráfagas de proyectiles",
     ],

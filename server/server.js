@@ -876,18 +876,9 @@ const GEMMES_VICTOIRE_CHEVALIER_NOIR = 8; // même palier de récompense que le 
 // ajouterNiveaux) — reste dans "la boutique à gemmes" (même modale/icône)
 // simplement parce qu'aucune autre boutique n'est accessible partout comme
 // celle-ci.
-const BOUTIQUE_GEMMES = [
-  { item: "epeeLegendaire", prix: 35 },
-  { item: "arcLegendaire", prix: 35 },
-  { item: "batonLegendaire", prix: 35 },
-  { item: "armureLegendaire", prix: 45 },
-  { item: "casqueLegendaire", prix: 25 },
-  { item: "jambieresLegendaire", prix: 25 },
-  { item: "anneauLegendaire", prix: 25 },
-  { item: "bottesLegendaire", prix: 25 },
-  { item: "braceletLegendaire", prix: 25 },
-  { item: "potionNiveau", prix: 1, monnaie: "or", niveaux: 10 },
-];
+// Boutique à gemmes vidée (demande explicite : plus de potion de niveau ni
+// d'équipement à l'achat) — le message "acheter_gemme" ne trouve donc plus aucune offre.
+const BOUTIQUE_GEMMES = [];
 
 function gainerXp(p, montant) {
   if (!montant || montant <= 0) return;

@@ -7227,8 +7227,9 @@ function mettreAJourIconeTeleporteur() {
   if (masque) document.getElementById("modale-teleporteur").classList.add("masque");
   // Boutique à gemmes : même visibilité que le téléporteur juste à côté (pas
   // de sens en plein combat de donjon/Salle du Trône).
-  document.getElementById("icone-boutique-gemmes").classList.toggle("masque", masque);
-  if (masque) document.getElementById("modale-boutique-gemmes").classList.add("masque");
+  // La boutique est vide : son icône reste masquée en permanence.
+  document.getElementById("icone-boutique-gemmes").classList.add("masque");
+  document.getElementById("modale-boutique-gemmes").classList.add("masque");
   // Invite à quitter le village une fois le tutoriel terminé (voir
   // mettreAJourTutoriel) : halo pulsant tant qu'on reste à Estenoise, se
   // désactive tout seul dès qu'on téléporte ailleurs.
@@ -7438,22 +7439,7 @@ setInterval(() => {
 // Accessible partout via son icône dédiée (pas besoin d'un PNJ, contrairement
 // à la boutique en or) — voir BOUTIQUE_GEMMES côté serveur pour la
 // validation (prix ici uniquement pour l'affichage, jamais fait confiance).
-const BOUTIQUE_GEMMES_CLIENT = [
-  { item: "epeeLegendaire", prix: 35 },
-  { item: "arcLegendaire", prix: 35 },
-  { item: "batonLegendaire", prix: 35 },
-  { item: "armureLegendaire", prix: 45 },
-  { item: "casqueLegendaire", prix: 25 },
-  { item: "jambieresLegendaire", prix: 25 },
-  { item: "anneauLegendaire", prix: 25 },
-  { item: "bottesLegendaire", prix: 25 },
-  { item: "braceletLegendaire", prix: 25 },
-  // Payée en OR (pas en gemmes) et n'existe pas dans TYPES_ARMES (ce n'est
-  // pas un équipement) — label/emoji/description fournis directement ici,
-  // voir mettreAJourBoutiqueGemmes ci-dessous pour le repli sur ces champs
-  // quand TYPES_ARMES[item] est absent.
-  { item: "potionNiveau", prix: 1, monnaie: "or", label: "Potion de niveau", emoji: "🧪", description: "Ajoute instantanément 10 niveaux." },
-];
+const BOUTIQUE_GEMMES_CLIENT = []; // boutique vidée (voir BOUTIQUE_GEMMES côté serveur)
 
 function mettreAJourBoutiqueGemmes() {
   const conteneur = document.getElementById("liste-boutique-gemmes");

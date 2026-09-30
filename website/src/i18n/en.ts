@@ -62,7 +62,7 @@ const en: typeof fr = {
     worldText: "Start on Berge-Rhak, the starting island, then unlock a teleporter network to eleven ever more dangerous regions — from the Corsair Cove to the Wreckers' Cove. Take a break at Estenoise-les-Brumes, the neutral village, to chat and get ready.",
     worldPoints: [
       "Progression: levels, XP, stat points to spend freely (strength, agility, intelligence, vitality)",
-      "Gear: legendary weapons and armor (and a mythic set) to loot or buy with gems",
+      "Gear: legendary weapons and armor (and a mythic set) to loot from monsters and bosses",
       "Daily quests and achievements to unlock, with titles to wear proudly",
       "Three bosses with their own mechanics: phases, telegraphed zones, projectile volleys",
     ],
