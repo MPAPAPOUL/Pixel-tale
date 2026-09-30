@@ -44,6 +44,14 @@ La page `/classement/` lit `https://jeu.pixelfe.fr/api/classement` (route
 publique du serveur de jeu : uniquement pseudo, classe, niveau et titre). Elle
 n'affiche des données qu'une fois le serveur du jeu redéployé avec cette route.
 
+## Espace compte
+
+La page `/compte/` connecte le joueur avec l'e-mail et le mot de passe liés à son
+compte de jeu (`POST /api/site/connexion`) et affiche ses personnages en lecture
+seule (`GET /api/site/profil`). Le site n'a jamais le jeton du jeu : il reçoit
+une session de 2 h stockée dans `sessionStorage`. Le serveur limite les
+tentatives (8 échecs / 15 min par IP et par e-mail).
+
 ## Dons
 
 Le bouton « Soutenir » renvoie vers `https://ko-fi.com/pixelfe` (constante

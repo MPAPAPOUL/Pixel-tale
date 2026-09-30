@@ -1,6 +1,6 @@
 ---
 import Base from "../../layouts/Base.astro";
-import { getUi, langPaths, API_URL, type Lang } from "../../i18n";
+import { getUi, langPaths, localePath, API_URL, type Lang } from "../../i18n";
 export function getStaticPaths() { return langPaths(); }
 const lang = Astro.params.lang as Lang;
 const ui = getUi(lang);
@@ -18,7 +18,7 @@ const r = ui.ranking;
         <p class="rank-status" id="rank-status" role="status">{r.loading}</p>
       </div>
       <p class="rank-meta" id="rank-meta"></p>
-      <div class="prose mt center"><h2>{r.account}</h2><p>{r.accountText}</p></div>
+      <div class="prose mt center"><h2>{r.account}</h2><p>{r.accountText}</p><a class="btn btn-secondary" href={localePath(lang, "compte")}>👤 {ui.account.title}</a></div>
     </div>
   </section>
 

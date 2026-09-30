@@ -4612,12 +4612,13 @@ function entetesCorsPublics(req) {
   const entetes = { Vary: "Origin" };
   if (origine && ORIGINES_SITE_VITRINE.has(origine)) {
     entetes["Access-Control-Allow-Origin"] = origine;
-    entetes["Access-Control-Allow-Methods"] = "GET, OPTIONS";
+    entetes["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS";
+    entetes["Access-Control-Allow-Headers"] = "Content-Type, Authorization";
   }
   return entetes;
 }
 
-let cacheClassementPublic = { expire: 0, donnees: null };
+let cacheClassementPublic = { expire: 0, donnees: null, rangs: new Map() };
 function classementPublic() {
   const maintenant = Date.now();
   if (cacheClassementPublic.donnees && maintenant < cacheClassementPublic.expire) return cacheClassementPublic.donnees;
@@ -4631,16 +4632,125 @@ function classementPublic() {
   for (const joueur of players.values()) {
     if (joueur._personnageId) vus.set(joueur._personnageId, joueur);
   }
-  const liste = Array.from(vus.values())
-    .filter((p) => p.pseudo)
-    .sort((a, b) => (b.niveau || 1) - (a.niveau || 1) || (b.xp || 0) - (a.xp || 0))
+  const tries = Array.from(vus.entries())
+    .filter(([, p]) => p.pseudo)
+    .sort(([, a], [, b]) => (b.niveau || 1) - (a.niveau || 1) || (b.xp || 0) - (a.xp || 0));
+  const rangs = new Map(tries.map(([id], i) => [id, i + 1]));
+  const liste = tries
     .slice(0, 50)
-    .map((p, i) => ({ rang: i + 1, pseudo: String(p.pseudo).slice(0, 20), classe: p.classe, niveau: p.niveau || 1, titre: p.titreActif || null }));
-  cacheClassementPublic = { expire: maintenant + 30000, donnees: { classement: liste, total: vus.size } };
+    .map(([, p], i) => ({ rang: i + 1, pseudo: String(p.pseudo).slice(0, 20), classe: p.classe, niveau: p.niveau || 1, titre: p.titreActif || null }));
+  cacheClassementPublic = { expire: maintenant + 30000, donnees: { classement: liste, total: vus.size }, rangs };
   return cacheClassementPublic.donnees;
 }
 
+// --- Espace compte du site vitrine (pixelfe.fr/…/compte) --------------------
+// Le site n'a jamais le jeton du jeu (secret sans expiration) : il obtient une
+// session courte (2 h, en mémoire, perdue au redémarrage) après connexion
+// email + mot de passe, et n'accède qu'à une vue en lecture seule du compte.
+const SESSIONS_SITE = new Map(); // token -> { jeton, expire }
+const DUREE_SESSION_SITE_MS = 2 * 60 * 60 * 1000;
+const ECHECS_CONNEXION_SITE = new Map(); // clé (ip ou email) -> { nb, expire }
+const MAX_ECHECS_CONNEXION = 8;
+const FENETRE_ECHECS_MS = 15 * 60 * 1000;
+
+function ipClient(req) {
+  const transfert = String(req.headers["x-forwarded-for"] || "").split(",")[0].trim();
+  return transfert || req.socket.remoteAddress || "?";
+}
+function connexionBloquee(cle) {
+  const e = ECHECS_CONNEXION_SITE.get(cle);
+  if (!e) return false;
+  if (Date.now() > e.expire) { ECHECS_CONNEXION_SITE.delete(cle); return false; }
+  return e.nb >= MAX_ECHECS_CONNEXION;
+}
+function noterEchecConnexion(cle) {
+  const e = ECHECS_CONNEXION_SITE.get(cle);
+  if (!e || Date.now() > e.expire) ECHECS_CONNEXION_SITE.set(cle, { nb: 1, expire: Date.now() + FENETRE_ECHECS_MS });
+  else e.nb++;
+}
+function sessionSiteDepuisRequete(req) {
+  const m = /^Bearer ([a-f0-9]{64})$/.exec(String(req.headers.authorization || ""));
+  const session = m && SESSIONS_SITE.get(m[1]);
+  if (!session) return null;
+  if (Date.now() > session.expire) { SESSIONS_SITE.delete(m[1]); return null; }
+  return { token: m[1], jeton: session.jeton };
+}
+setInterval(() => {
+  const maintenant = Date.now();
+  for (const [t, s] of SESSIONS_SITE) if (maintenant > s.expire) SESSIONS_SITE.delete(t);
+  for (const [k, e] of ECHECS_CONNEXION_SITE) if (maintenant > e.expire) ECHECS_CONNEXION_SITE.delete(k);
+}, 10 * 60 * 1000).unref();
+
+function profilSite(jeton) {
+  classementPublic(); // rafraîchit les rangs si besoin
+  const compte = comptes[jeton] || { personnages: [] };
+  return {
+    personnages: (compte.personnages || []).map((p) => ({
+      pseudo: p.pseudo,
+      classe: p.classe,
+      niveau: p.niveau || 1,
+      xp: p.xp || 0,
+      xpRequis: xpRequisPourNiveau(p.niveau || 1),
+      or: p.or || 0,
+      gemmes: p.gemmes || 0,
+      titre: p.titreActif || null,
+      hautsFaits: (p.hautsFaitsDebloques || []).length,
+      rang: cacheClassementPublic.rangs.get(p.id) || null,
+    })),
+    hautsFaitsTotal: HAUTS_FAITS.length,
+    max: MAX_PERSONNAGES_PAR_COMPTE,
+  };
+}
+
 const server = http.createServer((req, res) => {
+  // Espace compte du site vitrine : connexion (session courte), profil en
+  // lecture seule, déconnexion. Voir SESSIONS_SITE ci-dessus.
+  if (req.url.startsWith("/api/site/")) {
+    const cors = entetesCorsPublics(req);
+    const repondre = (statut, donnees) => {
+      res.writeHead(statut, { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store", ...cors });
+      res.end(JSON.stringify(donnees));
+    };
+    if (req.method === "OPTIONS") { res.writeHead(204, cors); res.end(); return; }
+
+    if (req.method === "POST" && req.url === "/api/site/connexion") {
+      lireCorpsJSON(req)
+        .then(async (corps) => {
+          const email = String(corps.email || "").trim().toLowerCase();
+          const motDePasse = String(corps.motDePasse || "");
+          const cleIp = "ip:" + ipClient(req);
+          const cleEmail = "email:" + email;
+          if (connexionBloquee(cleIp) || connexionBloquee(cleEmail)) {
+            return repondre(429, { erreur: "Trop de tentatives. Réessaie dans quelques minutes." });
+          }
+          const jeton = trouverJetonParEmail(email);
+          const compte = jeton && comptes[jeton];
+          const valide = compte && compte.motDePasseHache && (await bcrypt.compare(motDePasse, compte.motDePasseHache));
+          if (!valide) {
+            noterEchecConnexion(cleIp);
+            noterEchecConnexion(cleEmail);
+            return repondre(401, { erreur: "Email ou mot de passe incorrect." });
+          }
+          const token = require("crypto").randomBytes(32).toString("hex");
+          SESSIONS_SITE.set(token, { jeton, expire: Date.now() + DUREE_SESSION_SITE_MS });
+          repondre(200, { ok: true, token, expireDans: DUREE_SESSION_SITE_MS / 1000 });
+        })
+        .catch(() => repondre(400, { erreur: "Requête invalide." }));
+      return;
+    }
+    if (req.method === "GET" && req.url === "/api/site/profil") {
+      const session = sessionSiteDepuisRequete(req);
+      if (!session) return repondre(401, { erreur: "Session expirée." });
+      return repondre(200, profilSite(session.jeton));
+    }
+    if (req.method === "POST" && req.url === "/api/site/deconnexion") {
+      const session = sessionSiteDepuisRequete(req);
+      if (session) SESSIONS_SITE.delete(session.token);
+      return repondre(200, { ok: true });
+    }
+    return repondre(404, { erreur: "Introuvable." });
+  }
+
   // Classement public (site vitrine pixelfe.fr, page Classement) : tous les
   // personnages sauvegardés, jamais que des champs publics (pseudo, classe,
   // niveau, XP) — ni jeton de compte, ni or, ni inventaire.

@@ -1,0 +1,101 @@
+---
+import Base from "../../layouts/Base.astro";
+import { getUi, langPaths, API_URL, GAME_URL, type Lang } from "../../i18n";
+export function getStaticPaths() { return langPaths(); }
+const lang = Astro.params.lang as Lang;
+const ui = getUi(lang);
+const a = ui.account;
+const cls = ui.ranking.classNames;
+---
+<Base lang={lang} page="compte" title={a.title} description={a.intro}>
+  <div class="wrap page-head"><h1>{a.title}</h1><p>{a.intro}</p></div>
+
+  <section class="page-section">
+    <div class="wrap">
+      <form id="login-form" class="account-card" autocomplete="on">
+        <label for="acc-email">{a.email}</label>
+        <input id="acc-email" name="email" type="email" required autocomplete="username" />
+        <label for="acc-pass">{a.password}</label>
+        <input id="acc-pass" name="password" type="password" required minlength="8" autocomplete="current-password" />
+        <p class="account-error" id="login-error" role="alert" hidden></p>
+        <button class="btn btn-primary" type="submit" id="login-btn">{a.login}</button>
+        <p class="account-note">{a.privacy}</p>
+      </form>
+
+      <div id="profile" hidden>
+        <div class="profile-head">
+          <h2>{a.characters}</h2>
+          <button class="btn btn-secondary" type="button" id="logout-btn">{a.logout}</button>
+        </div>
+        <p class="account-error" id="profile-error" role="alert" hidden></p>
+        <div class="char-grid" id="char-grid"></div>
+        <p class="rank-status" id="char-empty" hidden>{a.none}</p>
+        <p class="center mt"><a class="btn btn-primary lien-jouer" href={GAME_URL}>🎮 {a.playCta}</a></p>
+      </div>
+
+      <div class="prose mt center"><h2>{a.noAccountTitle}</h2><p>{a.noAccountText}</p></div>
+    </div>
+  </section>
+
+  <script define:vars={{ api: API_URL, msg: { errorLogin: a.errorLogin, errorLocked: a.errorLocked, errorNetwork: a.errorNetwork, expired: a.expired, level: a.level, xp: a.xp, gold: a.gold, gems: a.gems, achievements: a.achievements, rank: a.rank, noTitle: a.noTitle, logging: a.logging, login: a.login }, classNames: cls }}>
+    const KEY = "pixelfe_site_session";
+    const $ = (id) => document.getElementById(id);
+    const loginForm = $("login-form"), profile = $("profile"), grid = $("char-grid");
+    const store = { get: () => { try { return sessionStorage.getItem(KEY); } catch { return null; } }, set: (v) => { try { sessionStorage.setItem(KEY, v); } catch {} }, del: () => { try { sessionStorage.removeItem(KEY); } catch {} } };
+    const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+    const show = (node, msg) => { node.textContent = msg; node.hidden = !msg; };
+
+    function stat(label, value) { const d = el("div", "char-stat"); d.append(el("span", "", label), el("strong", "", value)); return d; }
+    function renderProfile(data) {
+      grid.replaceChildren();
+      $("char-empty").hidden = data.personnages.length > 0;
+      for (const p of data.personnages) {
+        const card = el("div", "char-card");
+        const img = el("img"); img.src = "/assets/img/hero-" + p.classe + ".png"; img.alt = ""; img.loading = "lazy";
+        card.append(img, el("h3", "", p.pseudo), el("div", "char-title", (classNames[p.classe] || p.classe) + " · " + (p.titre || msg.noTitle)));
+        const bar = el("div", "xp-bar"); const fill = el("span"); fill.style.width = Math.min(100, Math.round(100 * p.xp / Math.max(1, p.xpRequis))) + "%"; bar.append(fill);
+        card.append(bar);
+        const stats = el("div", "char-stats");
+        stats.append(
+          stat(msg.level, String(p.niveau)),
+          stat(msg.xp, p.xp + " / " + p.xpRequis),
+          stat(msg.gold, p.or.toLocaleString()),
+          stat(msg.gems, p.gemmes.toLocaleString()),
+          stat(msg.achievements, p.hautsFaits + " / " + data.hautsFaitsTotal),
+          stat(msg.rank, p.rang ? "#" + p.rang : "—"),
+        );
+        card.append(stats);
+        grid.append(card);
+      }
+      loginForm.hidden = true; profile.hidden = false;
+    }
+    function logoutLocal(message) { store.del(); profile.hidden = true; loginForm.hidden = false; show($("login-error"), message || ""); }
+
+    async function loadProfile(token) {
+      try {
+        const res = await fetch(api + "/api/site/profil", { headers: { Authorization: "Bearer " + token } });
+        if (res.status === 401) return logoutLocal(msg.expired);
+        if (!res.ok) throw new Error();
+        renderProfile(await res.json());
+      } catch { loginForm.hidden = true; profile.hidden = false; show($("profile-error"), msg.errorNetwork); }
+    }
+
+    loginForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const btn = $("login-btn"); btn.disabled = true; btn.textContent = msg.logging; show($("login-error"), "");
+      try {
+        const res = await fetch(api + "/api/site/connexion", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: $("acc-email").value, motDePasse: $("acc-pass").value }) });
+        if (res.status === 429) show($("login-error"), msg.errorLocked);
+        else if (!res.ok) show($("login-error"), msg.errorLogin);
+        else { const { token } = await res.json(); $("acc-pass").value = ""; store.set(token); await loadProfile(token); }
+      } catch { show($("login-error"), msg.errorNetwork); }
+      btn.disabled = false; btn.textContent = msg.login;
+    });
+    $("logout-btn").addEventListener("click", async () => {
+      const token = store.get();
+      logoutLocal("");
+      if (token) fetch(api + "/api/site/deconnexion", { method: "POST", headers: { Authorization: "Bearer " + token } }).catch(() => {});
+    });
+    const existing = store.get(); if (existing) loadProfile(existing);
+  </script>
+</Base>
