@@ -1550,6 +1550,14 @@
   .inventaire-tooltip .nom { font-size: 13.5px; }
   .inventaire-tooltip .desc { color: #e4ddf7; line-height: 1.4; }
 
+  .inventaire-barre { display: flex; align-items: flex-start; gap: 10px; }
+  .inventaire-barre .perso-inventaire-hint { flex: 1; }
+  .inventaire-outils { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+  .poudre-forge { font-size: 13px; font-weight: 700; color: #ffd27a; background: #262038; border: 1px solid #4a3f72; border-radius: 8px; padding: 5px 9px; white-space: nowrap; cursor: help; }
+  .btn-marteau { width: 38px; height: 34px; font-size: 18px; line-height: 1; padding: 0; border-radius: 8px; background: #262038; border: 1px solid #6f629c; cursor: pointer; }
+  .btn-marteau.actif { background: #7a2b2b; border-color: #ff8a7a; box-shadow: 0 0 0 2px rgba(255,138,122,0.35); }
+  .inventaire-grille.mode-marteau .inventaire-case.remplie { cursor: crosshair; border-color: #ff8a7a; }
+  .inventaire-grille.mode-marteau .inventaire-case.remplie:hover { background: rgba(255,120,100,0.28); }
   /* --- Écran d'accueil ----------------------------------------------------
      Plein écran, affiché au lancement (et à "Retour à l'accueil") ; masque
      le jeu proprement dit (header + .layout, voir la règle body ci-dessous)
@@ -2786,7 +2794,13 @@
           </div>
 
           <div class="perso-onglet-panneau masque" id="perso-panneau-inventaire">
-            <p class="perso-inventaire-hint">Clic sur un objet pour l'équiper (ou le retirer s'il l'est déjà) — badge ✓ = équipé.</p>
+            <div class="inventaire-barre">
+              <p class="perso-inventaire-hint" id="inventaire-hint">Clic sur un objet pour l'équiper (ou le retirer s'il l'est déjà) — badge ✓ = équipé.</p>
+              <div class="inventaire-outils">
+                <span class="poudre-forge" title="Poudre de forge : obtenue en détruisant des équipements (utile dans une prochaine mise à jour)">⚗️ <span id="poudre-forge-valeur">0</span></span>
+                <button type="button" class="btn-marteau" id="btn-marteau" title="Marteau : détruire un équipement inutile contre de la poudre de forge (1 par tier)">🔨</button>
+              </div>
+            </div>
             <div class="inventaire-hud" id="inventaire-hud">
               <div class="inventaire-grille" id="inventaire-grille"></div>
               <div class="inventaire-tooltip" id="inventaire-tooltip"></div>
@@ -8209,6 +8223,8 @@ function mettreAJourInventaire() {
   if (!inventaire || !grille) return;
 
   const equipement = (state.perso && state.perso.equipement) || {};
+  const elPoudre = document.getElementById("poudre-forge-valeur");
+  if (elPoudre) elPoudre.textContent = state.poudreForge || 0;
   const lignes = Object.entries(TYPES_ARMES)
     .map(([type, info]) => ({ type, info, compte: inventaire[type] || 0 }))
     .filter((ligne) => ligne.compte > 0);
@@ -8406,6 +8422,23 @@ for (const [categorie, cles] of [
   for (const cle of cles) ITEM_VERS_CATEGORIE[cle] = categorie;
 }
 
+// --- Marteau : détruire un équipement contre de la poudre de forge --------
+// Miroir client de tierObjet() (serveur) : T1..T4 = 1..4, légendaire 5, mythique 6.
+function tierObjetClient(cle) {
+  if (/Mythique$/.test(cle)) return 6;
+  if (/Legendaire$/.test(cle)) return 5;
+  const m = /T([1-4])$/.exec(cle);
+  return m ? Number(m[1]) : 1;
+}
+let modeMarteau = false;
+document.getElementById("btn-marteau").addEventListener("click", () => {
+  modeMarteau = !modeMarteau;
+  document.getElementById("btn-marteau").classList.toggle("actif", modeMarteau);
+  document.getElementById("inventaire-grille").classList.toggle("mode-marteau", modeMarteau);
+  document.getElementById("inventaire-hint").textContent = modeMarteau
+    ? "🔨 Mode destruction : clique un objet pour le détruire (1 poudre de forge par tier). Reclique sur le marteau pour annuler."
+    : "Clic sur un objet pour l'équiper (ou le retirer s'il l'est déjà) — badge ✓ = équipé.";
+});
 // Équiper/retirer directement depuis l'inventaire, posé une seule fois par
 // délégation sur le conteneur stable #inventaire-grille (voir la note sur
 // dragHoverCategorie plus haut pour pourquoi la délégation plutôt que des
@@ -8424,6 +8457,18 @@ for (const [categorie, cles] of [
     const categorie = ITEM_VERS_CATEGORIE[type];
     if (!categorie) return;
     const equipement = (state.perso && state.perso.equipement) || {};
+    if (modeMarteau) {
+      // Marteau : détruit UN exemplaire contre de la poudre de forge.
+      const compte = (state.inventaire && state.inventaire[type]) || 0;
+      if (equipement[categorie] === type && compte <= 1) {
+        alert("Cet objet est équipé : retire-le d'abord (ou garde un exemplaire de rechange).");
+        return;
+      }
+      const info = TYPES_ARMES[type];
+      const gain = tierObjetClient(type);
+      if (confirm(`Détruire « ${info ? info.label : type} » contre ${gain} poudre${gain > 1 ? "s" : ""} de forge ?`)) envoyer({ type: "recycler", item: type });
+      return;
+    }
     envoyer({ type: "equiper", categorie, item: equipement[categorie] === type ? null : type });
   });
   grilleEl.addEventListener("dragstart", (e) => {

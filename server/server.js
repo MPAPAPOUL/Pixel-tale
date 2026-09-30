@@ -3280,6 +3280,14 @@ function infligerDegatsSireHano(zone, entite, degats, joueurId) {
   }
 }
 
+// Recyclage : un objet détruit donne 1 poudre de forge par tier (T1..T4 =
+// 1..4, légendaire = 5, mythique = 6). Servira à une prochaine mise à jour.
+function tierObjet(cle) {
+  if (/Mythique$/.test(cle)) return 6;
+  if (/Legendaire$/.test(cle)) return 5;
+  const m = /T([1-4])$/.exec(cle);
+  return m ? Number(m[1]) : 1; // pièces de base sans suffixe = tier 1
+}
 const PRIX_RENOMMAGE = 50; // gemmes, pour tout renommage après le nom choisi à la création
 const FACTEUR_DEGATS_SUBIS = 0.8;
 function infligerDegatsJoueur(p, degats, sourceX, niveauMob) {
@@ -4082,6 +4090,7 @@ function construireEtatPourJoueur(p, classement) {
     inventaire: p.inventaire,
     or: p.or || 0,
     gemmes: p.gemmes || 0,
+    poudreForge: p.poudreForge || 0,
     loot: p.dernierLoot && Date.now() < p.dernierLoot.expire
       ? { id: p.dernierLoot.id, type: p.dernierLoot.type, bundle: p.dernierLoot.bundle || null, legendaire: !!p.dernierLoot.legendaire, propositions: p.dernierLoot.propositions || [] }
       : null,
@@ -4530,6 +4539,7 @@ function extraireProgression(p) {
     xp: p.xp,
     or: p.or,
     gemmes: p.gemmes,
+    poudreForge: p.poudreForge || 0,
     inventaire: p.inventaire,
     equipement: p.equipement,
     pointsDisponibles: p.pointsDisponibles,
@@ -4571,6 +4581,7 @@ function appliquerProgression(p, sauvegarde) {
   p.xp = sauvegarde.xp || 0;
   p.or = sauvegarde.or || 0;
   p.gemmes = sauvegarde.gemmes || 0;
+  p.poudreForge = Math.max(0, Math.floor(Number(sauvegarde.poudreForge) || 0));
   if (sauvegarde.inventaire) Object.assign(p.inventaire, sauvegarde.inventaire);
   if (sauvegarde.equipement) Object.assign(p.equipement, sauvegarde.equipement);
   p.pointsDisponibles = sauvegarde.pointsDisponibles || 0;
@@ -4869,6 +4880,24 @@ wss.on("connection", (ws, req) => {
           joueur.equipement[categorie] = item;
           recalculerStatsEquipement(joueur);
           verifierHautsFaits(joueur); // haut fait "Éclat Légendaire" si l'objet équipé est légendaire
+        }
+      }
+    } else if (message.type === "recycler") {
+      // Marteau de l'inventaire : détruit UN exemplaire d'un équipement contre
+      // de la poudre de forge. Un objet équipé ne peut pas être détruit s'il
+      // n'en reste qu'un exemplaire.
+      const item = String(message.item || "");
+      const categorie = categorieDeObjet(item);
+      const possede = joueur.inventaire[item] || 0;
+      if (categorie && possede > 0) {
+        const equipe = joueur.equipement[categorie] === item;
+        if (!(equipe && possede <= 1)) {
+          joueur.inventaire[item] = possede - 1;
+          if (joueur.inventaire[item] <= 0) delete joueur.inventaire[item];
+          const gain = tierObjet(item);
+          joueur.poudreForge = (joueur.poudreForge || 0) + gain;
+          const wsJoueur = clients.get(joueur.id);
+          if (wsJoueur && wsJoueur.readyState === wsJoueur.OPEN) wsJoueur.send(JSON.stringify({ type: "annonce", texte: `🔨 Objet détruit : +${gain} poudre de forge.` }));
         }
       }
     } else if (message.type === "definirTitre") {
@@ -5208,6 +5237,7 @@ function profilSite(jeton) {
       xpRequis: xpRequisPourNiveau(p.niveau || 1),
       or: p.or || 0,
       gemmes: p.gemmes || 0,
+      poudreForge: p.poudreForge || 0,
       titre: p.titreActif || null,
       hautsFaits: (p.hautsFaitsDebloques || []).length,
       rang: cacheClassementPublic.rangs.get(p.id) || null,
