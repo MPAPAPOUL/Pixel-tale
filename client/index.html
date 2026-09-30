@@ -1590,6 +1590,20 @@
   }
   .btn-kofi:hover { background: #3bb8ec; filter: brightness(1.05); }
   .btn-kofi:active { transform: translateY(1px); }
+  /* Mobile / tactile : bouton ✕ remonté dans le coin de la fenêtre, plus grand à
+     toucher, avec une marge réservée en haut pour qu'il ne chevauche aucun
+     autre bouton proche (titre, onglets, liste). */
+  body.mode-tactile .modale-fantasy { padding-top: 34px; }
+  body.mode-tactile .modale-fantasy.modale-personnage { padding-top: 34px; }
+  body.mode-tactile .btn-fermer-modale,
+  body.mode-tactile .modale-personnage .btn-fermer-modale {
+    top: 3px;
+    right: 3px;
+    width: 30px;
+    height: 30px;
+    z-index: 5;
+  }
+  body.mode-tactile .modale-personnage h2 { margin-right: 0; }
   /* --- Écran d'accueil ----------------------------------------------------
      Plein écran, affiché au lancement (et à "Retour à l'accueil") ; masque
      le jeu proprement dit (header + .layout, voir la règle body ci-dessous)
