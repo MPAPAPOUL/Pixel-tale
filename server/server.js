@@ -1100,8 +1100,9 @@ const HAUTS_FAITS = [
   { id: "zone-couronne-orage", nom: "Au Sommet du Monde", titre: "Seigneur de la Couronne d'Orage", description: "Débloquer la Couronne d'Orage (niveau 28).", cible: 28, stat: "niveau" },
 ];
 
-// Récompense de chaque haut fait ("succès") : 2 à 5 gemmes selon la difficulté,
-// plus de l'expérience (75 XP par gemme). Versée une seule fois, au déblocage.
+// Récompense de chaque haut fait ("succès") : 10 à 25 gemmes selon la difficulté
+// (barème de base 2 à 5, multiplié par 5), plus de l'expérience inchangée
+// (75 XP par gemme du barème de base). Versée une seule fois, au déblocage.
 const GEMMES_HAUT_FAIT = {
   "tutoriel-termine": 2, "premier-sang": 2, "chasseur": 3, "exterminateur": 4,
   "veteran": 2, "heros": 3, "legende": 4, "maitre": 5, "fortune": 3,
@@ -1111,10 +1112,12 @@ const GEMMES_HAUT_FAIT = {
   "zone-pics-verglaces": 3, "zone-dunes-cendrees": 3, "zone-abysses-luisantes": 3,
   "zone-jardins-petrifies": 4, "zone-couronne-orage": 4,
 };
-const XP_PAR_GEMME_HAUT_FAIT = 75;
+const XP_PAR_GEMME_HAUT_FAIT = 75; // par gemme du barème de base (avant le multiplicateur)
+const MULTIPLICATEUR_GEMMES_HAUT_FAIT = 5;
 for (const hf of HAUTS_FAITS) {
-  hf.gemmes = GEMMES_HAUT_FAIT[hf.id] || 2;
-  hf.xp = hf.gemmes * XP_PAR_GEMME_HAUT_FAIT;
+  const base = GEMMES_HAUT_FAIT[hf.id] || 2;
+  hf.gemmes = base * MULTIPLICATEUR_GEMMES_HAUT_FAIT;
+  hf.xp = base * XP_PAR_GEMME_HAUT_FAIT;
 }
 const GEMMES_BONUS_QUETES_QUOTIDIENNES = 10;
 
