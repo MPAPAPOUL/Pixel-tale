@@ -1,0 +1,420 @@
+{
+ "verthige": {
+  "cards": [
+   {
+    "img": "enemy-goblin-chief.png",
+    "name": "Troubalourd",
+    "role": "patrol",
+    "hp": 80,
+    "dmg": 10,
+    "xp": 8,
+    "behavior": [
+     "lightning",
+     18,
+     70
+    ],
+    "drop": [
+     "base"
+    ]
+   },
+   {
+    "img": "enemy-goblin-female.png",
+    "name": "Fisselo",
+    "role": "scoutErratic",
+    "hp": 28,
+    "dmg": 5,
+    "xp": 4,
+    "behavior": [
+     "spit",
+     6
+    ],
+    "drop": [
+     "base"
+    ]
+   },
+   {
+    "img": "enemy-tiralark.png",
+    "name": "Tiralark",
+    "role": "turret",
+    "hp": 48,
+    "dmg": 6,
+    "xp": 6,
+    "behavior": [
+     "turret",
+     8,
+     500
+    ],
+    "drop": [
+     "base"
+    ]
+   },
+   {
+    "img": "enemy-goblin-male.png",
+    "name": "Gobelin neutre",
+    "role": "neutral",
+    "hp": 60,
+    "dmg": 8,
+    "xp": 7,
+    "behavior": [
+     "neutral"
+    ],
+    "drop": [
+     "base"
+    ]
+   }
+  ]
+ },
+ "regions": {
+  "groups": [
+   {
+    "name": "Crique des Corsaires",
+    "level": 15,
+    "tier": 1,
+    "cards": [
+     {
+      "img": "enemy-squidman.png",
+      "name": "Homme-Calmar",
+      "role": "erratic",
+      "hp": 76,
+      "dmg": 9,
+      "xp": 9,
+      "drop": [
+       "tier",
+       1
+      ]
+     },
+     {
+      "img": "enemy-pirate-zombie.png",
+      "name": "Pirate Zombie",
+      "role": "patrol",
+      "hp": 130,
+      "dmg": 15,
+      "xp": 14,
+      "drop": [
+       "tier",
+       1
+      ]
+     },
+     {
+      "img": "enemy-pirate-leader.png",
+      "name": "Capitaine Corsaire",
+      "role": "elite",
+      "hp": 220,
+      "dmg": 22,
+      "xp": 26,
+      "drop": [
+       "tier",
+       1
+      ]
+     }
+    ]
+   },
+   {
+    "name": "Crêtes d'Ambre",
+    "level": 10,
+    "tier": 1,
+    "cards": [
+     {
+      "img": "enemy-epineux.png",
+      "name": "Résinard",
+      "role": "patrol",
+      "hp": 120,
+      "dmg": 15,
+      "xp": 12,
+      "drop": [
+       "tier",
+       1
+      ]
+     }
+    ]
+   },
+   {
+    "name": "Marais de Suin",
+    "level": 20,
+    "tier": 1,
+    "cards": [
+     {
+      "img": "enemy-tentacule-vert.png",
+      "name": "Bourbelin",
+      "role": "erratic",
+      "hp": 56,
+      "dmg": 10,
+      "xp": 8,
+      "drop": [
+       "tier",
+       1
+      ]
+     }
+    ]
+   },
+   {
+    "name": "Forêt Chuchote",
+    "level": 30,
+    "tier": 2,
+    "cards": [
+     {
+      "img": "enemy-faucheur.png",
+      "name": "Murmurance",
+      "role": "shooter",
+      "hp": 120,
+      "dmg": 15,
+      "xp": 15,
+      "behavior": [
+       "shoots",
+       20,
+       500
+      ],
+      "drop": [
+       "tier",
+       2
+      ]
+     }
+    ]
+   },
+   {
+    "name": "Pics Verglacés",
+    "level": 40,
+    "tier": 2,
+    "cards": [
+     {
+      "img": "enemy-goblin-chief.png",
+      "name": "Craquelin",
+      "role": "patrol",
+      "hp": 240,
+      "dmg": 30,
+      "xp": 24,
+      "drop": [
+       "tier",
+       2
+      ],
+      "filter": "filter: drop-shadow(0 8px 12px rgba(0,0,0,0.4)) hue-rotate(180deg) saturate(1.5) brightness(1.15)"
+     }
+    ]
+   },
+   {
+    "name": "Dunes Cendrées",
+    "level": 50,
+    "tier": 3,
+    "cards": [
+     {
+      "img": "enemy-spectre-emergent.png",
+      "name": "Cendrelin",
+      "role": "erratic",
+      "hp": 98,
+      "dmg": 18,
+      "xp": 14,
+      "drop": [
+       "tier",
+       3
+      ]
+     }
+    ]
+   },
+   {
+    "name": "Abysses Luisantes",
+    "level": 60,
+    "tier": 3,
+    "cards": [
+     {
+      "img": "enemy-bluetentacle.png",
+      "name": "Luisereau",
+      "role": "shooter",
+      "hp": 192,
+      "dmg": 24,
+      "xp": 24,
+      "behavior": [
+       "shoots",
+       32,
+       500
+      ],
+      "drop": [
+       "tier",
+       3
+      ]
+     }
+    ]
+   },
+   {
+    "name": "Jardins Pétrifiés",
+    "level": 70,
+    "tier": 4,
+    "cards": [
+     {
+      "img": "enemy-sorcier-4bras.png",
+      "name": "Gravide",
+      "role": "patrol",
+      "hp": 360,
+      "dmg": 45,
+      "xp": 36,
+      "drop": [
+       "tier",
+       4
+      ]
+     }
+    ]
+   },
+   {
+    "name": "Couronne d'Orage",
+    "level": 80,
+    "tier": 4,
+    "cards": [
+     {
+      "img": "enemy-minotaure-rouge.png",
+      "name": "Fulgurin",
+      "role": "erratic",
+      "hp": 140,
+      "dmg": 25,
+      "xp": 20,
+      "drop": [
+       "tier",
+       4
+      ]
+     }
+    ]
+   },
+   {
+    "name": "Sanctuaire Éclipsé",
+    "level": 90,
+    "tier": 4,
+    "cards": [
+     {
+      "img": "enemy-minotaure-brun.png",
+      "name": "Voilure",
+      "role": "shooter",
+      "hp": 264,
+      "dmg": 33,
+      "xp": 33,
+      "behavior": [
+       "shoots",
+       44,
+       500
+      ],
+      "drop": [
+       "tier",
+       4
+      ]
+     }
+    ]
+   },
+   {
+    "name": "Crique des Naufrageurs",
+    "level": 100,
+    "tier": 4,
+    "cards": [
+     {
+      "img": "enemy-capitaine-sabrenoir.png",
+      "name": "Sabrenoir",
+      "role": "patrol",
+      "hp": 480,
+      "dmg": 60,
+      "xp": 48,
+      "behavior": [
+       "sabrenoir"
+      ],
+      "drop": [
+       "tier",
+       4
+      ]
+     }
+    ]
+   }
+  ]
+ },
+ "donjon": {
+  "cards": [
+   {
+    "img": "enemy-goblin-chief.png",
+    "name": "Troubalourd",
+    "role": "patrol",
+    "hp": 80,
+    "dmg": 10,
+    "xp": 8,
+    "drop": [
+     "baseKey"
+    ]
+   },
+   {
+    "img": "enemy-goblin-female.png",
+    "name": "Fisselo",
+    "role": "scoutErratic",
+    "hp": 28,
+    "dmg": 5,
+    "xp": 4,
+    "drop": [
+     "baseKey"
+    ]
+   },
+   {
+    "img": "enemy-tiralark.png",
+    "name": "Tiralark",
+    "role": "turret",
+    "hp": 48,
+    "dmg": 6,
+    "xp": 6,
+    "drop": [
+     "baseKey"
+    ]
+   },
+   {
+    "img": "enemy-minotaure.png",
+    "name": "Minotaure",
+    "role": "dungeonElite",
+    "hp": 180,
+    "dmg": 16,
+    "xp": 18,
+    "behavior": [
+     "minotaur"
+    ],
+    "drop": [
+     "baseKey"
+    ]
+   }
+  ]
+ },
+ "boss": {
+  "cards": [
+   {
+    "img": "boss-sirehano.png",
+    "name": "Sire-Hano",
+    "role": "lairBoss",
+    "hp": 960,
+    "hpTotal": true,
+    "xp": 15,
+    "xpPerReplica": true,
+    "gems": 5,
+    "behavior": [
+     "sirehano"
+    ],
+    "drop": [
+     "setLair"
+    ],
+    "boss": true
+   },
+   {
+    "img": "boss-dragonnoir.png",
+    "name": "Dragon Noir",
+    "role": "worldBoss2",
+    "hp": 7200,
+    "gems": 8,
+    "behavior": [
+     "dragon"
+    ],
+    "drop": [
+     "set"
+    ],
+    "boss": true
+   },
+   {
+    "img": "boss-chevaliernoir.png",
+    "name": "Chevalier Noir",
+    "role": "worldBoss",
+    "hp": 5600,
+    "gems": 8,
+    "drop": [
+     "set"
+    ],
+    "boss": true
+   }
+  ]
+ }
+}

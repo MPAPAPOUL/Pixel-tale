@@ -1,0 +1,48 @@
+---
+import Base from "../../layouts/Base.astro";
+import { getUi, langPaths, API_URL, type Lang } from "../../i18n";
+export function getStaticPaths() { return langPaths(); }
+const lang = Astro.params.lang as Lang;
+const ui = getUi(lang);
+const r = ui.ranking;
+---
+<Base lang={lang} page="classement" title={r.title} description={r.intro}>
+  <div class="wrap page-head"><h1>{r.title}</h1><p>{r.intro}</p></div>
+  <section class="page-section">
+    <div class="wrap">
+      <div class="rank-wrap">
+        <table class="rank">
+          <thead><tr><th>{r.rank}</th><th>{r.player}</th><th>{r.class}</th><th>{r.level}</th><th>{r.titleCol}</th></tr></thead>
+          <tbody id="rank-body"></tbody>
+        </table>
+        <p class="rank-status" id="rank-status" role="status">{r.loading}</p>
+      </div>
+      <p class="rank-meta" id="rank-meta"></p>
+      <div class="prose mt center"><h2>{r.account}</h2><p>{r.accountText}</p></div>
+    </div>
+  </section>
+
+  <script define:vars={{ api: API_URL, msg: { error: r.error, empty: r.empty, total: r.total }, classNames: r.classNames }}>
+    const body = document.getElementById("rank-body");
+    const status = document.getElementById("rank-status");
+    const meta = document.getElementById("rank-meta");
+    const text = (tag, value, className) => { const el = document.createElement(tag); el.textContent = value; if (className) el.className = className; return el; };
+    fetch(api + "/api/classement")
+      .then((res) => { if (!res.ok) throw new Error("http " + res.status); return res.json(); })
+      .then((data) => {
+        if (!data.classement.length) { status.textContent = msg.empty; return; }
+        status.remove();
+        for (const p of data.classement) {
+          const tr = document.createElement("tr");
+          if (p.rang === 1) tr.className = "top1";
+          tr.append(text("td", "#" + p.rang, "pos"), text("td", p.pseudo));
+          const cls = document.createElement("td");
+          cls.append(text("span", classNames[p.classe] || p.classe, "class-pill"));
+          tr.append(cls, text("td", String(p.niveau)), text("td", p.titre || "—"));
+          body.append(tr);
+        }
+        meta.textContent = data.total + " " + msg.total;
+      })
+      .catch(() => { status.textContent = msg.error; });
+  </script>
+</Base>

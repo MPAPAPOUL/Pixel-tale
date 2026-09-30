@@ -1,0 +1,29 @@
+---
+import Base from "../../../layouts/Base.astro";
+import { getUi, langPaths, localePath, type Lang } from "../../../i18n";
+import { posts, formatDate } from "../../../data/news";
+export function getStaticPaths() { return langPaths(); }
+const lang = Astro.params.lang as Lang;
+const ui = getUi(lang);
+const n = ui.news;
+---
+<Base lang={lang} page="actualites" title={n.title} description={n.intro}>
+  <div class="wrap page-head"><h1>{n.title}</h1><p>{n.intro}</p></div>
+  <section class="page-section">
+    <div class="wrap">
+      <div class="news-grid">
+        {posts.map((p) => (
+          <a class="news-card" href={localePath(lang, `actualites/${p.slug}`)}>
+            <div class="news-thumb"><img src={`/assets/img/${p.image}`} alt="" loading="lazy" /></div>
+            <div class="news-body">
+              <time datetime={p.date}>{formatDate(p.date, lang)}</time>
+              <h3>{p.text[lang].title}</h3>
+              <p>{p.text[lang].excerpt}</p>
+              <span class="more">{ui.home.readMore} →</span>
+            </div>
+          </a>
+        ))}
+      </div>
+    </div>
+  </section>
+</Base>

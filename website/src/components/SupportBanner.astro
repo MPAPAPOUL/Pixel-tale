@@ -1,0 +1,11 @@
+---
+import { getUi, KOFI_URL, type Lang } from "../i18n";
+interface Props { lang: Lang; }
+const { lang } = Astro.props;
+const ui = getUi(lang).home;
+---
+<div class="support-banner">
+  <h2>♥ {ui.supportTitle}</h2>
+  <p>{ui.supportText}</p>
+  <a class="btn btn-kofi" href={KOFI_URL} target="_blank" rel="noopener">☕ {ui.supportCta}</a>
+</div>

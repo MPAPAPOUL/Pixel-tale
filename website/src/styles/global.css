@@ -1,0 +1,377 @@
+  :root {
+    --bg: #241733;
+    --bg-2: #150d21;
+    --gold: #f0d9a0;
+    --gold-deep: #c9a24b;
+    --purple: #7a5cc9;
+    --purple-soft: rgba(150,110,255,0.18);
+    --text: #efe9ff;
+    --text-dim: #b7a9d6;
+    --card: rgba(255,255,255,0.05);
+    --hairline: rgba(230,190,255,0.18);
+    --radius: 18px;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    font-family: "Work Sans", sans-serif;
+    color: var(--text);
+    background: linear-gradient(180deg, var(--bg) 0%, var(--bg-2) 100%);
+    overflow-x: hidden;
+  }
+  h1, h2, h3, .logo { font-family: "Baloo 2", sans-serif; }
+  a { color: inherit; }
+  img { max-width: 100%; display: block; }
+
+  /* --- Fond décoratif : lueurs floues façon ciel d'île céleste --- */
+  .glow {
+    position: fixed;
+    border-radius: 50%;
+    filter: blur(90px);
+    opacity: 0.35;
+    z-index: 0;
+    pointer-events: none;
+  }
+  .glow-1 { width: 500px; height: 500px; background: #7a5cc9; top: -150px; left: -100px; }
+  .glow-2 { width: 600px; height: 600px; background: #c9a24b; top: 20%; right: -200px; opacity: 0.18; }
+  .glow-3 { width: 450px; height: 450px; background: #5a3fae; bottom: -150px; left: 30%; opacity: 0.25; }
+
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 0 24px; position: relative; z-index: 1; }
+
+  /* --- Navigation --- */
+  header {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    backdrop-filter: blur(10px);
+    background: rgba(21,13,33,0.72);
+    border-bottom: 1px solid var(--hairline);
+  }
+  nav.wrap { display: flex; align-items: center; justify-content: space-between; padding: 14px 24px; position: relative; }
+  .logo { font-weight: 800; font-size: 20px; color: var(--gold); letter-spacing: 0.3px; display: flex; align-items: center; gap: 8px; }
+  .logo span.emoji { font-size: 22px; }
+  .navlinks { display: flex; gap: 26px; font-size: 14.5px; font-weight: 600; }
+  .navlinks a { text-decoration: none; color: var(--text-dim); transition: color 0.15s; }
+  .navlinks a:hover { color: var(--gold); }
+  .logo-img { height: 42px; width: auto; border-radius: 8px; }
+  .nav-cta {
+    padding: 8px 16px;
+    border-radius: 999px;
+    background: linear-gradient(180deg, var(--gold) 0%, var(--gold-deep) 100%);
+    color: #241733 !important;
+    font-weight: 700;
+    text-decoration: none;
+    font-size: 14px;
+    white-space: nowrap;
+    /* Centré dans la barre de nav, indépendamment de la largeur du logo et
+       des liens de part et d'autre — retiré du flux flex normal pour ne
+       pas déséquilibrer l'espacement space-between entre logo/navlinks. */
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+
+  /* --- Hero --- */
+  .hero { padding: 90px 24px 70px; text-align: center; position: relative; }
+  .hero .kicker {
+    display: inline-block;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--gold);
+    background: var(--purple-soft);
+    border: 1px solid var(--hairline);
+    padding: 6px 16px;
+    border-radius: 999px;
+    margin-bottom: 22px;
+  }
+  .hero h1 {
+    font-size: clamp(38px, 6vw, 64px);
+    line-height: 1.08;
+    margin: 0 0 18px;
+    background: linear-gradient(180deg, #fff 0%, var(--gold) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    text-shadow: 0 2px 24px rgba(240,217,160,0.25);
+  }
+  .hero p.tagline {
+    font-size: clamp(16px, 2.2vw, 19px);
+    color: var(--text-dim);
+    max-width: 640px;
+    margin: 0 auto 34px;
+    line-height: 1.6;
+  }
+  .cta-row { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; margin-bottom: 56px; }
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    padding: 14px 28px;
+    border-radius: 999px;
+    font-weight: 700;
+    font-size: 15.5px;
+    text-decoration: none;
+    border: 2px solid transparent;
+    transition: transform 0.15s, filter 0.15s;
+  }
+  .btn:hover { transform: translateY(-2px); filter: brightness(1.08); }
+  .btn-primary { background: linear-gradient(180deg, var(--gold) 0%, var(--gold-deep) 100%); color: #241733; box-shadow: 0 8px 24px rgba(201,162,75,0.35); }
+  .btn-secondary { background: rgba(255,255,255,0.06); color: var(--text); border-color: var(--hairline); }
+
+  .hero-cast {
+    display: flex;
+    justify-content: center;
+    align-items: flex-end;
+    gap: clamp(10px, 4vw, 40px);
+    margin-top: 10px;
+  }
+  .hero-cast img {
+    height: clamp(120px, 18vw, 220px);
+    width: auto;
+    filter: drop-shadow(0 14px 20px rgba(0,0,0,0.45));
+  }
+  .hero-cast img:nth-child(2) { height: clamp(140px, 20vw, 250px); }
+  .hero-logo {
+    max-width: clamp(200px, 30vw, 300px);
+    margin: 0 auto 28px;
+    filter: drop-shadow(0 14px 30px rgba(122,92,201,0.45));
+  }
+
+  /* --- Sections génériques --- */
+  section { padding: 80px 24px; position: relative; }
+  .section-head { text-align: center; max-width: 640px; margin: 0 auto 48px; }
+  .section-head .kicker-small {
+    display: block;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    color: var(--purple);
+    margin-bottom: 10px;
+  }
+  .section-head h2 { font-size: clamp(28px, 4vw, 38px); margin: 0 0 14px; color: #fff; }
+  .section-head p { color: var(--text-dim); font-size: 16px; line-height: 1.6; margin: 0; }
+
+  /* --- Extensions (Pixelfe = plateforme, Les Royaumes Brisés = 1ère
+       extension jouable, d'autres mondes suivront) --- */
+  .extension-card {
+    display: flex;
+    flex-direction: column;
+    background: var(--card);
+    border: 1px solid var(--hairline);
+    border-radius: var(--radius);
+    overflow: hidden;
+    margin-bottom: 24px;
+  }
+  .extension-banner { width: 100%; display: block; aspect-ratio: 16/8; object-fit: cover; }
+  .extension-info { padding: 24px 28px 28px; }
+  .extension-info h4 { font-size: 22px; margin: 8px 0 10px; color: #fff; }
+  .extension-info p { color: var(--text-dim); font-size: 15px; line-height: 1.6; margin: 0 0 18px; }
+  .extension-badge {
+    display: inline-block;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.4px;
+    color: #241733;
+    background: linear-gradient(180deg, var(--gold) 0%, var(--gold-deep) 100%);
+    padding: 5px 14px;
+    border-radius: 999px;
+  }
+  .extension-badge-soon {
+    color: var(--text-dim);
+    background: rgba(255,255,255,0.08);
+    border: 1px solid var(--hairline);
+  }
+  .extension-a-venir { opacity: 0.7; }
+  .extension-placeholder {
+    width: 100%;
+    aspect-ratio: 16/8;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 48px;
+    font-weight: 800;
+    color: var(--text-dim);
+    background: repeating-linear-gradient(135deg, rgba(255,255,255,0.03) 0 20px, rgba(255,255,255,0.06) 20px 40px);
+  }
+  @media (min-width: 760px) {
+    .extension-card { flex-direction: row; }
+    .extension-banner, .extension-placeholder { width: 46%; aspect-ratio: auto; height: auto; }
+    .extension-info { flex: 1; display: flex; flex-direction: column; justify-content: center; }
+  }
+
+  /* --- Classes --- */
+  .classes-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+  .class-card {
+    background: var(--card);
+    border: 1px solid var(--hairline);
+    border-radius: var(--radius);
+    padding: 28px 22px 26px;
+    text-align: center;
+    transition: transform 0.2s, border-color 0.2s;
+  }
+  .class-card:hover { transform: translateY(-6px); border-color: var(--gold-deep); }
+  .class-card img { height: 150px; margin: 0 auto 18px; filter: drop-shadow(0 10px 14px rgba(0,0,0,0.4)); }
+  .class-card h3 { font-size: 21px; margin: 0 0 4px; color: var(--gold); }
+  .class-card .role { font-size: 13px; color: var(--text-dim); font-weight: 600; margin-bottom: 14px; }
+  .class-card p.desc { font-size: 14.5px; color: var(--text-dim); line-height: 1.55; margin: 0 0 16px; }
+  .spell-tags { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+  .spell-tags span {
+    font-size: 12px;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid var(--hairline);
+    padding: 4px 10px;
+    border-radius: 999px;
+    color: var(--text);
+  }
+
+  /* --- Univers / boss --- */
+  .lore-block { display: grid; grid-template-columns: 1.1fr 1fr; gap: 48px; align-items: center; }
+  .lore-text h3 { font-size: 24px; color: #fff; margin: 0 0 14px; }
+  .lore-text p { color: var(--text-dim); line-height: 1.7; margin: 0 0 14px; font-size: 15.5px; }
+  .lore-text ul { margin: 0; padding-left: 20px; color: var(--text-dim); line-height: 1.9; font-size: 15px; }
+  .lore-text ul li strong { color: var(--gold); }
+  .boss-gallery { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+  .boss-card {
+    background: var(--card);
+    border: 1px solid var(--hairline);
+    border-radius: 14px;
+    padding: 16px 8px;
+    text-align: center;
+  }
+  .boss-card img { height: 76px; margin: 0 auto 10px; }
+  .boss-card span { font-size: 12.5px; font-weight: 600; color: var(--text-dim); }
+
+  /* --- Fonctionnalités --- */
+  .features-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+  .feature {
+    background: var(--card);
+    border: 1px solid var(--hairline);
+    border-radius: 14px;
+    padding: 22px 20px;
+  }
+  .feature .icon { font-size: 26px; margin-bottom: 12px; display: block; }
+  .feature h4 { margin: 0 0 8px; font-size: 16px; color: #fff; }
+  .feature p { margin: 0; font-size: 14px; color: var(--text-dim); line-height: 1.55; }
+
+  /* --- Bestiaire --- */
+  .beast-tabs { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-bottom: 36px; }
+  .beast-tab-btn {
+    padding: 10px 22px;
+    border-radius: 999px;
+    border: 1px solid var(--hairline);
+    background: var(--card);
+    color: var(--text-dim);
+    font-weight: 700;
+    font-size: 14px;
+    font-family: inherit;
+    cursor: pointer;
+    transition: transform 0.15s, filter 0.15s;
+  }
+  .beast-tab-btn:hover { color: var(--text); border-color: var(--gold-deep); }
+  .beast-tab-btn.active {
+    background: linear-gradient(180deg, var(--gold) 0%, var(--gold-deep) 100%);
+    color: #241733;
+    border-color: transparent;
+  }
+  .beast-panel { display: none; }
+  .beast-panel.active { display: block; }
+  .beast-region-group { margin-bottom: 30px; }
+  .beast-region-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; }
+  .beast-region-head h4 { margin: 0; font-size: 18px; color: #fff; }
+  .beast-region-head .tier-badge {
+    font-size: 11.5px;
+    font-weight: 700;
+    color: var(--gold);
+    background: var(--purple-soft);
+    border: 1px solid var(--hairline);
+    padding: 3px 10px;
+    border-radius: 999px;
+  }
+  .beast-region-head .region-desc { font-size: 13px; color: var(--text-dim); flex-basis: 100%; margin: 0; }
+  .beast-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 18px; }
+  .beast-card {
+    background: var(--card);
+    border: 1px solid var(--hairline);
+    border-radius: 16px;
+    padding: 18px;
+    text-align: center;
+  }
+  .beast-card img { height: 84px; margin: 0 auto 12px; filter: drop-shadow(0 8px 12px rgba(0,0,0,0.4)); }
+  .beast-card h4, .beast-card h5 { font-size: 16px; margin: 0 0 4px; color: var(--gold); }
+  .beast-card .beast-role { font-size: 12px; color: var(--text-dim); font-weight: 600; margin-bottom: 10px; }
+  .beast-stats { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; margin-bottom: 10px; }
+  .beast-stats span {
+    font-size: 12px;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid var(--hairline);
+    padding: 3px 9px;
+    border-radius: 999px;
+    color: var(--text);
+    white-space: nowrap;
+  }
+  .beast-behavior { font-size: 13px; color: var(--text-dim); line-height: 1.5; margin: 0 0 10px; text-align: left; }
+  .beast-drop {
+    font-size: 12.5px;
+    color: var(--text-dim);
+    line-height: 1.55;
+    border-top: 1px dashed var(--hairline);
+    padding-top: 10px;
+    margin-top: auto;
+    text-align: left;
+  }
+  .beast-drop strong { color: var(--gold); }
+  .beast-card.boss-card-full { text-align: left; }
+  .beast-card.boss-card-full img { height: 110px; margin: 0 0 12px; }
+  .beast-note { font-size: 13.5px; color: var(--text-dim); text-align: center; margin: 0 0 30px; line-height: 1.6; }
+
+  /* --- Footer --- */
+  footer { padding: 44px 24px 36px; border-top: 1px solid var(--hairline); text-align: center; }
+  footer p { color: var(--text-dim); font-size: 13.5px; margin: 6px 0; }
+  footer a { color: var(--gold); text-decoration: none; }
+  footer a:hover { text-decoration: underline; }
+
+  /* --- Responsive --- */
+  @media (max-width: 860px) {
+    .navlinks { display: none; }
+    .classes-grid { grid-template-columns: 1fr; }
+    .lore-block { grid-template-columns: 1fr; }
+    .boss-gallery { grid-template-columns: repeat(3, 1fr); }
+    .features-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+  @media (max-width: 520px) {
+    .features-grid { grid-template-columns: 1fr; }
+    .boss-gallery { grid-template-columns: 1fr 1fr; }
+    .hero { padding: 70px 18px 50px; }
+    section { padding: 56px 18px; }
+    .logo { font-size: 16px; }
+    nav.wrap { padding: 12px 18px; gap: 10px; }
+  }
+  .jeu-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    background: var(--bg-2);
+    display: none;
+    flex-direction: column;
+  }
+  .jeu-overlay.actif { display: flex; }
+  .jeu-overlay-fermer {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    z-index: 1001;
+    background: var(--card);
+    color: var(--text);
+    border: 1px solid var(--hairline);
+    border-radius: 999px;
+    padding: 8px 18px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+  }
+  .jeu-overlay-fermer:hover { background: var(--purple-soft); }
+  .jeu-overlay iframe { flex: 1; width: 100%; border: 0; }

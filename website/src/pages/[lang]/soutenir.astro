@@ -1,0 +1,26 @@
+---
+import Base from "../../layouts/Base.astro";
+import { getUi, langPaths, KOFI_URL, type Lang } from "../../i18n";
+export function getStaticPaths() { return langPaths(); }
+const lang = Astro.params.lang as Lang;
+const ui = getUi(lang);
+const s = ui.support;
+---
+<Base lang={lang} page="soutenir" title={s.title} description={s.intro}>
+  <div class="wrap page-head">
+    <h1>♥ {s.title}</h1>
+    <p>{s.intro}</p>
+    <p class="mt"><a class="btn btn-kofi" href={KOFI_URL} target="_blank" rel="noopener">☕ {s.cta}</a></p>
+    <p style="font-size:14px;margin-top:14px">{s.ctaNote}</p>
+  </div>
+  <section class="page-section">
+    <div class="wrap">
+      <div class="section-head"><h2>{s.whereTitle}</h2></div>
+      <div class="features-grid" style="grid-template-columns:repeat(3,1fr)">
+        {s.where.map((w) => <div class="feature"><span class="icon">{w.icon}</span><h4>{w.title}</h4><p>{w.text}</p></div>)}
+      </div>
+      <div class="prose mt"><h2>{s.otherTitle}</h2><ul>{s.other.map((o) => <li>{o}</li>)}</ul></div>
+      <p class="center mt"><a class="btn btn-kofi" href={KOFI_URL} target="_blank" rel="noopener">☕ {s.cta}</a></p>
+    </div>
+  </section>
+</Base>

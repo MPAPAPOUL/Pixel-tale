@@ -1,0 +1,40 @@
+---
+import Base from "../../layouts/Base.astro";
+import { getUi, langPaths, type Lang } from "../../i18n";
+export function getStaticPaths() { return langPaths(); }
+const lang = Astro.params.lang as Lang;
+const ui = getUi(lang);
+const m = ui.media;
+const groups = [
+  { title: m.heroes, items: [["hero-dorken.png", "Dorken"], ["hero-quater.png", "Quater"], ["hero-krix.png", "Krix"]] },
+  { title: m.bosses, items: [["boss-sirehano.png", "Sire-Hano"], ["boss-dragonnoir.png", "Dragon Noir"], ["boss-chevaliernoir.png", "Chevalier Noir"]] },
+  { title: m.monsters, items: [["enemy-goblin-chief.png", "Troubalourd"], ["enemy-goblin-female.png", "Fisselo"], ["enemy-tiralark.png", "Tiralark"], ["enemy-minotaure.png", "Minotaure"], ["enemy-pirate-leader.png", "Capitaine Corsaire"], ["enemy-capitaine-sabrenoir.png", "Sabrenoir"]] },
+];
+---
+<Base lang={lang} page="medias" title={m.title} description={m.intro}>
+  <div class="wrap page-head"><h1>{m.title}</h1><p>{m.intro}</p></div>
+  <section class="page-section">
+    <div class="wrap">
+      <div class="media-item" style="max-width:520px;margin:0 auto 8px">
+        <div class="media-img"><img src="/assets/img/logo-pixelfe.webp" alt="Pixelfe" /></div>
+        <span>Logo Pixelfe</span>
+        <a href="/assets/img/logo-pixelfe.webp" download>⬇ {m.download}</a>
+      </div>
+      <p class="center" style="color:var(--text-dim);font-size:14px">{m.usage}</p>
+      {groups.map((g) => (
+        <>
+          <h2 class="media-title">{g.title}</h2>
+          <div class="media-grid">
+            {g.items.map(([file, name]) => (
+              <div class="media-item">
+                <div class="media-img"><img src={`/assets/img/${file}`} alt={name} loading="lazy" /></div>
+                <span>{name}</span>
+                <a href={`/assets/img/${file}`} download>⬇ {m.download}</a>
+              </div>
+            ))}
+          </div>
+        </>
+      ))}
+    </div>
+  </section>
+</Base>

@@ -1,0 +1,50 @@
+---
+import data from "../data/bestiaire.json";
+import BeastCard from "./BeastCard.astro";
+import { getUi, type Lang } from "../i18n";
+interface Props { lang: Lang; }
+const { lang } = Astro.props;
+const ui = getUi(lang).bestiary;
+const tabs = ["verthige", "regions", "donjon", "boss"] as const;
+---
+<div class="beast-tabs" role="tablist" id="beast-tabs">
+  {tabs.map((t, i) => <button class:list={["beast-tab-btn", { active: i === 0 }]} role="tab" aria-selected={i === 0 ? "true" : "false"} aria-controls={`tab-${t}`} data-tab={t} type="button">{ui.tabs[t]}</button>)}
+</div>
+
+<div class="beast-panel active" id="tab-verthige" role="tabpanel">
+  <p class="beast-note">{ui.notes.verthige}</p>
+  <div class="beast-grid">{data.verthige.cards.map((c) => <BeastCard card={c} lang={lang} />)}</div>
+</div>
+
+<div class="beast-panel" id="tab-regions" role="tabpanel">
+  <p class="beast-note">{ui.notes.regions}</p>
+  {data.regions.groups.map((g) => (
+    <div class="beast-region-group">
+      <div class="beast-region-head"><h4>{g.name}</h4><span class="tier-badge">{getUi(lang).universe.level} {g.level} · {ui.tier} {g.tier}</span></div>
+      <div class="beast-grid">{g.cards.map((c) => <BeastCard card={c} lang={lang} />)}</div>
+    </div>
+  ))}
+</div>
+
+<div class="beast-panel" id="tab-donjon" role="tabpanel">
+  <p class="beast-note">{ui.notes.donjon}</p>
+  <div class="beast-grid">{data.donjon.cards.map((c) => <BeastCard card={c} lang={lang} />)}</div>
+</div>
+
+<div class="beast-panel" id="tab-boss" role="tabpanel">
+  <p class="beast-note">{ui.notes.boss}</p>
+  <div class="beast-grid">{data.boss.cards.map((c) => <BeastCard card={c} lang={lang} />)}</div>
+</div>
+
+<script>
+  const buttons = document.querySelectorAll<HTMLButtonElement>(".beast-tab-btn");
+  buttons.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      buttons.forEach((b) => { b.classList.remove("active"); b.setAttribute("aria-selected", "false"); });
+      document.querySelectorAll(".beast-panel").forEach((p) => p.classList.remove("active"));
+      btn.classList.add("active");
+      btn.setAttribute("aria-selected", "true");
+      document.getElementById("tab-" + btn.dataset.tab)?.classList.add("active");
+    });
+  });
+</script>

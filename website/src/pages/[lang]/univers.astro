@@ -1,0 +1,30 @@
+---
+import Base from "../../layouts/Base.astro";
+import Bestiary from "../../components/Bestiary.astro";
+import bestiaire from "../../data/bestiaire.json";
+import { getUi, langPaths, type Lang } from "../../i18n";
+export function getStaticPaths() { return langPaths(); }
+const lang = Astro.params.lang as Lang;
+const ui = getUi(lang);
+const u = ui.universe;
+const regions = bestiaire.regions.groups;
+---
+<Base lang={lang} page="univers" title={u.title} description={u.intro}>
+  <div class="wrap page-head"><h1>{u.title}</h1><p>{u.intro}</p></div>
+
+  <section class="page-section">
+    <div class="wrap">
+      <div class="section-head"><h2>{u.regionsTitle}</h2><p>{u.regionsText}</p></div>
+      <div class="features-grid">
+        {regions.map((g) => <div class="feature"><h4>{g.name}</h4><p>{u.level} {g.level} · {ui.bestiary.tier} {g.tier}</p></div>)}
+      </div>
+    </div>
+  </section>
+
+  <section class="page-section" id="bestiaire">
+    <div class="wrap">
+      <div class="section-head"><h2>{u.bestiaryTitle}</h2><p>{u.bestiaryText}</p></div>
+      <Bestiary lang={lang} />
+    </div>
+  </section>
+</Base>

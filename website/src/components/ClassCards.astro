@@ -1,0 +1,22 @@
+---
+import { getUi, type Lang } from "../i18n";
+interface Props { lang: Lang; }
+const { lang } = Astro.props;
+const c = getUi(lang).classes;
+const list = [
+  { id: "dorken", name: "Dorken", data: c.dorken },
+  { id: "quater", name: "Quater", data: c.quater },
+  { id: "krix", name: "Krix", data: c.krix },
+];
+---
+<div class="classes-grid">
+  {list.map((k) => (
+    <div class="class-card">
+      <img src={`/assets/img/hero-${k.id}.png`} alt={k.name} loading="lazy" />
+      <h3>{k.name}</h3>
+      <div class="role">{k.data.role}</div>
+      <p class="desc">{k.data.desc}</p>
+      <div class="spell-tags">{k.data.spells.map((s) => <span>{s}</span>)}</div>
+    </div>
+  ))}
+</div>

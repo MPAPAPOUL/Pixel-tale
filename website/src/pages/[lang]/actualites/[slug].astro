@@ -1,0 +1,27 @@
+---
+import Base from "../../../layouts/Base.astro";
+import SupportBanner from "../../../components/SupportBanner.astro";
+import { getUi, langs, localePath, type Lang } from "../../../i18n";
+import { posts, formatDate } from "../../../data/news";
+export function getStaticPaths() {
+  return langs.flatMap((lang) => posts.map((p) => ({ params: { lang, slug: p.slug }, props: { post: p } })));
+}
+const lang = Astro.params.lang as Lang;
+const { post } = Astro.props;
+const ui = getUi(lang);
+const t = post.text[lang];
+---
+<Base lang={lang} page={`actualites/${post.slug}`} title={t.title} description={t.excerpt} image={`assets/img/${post.image}`}>
+  <section class="page-section" style="padding-top:56px">
+    <div class="wrap">
+      <article class="article">
+        <a class="back-link" href={localePath(lang, "actualites")}>← {ui.news.back}</a>
+        <br />
+        <time datetime={post.date}>{ui.news.published} {formatDate(post.date, lang)}</time>
+        <h1>{t.title}</h1>
+        {t.body.map((para) => <p>{para}</p>)}
+      </article>
+      <div class="mt"><SupportBanner lang={lang} /></div>
+    </div>
+  </section>
+</Base>

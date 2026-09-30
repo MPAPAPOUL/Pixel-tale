@@ -4606,7 +4606,55 @@ const TYPES_MIME = {
   ".png": "image/png",
 };
 
+const ORIGINES_SITE_VITRINE = new Set(["https://pixelfe.fr", "https://www.pixelfe.fr"]);
+function entetesCorsPublics(req) {
+  const origine = req.headers.origin;
+  const entetes = { Vary: "Origin" };
+  if (origine && ORIGINES_SITE_VITRINE.has(origine)) {
+    entetes["Access-Control-Allow-Origin"] = origine;
+    entetes["Access-Control-Allow-Methods"] = "GET, OPTIONS";
+  }
+  return entetes;
+}
+
+let cacheClassementPublic = { expire: 0, donnees: null };
+function classementPublic() {
+  const maintenant = Date.now();
+  if (cacheClassementPublic.donnees && maintenant < cacheClassementPublic.expire) return cacheClassementPublic.donnees;
+  const vus = new Map();
+  for (const compte of Object.values(comptes)) {
+    for (const perso of (compte && compte.personnages) || []) {
+      if (perso && perso.id) vus.set(perso.id, perso);
+    }
+  }
+  // Les personnages en ligne sont plus à jour que la dernière sauvegarde.
+  for (const joueur of players.values()) {
+    if (joueur._personnageId) vus.set(joueur._personnageId, joueur);
+  }
+  const liste = Array.from(vus.values())
+    .filter((p) => p.pseudo)
+    .sort((a, b) => (b.niveau || 1) - (a.niveau || 1) || (b.xp || 0) - (a.xp || 0))
+    .slice(0, 50)
+    .map((p, i) => ({ rang: i + 1, pseudo: String(p.pseudo).slice(0, 20), classe: p.classe, niveau: p.niveau || 1, titre: p.titreActif || null }));
+  cacheClassementPublic = { expire: maintenant + 30000, donnees: { classement: liste, total: vus.size } };
+  return cacheClassementPublic.donnees;
+}
+
 const server = http.createServer((req, res) => {
+  // Classement public (site vitrine pixelfe.fr, page Classement) : tous les
+  // personnages sauvegardés, jamais que des champs publics (pseudo, classe,
+  // niveau, XP) — ni jeton de compte, ni or, ni inventaire.
+  if (req.method === "OPTIONS" && req.url.startsWith("/api/classement")) {
+    res.writeHead(204, entetesCorsPublics(req));
+    res.end();
+    return;
+  }
+  if (req.method === "GET" && req.url.startsWith("/api/classement")) {
+    res.writeHead(200, { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "public, max-age=30", ...entetesCorsPublics(req) });
+    res.end(JSON.stringify(classementPublic()));
+    return;
+  }
+
   // Écran de sélection de personnage (voir client, préparerEcranAccueil) :
   // liste des personnages d'un compte AVANT d'ouvrir le WebSocket de jeu,
   // pour savoir quel écran d'accueil afficher (sélection vs création). Pas

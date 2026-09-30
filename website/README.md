@@ -1,118 +1,56 @@
-# Site vitrine — Les Royaumes Brisés
+# Site vitrine — Pixelfe / Les Royaumes Brisés
 
-Site statique (une seule page HTML, aucun serveur/build nécessaire) qui
-présente le jeu — classes, univers, bestiaire complet. Ce site est
-indépendant du jeu lui-même (`client/` + `server/`) : **le jeu n'est ni
-jouable ni téléchargeable depuis ce site**, c'est une pure vitrine.
+Site multi-pages construit avec [Astro](https://astro.build) (pages statiques,
+aucun serveur), en 3 langues : français (`/fr/`), anglais (`/en/`), espagnol
+(`/es/`). Il est indépendant du jeu (`client/` + `server/`), qui reste sur
+`jeu.pixelfe.fr`.
 
-## Fichiers
+## Structure
 
 ```
 website/
-├── index.html          la page entière (HTML + CSS inline, sans dépendance)
-├── CNAME               domaine personnalisé pour GitHub Pages (pixelfe.fr)
-└── assets/img/         portraits de classes, boss et monstres (extraits de client/sprites/)
+├── public/              fichiers servis tels quels (CNAME, assets/img/…)
+├── src/
+│   ├── i18n/            textes par langue (fr.ts est la référence, en.ts/es.ts suivent)
+│   ├── data/            bestiaire.json (données des monstres), news.ts (actualités)
+│   ├── layouts/Base.astro   en-tête, menu, sélecteur de langue, pied de page
+│   ├── components/      cartes de classes, bestiaire, bandeau de don
+│   ├── pages/[lang]/    une page par section (jeu, univers, medias, actualites,
+│   │                    classement, studio, soutenir, confidentialite, mentions)
+│   └── styles/          global.css (charte) + extra.css (pages, classement…)
+└── astro.config.mjs
 ```
 
-Aucune étape de build : `index.html` peut être ouvert tel quel dans un
-navigateur, ou déposé tel quel sur n'importe quel hébergement statique.
+## Travailler en local
 
-## Déployer sur pixelfe.fr (GitHub Pages, déjà configuré)
+```
+cd website
+npm install
+npm run dev        # http://localhost:4321
+npm run build      # génère website/dist
+```
 
-Le dépôt contient déjà tout ce qu'il faut : un workflow GitHub Actions
-(`.github/workflows/deploy-pages.yml`) qui publie automatiquement le
-contenu de `website/` sur GitHub Pages à chaque `git push` sur `main`, et
-un fichier `website/CNAME` qui associe le domaine `pixelfe.fr`. Il ne
-reste que deux réglages, un côté GitHub, un côté IONOS :
+## Ajouter du contenu
 
-### 1. Activer GitHub Pages (une seule fois)
+- **Une actualité** : ajoute un objet dans `src/data/news.ts` (titre, résumé et
+  texte dans les 3 langues) ; les pages et la liste se créent toutes seules.
+- **Un texte** : modifie-le dans `src/i18n/fr.ts`, puis dans `en.ts` et `es.ts`.
+- **Un monstre** : ajoute-le dans `src/data/bestiaire.json` avec son image dans
+  `public/assets/img/`.
 
-1. Sur GitHub, dans ce dépôt → **Settings → Pages**.
-2. Sous **Build and deployment → Source**, choisis **GitHub Actions**
-   (pas "Deploy from a branch").
-3. Merge cette branche sur `main` (ou attends que ce soit fait) : le
-   workflow se déclenche automatiquement et publie le site.
-4. Toujours dans **Settings → Pages**, dans **Custom domain**, vérifie
-   que `pixelfe.fr` est bien renseigné (il devrait l'être automatiquement
-   grâce au fichier `CNAME`) puis clique **Save**.
-5. Attends que GitHub valide le domaine (case "DNS check successful"),
-   ce qui nécessite l'étape IONOS ci-dessous. Une fois validé, coche
-   **Enforce HTTPS** pour servir le site en `https://`.
+## Classement
 
-### 2. Pointer pixelfe.fr vers GitHub Pages (chez IONOS)
+La page `/classement/` lit `https://jeu.pixelfe.fr/api/classement` (route
+publique du serveur de jeu : uniquement pseudo, classe, niveau et titre). Elle
+n'affiche des données qu'une fois le serveur du jeu redéployé avec cette route.
 
-Dans **IONOS → Domaines & SSL → pixelfe.fr → DNS**, ajoute ces
-enregistrements (édite ceux qui existent déjà pour `@` ou `www` si le
-domaine en a, plutôt que d'en créer en double) :
+## Dons
 
-| Type  | Nom / Hôte | Valeur                     |
-|-------|------------|-----------------------------|
-| A     | @          | 185.199.108.153             |
-| A     | @          | 185.199.109.153             |
-| A     | @          | 185.199.110.153             |
-| A     | @          | 185.199.111.153             |
-| CNAME | www        | mpapapoul.github.io.        |
+Le bouton « Soutenir » renvoie vers `https://ko-fi.com/pixelfe` (constante
+`KOFI_URL` dans `src/i18n/index.ts`).
 
-(`@` désigne le domaine racine `pixelfe.fr` lui-même dans l'interface
-IONOS.) La propagation DNS peut prendre de quelques minutes à 24-48h —
-tant qu'elle n'est pas terminée, `pixelfe.fr` peut continuer à afficher
-la page de parking IONOS.
+## Déploiement (GitHub Pages, pixelfe.fr)
 
-Une fois ces deux étapes faites, `https://pixelfe.fr` sert directement
-`website/index.html`, et se met à jour tout seul à chaque `git push` sur
-`main` qui touche `website/`.
-
-## Autres façons de déployer sur IONOS
-
-Ce qu'il faut dépend de la formule achetée en plus du nom de domaine :
-
-### 1. Tu as un hébergement web IONOS (mutualisé, Deploy Now, etc.)
-
-1. Dans le tableau de bord IONOS, ouvre le **gestionnaire de fichiers**
-   (ou connecte-toi en FTP/SFTP avec les identifiants fournis par IONOS).
-2. Dépose **tout le contenu du dossier `website/`** (le fichier
-   `index.html` et le dossier `assets/`) à la racine de l'espace web
-   (souvent `/` ou `/htdocs`, selon la formule).
-3. Vérifie que `index.html` est bien à la racine (pas dans un
-   sous-dossier `website/`), sinon l'URL du domaine n'affichera rien par
-   défaut.
-4. Dans l'onglet **SSL** de l'hébergement, active le certificat gratuit
-   (Let's Encrypt) si ce n'est pas déjà fait, pour que le site soit servi
-   en `https://`.
-
-### 2. Tu as seulement le nom de domaine (pas encore d'hébergement)
-
-Un site 100% statique comme celui-ci n'a pas besoin d'un serveur Node —
-n'importe quel hébergement statique gratuit fonctionne :
-
-- **IONOS Deploy Now** (gratuit pour un site statique, s'intègre bien à un
-  domaine déjà chez IONOS), ou
-- GitHub Pages / Netlify / Vercel (gratuits, déploiement en glissant le
-  dossier `website/` ou en connectant ce dépôt GitHub), en pointant
-  ensuite le domaine IONOS dessus via un enregistrement DNS **CNAME**
-  (voir la doc du service choisi pour la valeur exacte à utiliser).
-
-### 3. Pointer le domaine (DNS)
-
-Dans **IONOS → Domaines & SSL → [ton domaine] → DNS** :
-
-- Si l'hébergement est chez IONOS : généralement automatique dès que le
-  domaine et l'hébergement sont associés dans le même compte (IONOS
-  propose souvent de le faire pendant l'achat de l'hébergement).
-- Si l'hébergement est ailleurs : ajoute l'enregistrement fourni par cet
-  hébergeur — un **A** (pointant vers une adresse IP) ou un **CNAME**
-  (pointant vers un nom d'hôte), selon ce qu'indique sa documentation.
-- La propagation DNS peut prendre de quelques minutes à 24-48h.
-
-## Mettre à jour le contenu
-
-Le texte, les liens et les images sont directement dans `index.html`
-(pas de CMS). Pour changer une image de personnage/monstre, remplace le
-fichier correspondant dans `assets/img/` (mêmes dimensions pas
-nécessaires, les images sont redimensionnées en CSS).
-
-Les chiffres du bestiaire (PV, dégâts, XP, taux de drop) sont recopiés à
-la main depuis `server/server.js` — si l'équilibrage du jeu change
-(`MONSTRES_CONFIG`, `CHANCE_DROP_*`, `BIOMES_DEFINITION`...), pense à les
-mettre à jour dans `index.html` aussi, rien ne les synchronise
-automatiquement.
+Le workflow `.github/workflows/deploy-pages.yml` construit le site
+(`npm ci && npm run build`) puis publie `website/dist` à chaque push sur `main`
+qui touche `website/`. Le domaine est défini par `public/CNAME`.

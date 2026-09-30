@@ -1,0 +1,57 @@
+---
+import Base from "../../layouts/Base.astro";
+import ClassCards from "../../components/ClassCards.astro";
+import SupportBanner from "../../components/SupportBanner.astro";
+import { getUi, langPaths, type Lang } from "../../i18n";
+export function getStaticPaths() { return langPaths(); }
+const lang = Astro.params.lang as Lang;
+const ui = getUi(lang);
+const g = ui.game;
+---
+<Base lang={lang} page="jeu" title={g.title} description={g.intro}>
+  <div class="wrap page-head">
+    <h1>{g.title}</h1>
+    <p>{g.intro}</p>
+    <p class="mt"><a class="btn btn-primary lien-jouer" href="https://jeu.pixelfe.fr">🎮 {g.play}</a></p>
+  </div>
+
+  <section class="page-section">
+    <div class="wrap">
+      <div class="section-head"><h2>{ui.home.classesTitle}</h2><p>{ui.home.classesText}</p></div>
+      <ClassCards lang={lang} />
+    </div>
+  </section>
+
+  <section class="page-section">
+    <div class="wrap">
+      <div class="lore-block">
+        <div class="lore-text">
+          <h3>{g.worldTitle}</h3>
+          <p>{g.worldText}</p>
+          <ul>{g.worldPoints.map((p) => <li>{p}</li>)}</ul>
+        </div>
+        <div class="boss-gallery">
+          <div class="boss-card"><img src="/assets/img/boss-sirehano.png" alt="Sire-Hano" loading="lazy" /><span>Sire-Hano</span></div>
+          <div class="boss-card"><img src="/assets/img/boss-dragonnoir.png" alt="Dragon Noir" loading="lazy" /><span>Dragon Noir</span></div>
+          <div class="boss-card"><img src="/assets/img/boss-chevaliernoir.png" alt="Chevalier Noir" loading="lazy" /><span>Chevalier Noir</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="page-section">
+    <div class="wrap">
+      <div class="section-head"><h2>{g.featuresTitle}</h2><p>{g.featuresText}</p></div>
+      <div class="features-grid">
+        {g.features.map((f) => <div class="feature"><span class="icon">{f.icon}</span><h4>{f.title}</h4><p>{f.text}</p></div>)}
+      </div>
+    </div>
+  </section>
+
+  <section class="page-section">
+    <div class="wrap">
+      <div class="prose center"><h2>{g.requirements}</h2><p>{g.requirementsText}</p></div>
+      <div class="mt"><SupportBanner lang={lang} /></div>
+    </div>
+  </section>
+</Base>

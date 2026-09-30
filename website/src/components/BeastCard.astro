@@ -1,0 +1,25 @@
+---
+import { getUi, type Lang } from "../i18n";
+interface Props { card: any; lang: Lang; }
+const { card, lang } = Astro.props;
+const ui = getUi(lang).bestiary;
+const num = (n: number) => n.toLocaleString(lang === "en" ? "en-US" : lang === "es" ? "es-ES" : "fr-FR");
+const b = card.behavior as any[] | undefined;
+const behavior = b ? (ui.behavior as any)[b[0]](...b.slice(1)) : null;
+const d = card.drop as any[];
+const drop = (ui.drop as any)[d[0]](...d.slice(1));
+const Tag = card.boss ? "h4" : "h5";
+---
+<div class:list={["beast-card", { "boss-card-full": card.boss }]}>
+  <img src={`/assets/img/${card.img}`} alt={card.name} loading="lazy" style={card.filter ? card.filter : undefined} />
+  <Tag>{card.name}</Tag>
+  <div class="beast-role">{(ui.roles as any)[card.role]}</div>
+  <div class="beast-stats">
+    {card.hp != null && <span>❤️ {num(card.hp)} {ui.stats.hp}{card.hpTotal ? ` ${ui.stats.total}` : ""}</span>}
+    {card.dmg != null && <span>⚔️ {num(card.dmg)} {ui.stats.dmg}</span>}
+    {card.xp != null && <span>✨ {num(card.xp)} {ui.stats.xp}{card.xpPerReplica ? ` ${ui.stats.perReplica}` : ""}</span>}
+    {card.gems != null && <span>💎 {num(card.gems)} {ui.stats.gems}</span>}
+  </div>
+  {behavior && <p class="beast-behavior">{behavior}</p>}
+  <div class="beast-drop"><strong>{ui.dropLabel}</strong> {drop}</div>
+</div>

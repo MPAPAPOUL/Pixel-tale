@@ -1,0 +1,120 @@
+---
+import "@fontsource/baloo-2/500.css";
+import "@fontsource/baloo-2/700.css";
+import "@fontsource/baloo-2/800.css";
+import "@fontsource/work-sans/400.css";
+import "@fontsource/work-sans/500.css";
+import "@fontsource/work-sans/600.css";
+import "../styles/global.css";
+import "../styles/extra.css";
+import { langs, langNames, htmlLang, ogLocale, getUi, localePath, KOFI_URL, GAME_URL, type Lang } from "../i18n";
+
+interface Props {
+  lang: Lang;
+  page?: string;
+  title?: string;
+  description?: string;
+  image?: string;
+}
+const { lang, page = "", title, description, image = "assets/img/logo-pixelfe.webp" } = Astro.props;
+const ui = getUi(lang);
+const fullTitle = title ? `${title} — ${ui.meta.siteName}` : ui.meta.siteName;
+const desc = description ?? ui.meta.description;
+const site = "https://pixelfe.fr";
+const canonical = `${site}${localePath(lang, page)}`;
+
+const links = [
+  { page: "jeu", label: ui.nav.game },
+  { page: "univers", label: ui.nav.universe },
+  { page: "medias", label: ui.nav.media },
+  { page: "actualites", label: ui.nav.news },
+  { page: "classement", label: ui.nav.ranking },
+  { page: "studio", label: ui.nav.studio },
+];
+const current = page.split("/")[0];
+---
+<!doctype html>
+<html lang={htmlLang[lang]}>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{fullTitle}</title>
+  <meta name="description" content={desc} />
+  <link rel="canonical" href={canonical} />
+  {langs.map((l) => <link rel="alternate" hreflang={l} href={`${site}${localePath(l, page)}`} />)}
+  <link rel="alternate" hreflang="x-default" href={`${site}${localePath("fr", page)}`} />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content={ui.meta.siteName} />
+  <meta property="og:title" content={fullTitle} />
+  <meta property="og:description" content={desc} />
+  <meta property="og:url" content={canonical} />
+  <meta property="og:image" content={`${site}/${image}`} />
+  <meta property="og:locale" content={ogLocale[lang]} />
+  <meta name="twitter:card" content="summary_large_image" />
+  <link rel="icon" href="/assets/img/logo-pixelfe.webp" type="image/webp" />
+</head>
+<body>
+  <a class="skip-link" href="#contenu">Skip to content</a>
+  <div class="glow glow-1"></div>
+  <div class="glow glow-2"></div>
+  <div class="glow glow-3"></div>
+
+  <header>
+    <nav class="wrap" aria-label="Main">
+      <a class="logo" href={localePath(lang)}><img class="logo-img" src="/assets/img/logo-pixelfe.webp" alt="Pixelfe" /></a>
+      <div class="navlinks">
+        {links.map((l) => <a href={localePath(lang, l.page)} aria-current={current === l.page ? "page" : undefined}>{l.label}</a>)}
+        <a href={localePath(lang, "soutenir")} class="nav-support" aria-current={current === "soutenir" ? "page" : undefined}>♥ {ui.nav.support}</a>
+      </div>
+      <div class="nav-right">
+        <div class="lang-switch" role="group" aria-label={ui.nav.language}>
+          {langs.map((l) => <a href={localePath(l, page)} hreflang={l} lang={l} aria-current={l === lang ? "true" : undefined} title={langNames[l]}>{l.toUpperCase()}</a>)}
+        </div>
+        <a class="nav-cta lien-jouer" href={GAME_URL}>🎮 {ui.nav.play}</a>
+      </div>
+    </nav>
+  </header>
+
+  <main id="contenu">
+    <slot />
+  </main>
+
+  <footer>
+    <div class="wrap footer-inner">
+      <p>{ui.footer.tagline}</p>
+      <p class="footer-links">
+        <a href={localePath(lang, "soutenir")}>♥ {ui.footer.support}</a>
+        <a href={localePath(lang, "confidentialite")}>{ui.footer.privacy}</a>
+        <a href={localePath(lang, "mentions")}>{ui.footer.legal}</a>
+        <a href={KOFI_URL} rel="noopener" target="_blank">Ko-fi</a>
+      </p>
+    </div>
+  </footer>
+
+  <div class="jeu-overlay" id="jeu-overlay" role="dialog" aria-modal="true" aria-label={ui.nav.play}>
+    <button type="button" class="jeu-overlay-fermer" id="jeu-overlay-fermer">✕ {ui.play.close}</button>
+    <iframe id="jeu-overlay-iframe" title={ui.meta.siteName} allow="fullscreen"></iframe>
+  </div>
+
+  <script define:vars={{ gameUrl: GAME_URL }}>
+    const overlay = document.getElementById("jeu-overlay");
+    const iframe = document.getElementById("jeu-overlay-iframe");
+    document.querySelectorAll(".lien-jouer").forEach((lien) => {
+      lien.addEventListener("click", (e) => {
+        e.preventDefault();
+        iframe.src = gameUrl;
+        overlay.classList.add("actif");
+        document.body.style.overflow = "hidden";
+      });
+    });
+    document.getElementById("jeu-overlay-fermer").addEventListener("click", () => {
+      overlay.classList.remove("actif");
+      iframe.src = "";
+      document.body.style.overflow = "";
+    });
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && overlay.classList.contains("actif")) document.getElementById("jeu-overlay-fermer").click();
+    });
+  </script>
+</body>
+</html>

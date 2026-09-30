@@ -1,0 +1,23 @@
+---
+import { langs, defaultLang } from "../i18n";
+---
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pixelfe — Les Royaumes Brisés</title>
+  <meta name="robots" content="noindex" />
+  <link rel="canonical" href={`https://pixelfe.fr/${defaultLang}/`} />
+  {langs.map((l) => <link rel="alternate" hreflang={l} href={`https://pixelfe.fr/${l}/`} />)}
+  <link rel="alternate" hreflang="x-default" href={`https://pixelfe.fr/${defaultLang}/`} />
+  <meta http-equiv="refresh" content={`0; url=/${defaultLang}/`} />
+  <script define:vars={{ langs, defaultLang }}>
+    const wanted = (navigator.language || defaultLang).slice(0, 2).toLowerCase();
+    location.replace("/" + (langs.includes(wanted) ? wanted : defaultLang) + "/");
+  </script>
+</head>
+<body style="background:#150d21;color:#efe9ff;font-family:sans-serif;text-align:center;padding-top:20vh">
+  <p><a href="/fr/" style="color:#f0d9a0">Français</a> · <a href="/en/" style="color:#f0d9a0">English</a> · <a href="/es/" style="color:#f0d9a0">Español</a></p>
+</body>
+</html>

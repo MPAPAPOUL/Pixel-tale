@@ -1,0 +1,94 @@
+---
+import Base from "../../layouts/Base.astro";
+import ClassCards from "../../components/ClassCards.astro";
+import SupportBanner from "../../components/SupportBanner.astro";
+import { getUi, langPaths, localePath, type Lang } from "../../i18n";
+import { posts, formatDate } from "../../data/news";
+export function getStaticPaths() { return langPaths(); }
+const lang = Astro.params.lang as Lang;
+const ui = getUi(lang);
+const h = ui.home;
+const latest = posts.slice(0, 3);
+---
+<Base lang={lang} page="">
+  <section class="hero">
+    <div class="wrap">
+      <img class="hero-logo" src="/assets/img/logo-pixelfe.webp" alt="Pixelfe" />
+      <span class="kicker">{h.kicker}</span>
+      <h1>{h.title}</h1>
+      <p class="tagline">{h.tagline}</p>
+      <div class="cta-row">
+        <a class="btn btn-primary lien-jouer" href="https://jeu.pixelfe.fr">🎮 {h.ctaPlay}</a>
+        <a class="btn btn-secondary" href={localePath(lang, "jeu")}>{h.ctaGame}</a>
+      </div>
+      <div class="hero-cast">
+        <img src="/assets/img/hero-quater.png" alt="Quater" />
+        <img src="/assets/img/hero-krix.png" alt="Krix" />
+        <img src="/assets/img/hero-dorken.png" alt="Dorken" />
+      </div>
+    </div>
+  </section>
+
+  <section id="classes">
+    <div class="wrap">
+      <div class="section-head">
+        <span class="kicker-small">{h.classesKicker}</span>
+        <h2>{h.classesTitle}</h2>
+        <p>{h.classesText}</p>
+      </div>
+      <ClassCards lang={lang} />
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
+      <div class="section-head">
+        <span class="kicker-small">{h.newsKicker}</span>
+        <h2>{h.newsTitle}</h2>
+      </div>
+      <div class="news-grid">
+        {latest.map((p) => (
+          <a class="news-card" href={localePath(lang, `actualites/${p.slug}`)}>
+            <div class="news-thumb"><img src={`/assets/img/${p.image}`} alt="" loading="lazy" /></div>
+            <div class="news-body">
+              <time datetime={p.date}>{formatDate(p.date, lang)}</time>
+              <h3>{p.text[lang].title}</h3>
+              <p>{p.text[lang].excerpt}</p>
+              <span class="more">{h.readMore} →</span>
+            </div>
+          </a>
+        ))}
+      </div>
+      <p class="center mt"><a class="btn btn-secondary" href={localePath(lang, "actualites")}>{h.newsAll}</a></p>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
+      <div class="section-head"><span class="kicker-small">{h.numbersKicker}</span></div>
+      <div class="numbers">
+        {h.numbers.map((n) => <div class="number-card"><strong>{n.value}</strong><span>{n.label}</span></div>)}
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
+      <div class="section-head">
+        <span class="kicker-small">{h.bestiaryKicker}</span>
+        <h2>{h.bestiaryTitle}</h2>
+        <p>{h.bestiaryText}</p>
+      </div>
+      <div class="boss-gallery" style="max-width:640px;margin:0 auto 28px">
+        <div class="boss-card"><img src="/assets/img/boss-sirehano.png" alt="Sire-Hano" loading="lazy" /><span>Sire-Hano</span></div>
+        <div class="boss-card"><img src="/assets/img/boss-dragonnoir.png" alt="Dragon Noir" loading="lazy" /><span>Dragon Noir</span></div>
+        <div class="boss-card"><img src="/assets/img/boss-chevaliernoir.png" alt="Chevalier Noir" loading="lazy" /><span>Chevalier Noir</span></div>
+      </div>
+      <p class="center"><a class="btn btn-secondary" href={localePath(lang, "univers")}>{h.bestiaryCta}</a></p>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap"><SupportBanner lang={lang} /></div>
+  </section>
+</Base>

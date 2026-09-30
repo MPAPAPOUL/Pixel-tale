@@ -1,0 +1,11 @@
+---
+import Base from "../../layouts/Base.astro";
+import { getUi, langPaths, type Lang } from "../../i18n";
+export function getStaticPaths() { return langPaths(); }
+const lang = Astro.params.lang as Lang;
+const p = getUi(lang).privacy;
+---
+<Base lang={lang} page="confidentialite" title={p.title}>
+  <div class="wrap page-head"><h1>{p.title}</h1></div>
+  <section class="page-section"><div class="wrap"><div class="prose">{p.body.map((t) => <p>{t}</p>)}</div></div></section>
+</Base>
