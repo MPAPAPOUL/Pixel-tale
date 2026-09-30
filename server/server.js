@@ -18,6 +18,8 @@ const bcrypt = require("bcryptjs");
 const MULT_DEGATS_BOSS = 3;
 // Dégâts de tous les monstres COMMUNS (contact, tirs, foudre) : ×3.
 const MULT_DEGATS_MONSTRES = 3;
+// Vitesse de déplacement des monstres agressifs : ×2.
+const VITESSE_MONSTRES_AGRESSIFS = 2;
 const anticheat = require("./anticheat"); // anti-automatisation, voir server/anticheat.js
 const idle = require("./idle"); // backend séparé pour Pixelfe-Idle (Godot), voir server/idle.js
 const { WebSocketServer } = require("ws");
@@ -2987,6 +2989,9 @@ function simulerMonstres(dtSecondes) {
       if (m.attaqueAnimRestant > 0) m.attaqueAnimRestant = Math.max(0, m.attaqueAnimRestant - dtSecondes);
       if (m.morte) continue;
       const cfg = MONSTRES_CONFIG[m.type];
+      // Vitesse de déplacement ×2 pour tout monstre agressif (le gobelin neutre
+      // reste tranquille tant qu'il n'est pas devenu hostile).
+      const facteurVitesse = cfg.neutre && !m.hostile ? 1 : VITESSE_MONSTRES_AGRESSIFS;
 
       // Gobelin neutre devenu hostile (voir infligerDegatsMonstre) : quitte
       // sa simple patrouille pour foncer sur le joueur le plus proche, sans
@@ -3007,13 +3012,13 @@ function simulerMonstres(dtSecondes) {
         if (cible) {
           const direction = cible.x + JOUEUR_LARGEUR / 2 < m.x + cfg.largeur / 2 ? -1 : 1;
           m.vx = cfg.vitesse * direction;
-          m.x = Math.max(0, Math.min(zone.largeur - cfg.largeur, m.x + m.vx * dtSecondes));
+          m.x = Math.max(0, Math.min(zone.largeur - cfg.largeur, m.x + m.vx * facteurVitesse * dtSecondes));
         }
         continue;
       }
 
       if (cfg.comportement === "patrouille") {
-        m.x += m.vx * dtSecondes;
+        m.x += m.vx * facteurVitesse * dtSecondes;
         if (m.x < m.borneGauche) {
           m.x = m.borneGauche;
           m.vx = Math.abs(m.vx);
@@ -3030,7 +3035,7 @@ function simulerMonstres(dtSecondes) {
           const intervalle = cfg.intervalleErratique || { min: 0.3, max: 1.0 };
           m.prochainChangement = intervalle.min + Math.random() * (intervalle.max - intervalle.min);
         }
-        m.x += m.vx * dtSecondes;
+        m.x += m.vx * facteurVitesse * dtSecondes;
         if (m.x < m.borneGauche) {
           m.x = m.borneGauche;
           m.vx = Math.abs(m.vx);
