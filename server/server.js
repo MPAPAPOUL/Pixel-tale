@@ -837,15 +837,13 @@ function recalculerStatsEquipement(p) {
 
 // Coût en XP pour passer du niveau n à n+1 (croissance douce et linéaire —
 // largement suffisant pour une verticale-slice).
-// Courbe adoucie pour les joueurs occasionnels : les premiers niveaux
-// s'enchaînent vite (Berge-Rhak → premières zones en quelques minutes), puis
-// la pente reprend un rythme normal.
-// Niveau maximum du jeu : toutes les zones et monstres sont calibrés pour que la
-// difficulté maximale corresponde à un personnage de niveau 50.
-const NIVEAU_MAX = 50;
+// Courbe adoucie pour les joueurs occasionnels : niveaux 1 à 10 quasi immédiats
+// (≈ 90 XP au total, soit une trentaine de gobelins du Chief Goblin), puis une
+// montée progressive sur 10 niveaux vers la courbe normale (40 + 25 × niveau).
 function xpRequisPourNiveau(niveau) {
-  const base = Math.round(40 + niveau * 25);
-  return niveau <= 10 ? Math.round(base * 0.6) : base;
+  if (niveau <= 9) return Math.round(4 + niveau * 1.2);
+  const normal = 40 + niveau * 25;
+  return Math.round(normal * Math.min(1, (niveau - 9) / 10));
 }
 
 const XP_SIRE_HANO_ENTITE = 15; // par réplique tuée, quelle que soit la phase
