@@ -4104,6 +4104,7 @@ function construireEtatPourJoueur(p, classement) {
         onGround: autre.onGround,
         accroupi: !!autre.accroupi,
         ailes: ailesActives(autre),
+        potion: potionActive(autre),
         hp: Math.round(autre.hp),
         hpMax: autre.hpMax,
         mana: Math.round(autre.mana),
