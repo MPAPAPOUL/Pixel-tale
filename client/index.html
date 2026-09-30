@@ -2447,7 +2447,7 @@
               </div>
             </div>
             <div class="reglage-ligne">
-              <label for="reglages-volume-musique">Musique de combat de boss</label>
+              <label for="reglages-volume-musique">Volume de la musique</label>
               <input type="range" id="reglages-volume-musique" min="0" max="100" step="5" value="50">
             </div>
             <div class="reglage-ligne">
@@ -7332,7 +7332,7 @@ function mettreAJourModaleEntreeDonjon() {
 }
 
 // --- Musique de boss ---------------------------------------------------
-// Jouée dans l'Antre du Sire-Hano, dans la Salle du Trône, et dès le premier
+// Boss : jouée dans l'Antre du Sire-Hano, dans la Salle du Trône, et dès le premier
 // coup porté au Dragon Noir (jusqu'à sa défaite, la mort du joueur ou son
 // départ). Fondu entrant/sortant ; volume réglable dans les Réglages.
 const MUSIQUE_BOSS = new Audio("assets/audio/musique-boss.mp3");
@@ -7363,16 +7363,37 @@ function musiqueBossDoitJouer() {
   const moi = state.players && state.players.find((p) => p.id === selfId);
   return !!(d && !d.vaincu && d.hp < d.hpMax && moi && moi.alive && state.zoneActuelle.type !== "village");
 }
+// Musiques d'ambiance : playlist en boucle (ordre mélangé une fois) pour
+// toutes les zones hors combat de boss ; fondu croisé avec la musique de boss.
+const PLAYLIST_AMBIANCE = ["ambiance-1", "ambiance-2", "ambiance-3"].map((nom) => {
+  const a = new Audio(`assets/audio/${nom}.mp3`);
+  a.preload = "none";
+  return a;
+});
+for (let i = PLAYLIST_AMBIANCE.length - 1; i > 0; i--) {
+  const j = Math.floor(Math.random() * (i + 1));
+  [PLAYLIST_AMBIANCE[i], PLAYLIST_AMBIANCE[j]] = [PLAYLIST_AMBIANCE[j], PLAYLIST_AMBIANCE[i]];
+}
+let indexAmbiance = 0;
+let volumeAmbianceActuel = 0;
+const FACTEUR_VOLUME_AMBIANCE = 0.7;
+for (const a of PLAYLIST_AMBIANCE) {
+  a.addEventListener("ended", () => {
+    indexAmbiance = (indexAmbiance + 1) % PLAYLIST_AMBIANCE.length;
+    a.currentTime = 0;
+  });
+}
+function fondu(actuel, cible, dt, dureeEntree, dureeSortie) {
+  const pas = dt / (cible > actuel ? dureeEntree : dureeSortie);
+  return cible > actuel ? Math.min(cible, actuel + pas) : Math.max(cible, actuel - pas);
+}
 let dernierTempsMusique = performance.now();
 function mettreAJourMusique() {
   const maintenant = performance.now();
   const dt = Math.min(0.25, (maintenant - dernierTempsMusique) / 1000);
   dernierTempsMusique = maintenant;
   musiqueVoulue = musiqueBossDoitJouer();
-  const cible = musiqueVoulue ? volumeMusique : 0;
-  const pas = dt / (musiqueVoulue ? 1.5 : 1.0); // fondu ~1,5 s en entrée, ~1 s en sortie
-  if (volumeMusiqueActuel < cible) volumeMusiqueActuel = Math.min(cible, volumeMusiqueActuel + pas);
-  else if (volumeMusiqueActuel > cible) volumeMusiqueActuel = Math.max(cible, volumeMusiqueActuel - pas);
+  volumeMusiqueActuel = fondu(volumeMusiqueActuel, musiqueVoulue ? volumeMusique : 0, dt, 1.5, 1.0);
   MUSIQUE_BOSS.volume = Math.max(0, Math.min(1, volumeMusiqueActuel));
   if (musiqueVoulue && MUSIQUE_BOSS.paused) {
     const promesse = MUSIQUE_BOSS.play();
@@ -7380,6 +7401,21 @@ function mettreAJourMusique() {
   } else if (!musiqueVoulue && volumeMusiqueActuel <= 0 && !MUSIQUE_BOSS.paused) {
     MUSIQUE_BOSS.pause();
     MUSIQUE_BOSS.currentTime = 0;
+  }
+
+  // Ambiance : joue la piste courante de la playlist quand la musique de boss ne joue pas.
+  const piste = PLAYLIST_AMBIANCE[indexAmbiance];
+  const ambianceVoulue = !musiqueVoulue;
+  volumeAmbianceActuel = fondu(volumeAmbianceActuel, ambianceVoulue ? volumeMusique * FACTEUR_VOLUME_AMBIANCE : 0, dt, 2.5, 1.0);
+  for (const a of PLAYLIST_AMBIANCE) {
+    if (a !== piste && !a.paused) a.pause();
+  }
+  piste.volume = Math.max(0, Math.min(1, volumeAmbianceActuel));
+  if (ambianceVoulue && piste.paused) {
+    const promesse = piste.play();
+    if (promesse && promesse.catch) promesse.catch(() => {});
+  } else if (!ambianceVoulue && volumeAmbianceActuel <= 0 && !piste.paused) {
+    piste.pause(); // reprendra là où elle s'est arrêtée
   }
 }
 

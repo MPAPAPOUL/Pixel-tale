@@ -4947,6 +4947,11 @@ const TYPES_MIME = {
   ".js": "text/javascript; charset=utf-8",
   ".css": "text/css; charset=utf-8",
   ".png": "image/png",
+  ".webp": "image/webp",
+  ".jpg": "image/jpeg",
+  ".svg": "image/svg+xml",
+  ".json": "application/json",
+  ".mp3": "audio/mpeg",
 };
 
 // --- Dons Ko-fi -> gemmes ---------------------------------------------------
@@ -5430,15 +5435,43 @@ const server = http.createServer((req, res) => {
   let chemin = req.url === "/" ? "/index.html" : req.url;
   chemin = path.join(CLIENT_DIR, path.normalize(chemin).replace(/^(\.\.[/\\])+/, ""));
 
-  fs.readFile(chemin, (err, contenu) => {
-    if (err) {
+  // Fichiers servis en flux avec support des requêtes Range (indispensable
+  // pour les gros MP3 : lecture en boucle / seek dans <audio>) plutôt que
+  // chargés entièrement en mémoire à chaque requête.
+  fs.stat(chemin, (err, stat) => {
+    if (err || !stat.isFile()) {
       res.writeHead(404);
       res.end("Fichier non trouvé");
       return;
     }
     const ext = path.extname(chemin);
-    res.writeHead(200, { "Content-Type": TYPES_MIME[ext] || "application/octet-stream" });
-    res.end(contenu);
+    const entetes = { "Content-Type": TYPES_MIME[ext] || "application/octet-stream", "Accept-Ranges": "bytes" };
+    if (ext === ".mp3") entetes["Cache-Control"] = "public, max-age=86400";
+    const plage = /^bytes=(\d*)-(\d*)$/.exec(req.headers.range || "");
+    let debut = 0;
+    let fin = stat.size - 1;
+    let statut = 200;
+    if (plage && (plage[1] || plage[2])) {
+      if (plage[1]) {
+        debut = parseInt(plage[1], 10);
+        if (plage[2]) fin = Math.min(fin, parseInt(plage[2], 10));
+      } else {
+        debut = Math.max(0, stat.size - parseInt(plage[2], 10)); // "bytes=-N" : les N derniers octets
+      }
+      if (debut > fin || debut >= stat.size) {
+        res.writeHead(416, { "Content-Range": `bytes */${stat.size}` });
+        res.end();
+        return;
+      }
+      statut = 206;
+      entetes["Content-Range"] = `bytes ${debut}-${fin}/${stat.size}`;
+    }
+    entetes["Content-Length"] = fin - debut + 1;
+    res.writeHead(statut, entetes);
+    if (req.method === "HEAD") { res.end(); return; }
+    const flux = fs.createReadStream(chemin, { start: debut, end: fin });
+    flux.on("error", () => res.destroy());
+    flux.pipe(res);
   });
 });
 
