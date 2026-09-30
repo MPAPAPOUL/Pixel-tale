@@ -13,6 +13,14 @@ const cls = ui.ranking.classNames;
   <section class="page-section">
     <div class="wrap">
       <div id="auth-panel">
+      <div class="social" id="social" hidden>
+        <button type="button" class="btn-google" id="google-btn">
+          <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.9 2.4 30.4 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.9 6.1C12.4 13.6 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.5 5.8c4.4-4.1 7.1-10.1 7.1-17.5z"/><path fill="#FBBC05" d="M10.5 28.7c-.5-1.4-.8-3-.8-4.7s.3-3.2.8-4.7l-7.9-6.1C.9 16.4 0 20.1 0 24s.9 7.6 2.6 10.8l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.5-5.8c-2.1 1.4-4.9 2.3-8.4 2.3-6.3 0-11.6-4.1-13.5-9.8l-7.9 6.1C6.5 42.6 14.6 48 24 48z"/></svg>
+          <span>{a.google}</span>
+        </button>
+        <p class="social-or"><span>{a.or}</span></p>
+        <p class="account-error" id="google-error" role="alert" hidden></p>
+      </div>
       <div class="auth-tabs" role="tablist">
         <button type="button" role="tab" id="tab-login" class="active" aria-selected="true">{a.tabLogin}</button>
         <button type="button" role="tab" id="tab-signup" aria-selected="false">{a.tabSignup}</button>
@@ -51,14 +59,14 @@ const cls = ui.ranking.classNames;
         <p class="account-error" id="profile-error" role="alert" hidden></p>
         <div class="char-grid" id="char-grid"></div>
         <p class="rank-status" id="char-empty" hidden>{a.none}</p>
-        <p class="center mt"><a class="btn btn-primary lien-jouer" href={GAME_URL}>🎮 {a.playCta}</a></p>
+        <p class="center mt"><button class="btn btn-primary" type="button" id="open-game">🎮 {a.openGame}</button></p>
       </div>
 
       <div class="prose mt center"><h2>{a.noAccountTitle}</h2><p>{a.noAccountText}</p></div>
     </div>
   </section>
 
-  <script define:vars={{ api: API_URL, msg: { errorLogin: a.errorLogin, errorLocked: a.errorLocked, errorNetwork: a.errorNetwork, expired: a.expired, mismatch: a.mismatch, errorExists: a.errorExists, errorInvalid: a.errorInvalid, errorRateSignup: a.errorRateSignup, signup: a.signup, signingUp: a.signingUp, level: a.level, xp: a.xp, gold: a.gold, gems: a.gems, achievements: a.achievements, rank: a.rank, noTitle: a.noTitle, logging: a.logging, login: a.login }, classNames: cls }}>
+  <script define:vars={{ api: API_URL, gameUrl: GAME_URL, msg: { errorLogin: a.errorLogin, errorLocked: a.errorLocked, errorNetwork: a.errorNetwork, expired: a.expired, errorGoogle: a.errorGoogle, errorGoogleExists: a.errorGoogleExists, mismatch: a.mismatch, errorExists: a.errorExists, errorInvalid: a.errorInvalid, errorRateSignup: a.errorRateSignup, signup: a.signup, signingUp: a.signingUp, level: a.level, xp: a.xp, gold: a.gold, gems: a.gems, achievements: a.achievements, rank: a.rank, noTitle: a.noTitle, logging: a.logging, login: a.login }, classNames: cls }}>
     const KEY = "pixelfe_site_session";
     const $ = (id) => document.getElementById(id);
     const loginForm = $("login-form"), signupForm = $("signup-form"), authPanel = $("auth-panel"), profile = $("profile"), grid = $("char-grid");
@@ -141,6 +149,51 @@ const cls = ui.ranking.classNames;
       logoutLocal("");
       if (token) fetch(api + "/api/site/deconnexion", { method: "POST", headers: { Authorization: "Bearer " + token } }).catch(() => {});
     });
+    $("open-game").addEventListener("click", async () => {
+      const token = store.get(); if (!token) return;
+      const win = window.open("about:blank", "_blank");
+      try {
+        const res = await fetch(api + "/api/site/ticket", { method: "POST", headers: { Authorization: "Bearer " + token } });
+        if (res.status === 401) { if (win) win.close(); return logoutLocal(msg.expired); }
+        const { ticket } = await res.json();
+        const url = gameUrl + "/#ticket=" + ticket;
+        if (win) win.location.href = url; else location.href = url;
+      } catch { if (win) win.close(); show($("profile-error"), msg.errorNetwork); }
+    });
+
+    // Connexion Google : le fournisseur n'apparaît que si le serveur l'a configuré.
+    // Le script de Google n'est chargé qu'ici, sur la page Compte.
+    let googleClient = null;
+    async function afterAuth(token) { store.set(token); await loadProfile(token); }
+    fetch(api + "/api/site/fournisseurs").then((r) => r.json()).then(({ google }) => {
+      if (!google) return;
+      const s = document.createElement("script");
+      s.src = "https://accounts.google.com/gsi/client"; s.async = true;
+      s.onload = () => {
+        googleClient = google_client_init(google);
+        $("social").hidden = false;
+      };
+      document.head.append(s);
+    }).catch(() => {});
+    function google_client_init(clientId) {
+      return window.google.accounts.oauth2.initTokenClient({
+        client_id: clientId,
+        scope: "openid email",
+        callback: async (resp) => {
+          if (!resp || !resp.access_token) return show($("google-error"), msg.errorGoogle);
+          try {
+            const res = await fetch(api + "/api/site/google", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ accessToken: resp.access_token }) });
+            if (res.status === 409) return show($("google-error"), msg.errorGoogleExists);
+            if (!res.ok) return show($("google-error"), msg.errorGoogle);
+            const { token } = await res.json();
+            await afterAuth(token);
+          } catch { show($("google-error"), msg.errorNetwork); }
+        },
+        error_callback: () => show($("google-error"), msg.errorGoogle),
+      });
+    }
+    $("google-btn").addEventListener("click", () => { show($("google-error"), ""); if (googleClient) googleClient.requestAccessToken(); });
+
     const existing = store.get(); if (existing) loadProfile(existing);
   </script>
 </Base>

@@ -171,6 +171,7 @@ export default {
   privacy: {
     title: "Confidentialité",
     body: [
+      "Sur la page Compte, si la connexion Google est proposée, le script de Google est chargé pour permettre « Continuer avec Google » ; Google applique alors sa propre politique de confidentialité. Nous ne recevons que ton adresse e-mail vérifiée.",
       "L'espace compte du site ouvre une session temporaire (2 heures) stockée uniquement dans l'onglet de ton navigateur ; le site ne conserve jamais ton mot de passe et n'affiche que des informations en lecture seule.",
       "Ce site ne dépose aucun cookie de suivi et n'utilise aucun outil de mesure d'audience tiers.",
       "Le jeu (jeu.pixelfe.fr) enregistre les données nécessaires à son fonctionnement : le compte que tu crées (identifiant, e-mail si tu le lies), tes personnages et ta progression. Ces données ne sont ni vendues ni partagées.",
@@ -188,6 +189,11 @@ export default {
     ],
   },
   account: {
+    google: "Continuer avec Google",
+    or: "ou",
+    errorGoogleExists: "Un compte avec e-mail et mot de passe existe déjà pour cette adresse : connecte-toi avec ton mot de passe.",
+    errorGoogle: "La connexion avec Google a échoué. Réessaie.",
+    openGame: "Ouvrir le jeu avec ce compte",
     tabLogin: "Se connecter",
     tabSignup: "Créer un compte",
     signup: "Créer mon compte",

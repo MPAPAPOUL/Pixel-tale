@@ -173,6 +173,7 @@ const es: typeof fr = {
   privacy: {
     title: "Privacidad",
     body: [
+      "En la página Cuenta, si se ofrece el inicio de sesión con Google, se carga el script de Google para permitir «Continuar con Google»; Google aplica entonces su propia política de privacidad. Solo recibimos tu correo verificado.",
       "El área de cuenta del sitio abre una sesión temporal (2 horas) guardada solo en la pestaña de tu navegador; el sitio nunca conserva tu contraseña y solo muestra información de solo lectura.",
       "Este sitio no instala cookies de seguimiento ni utiliza herramientas de medición de audiencia de terceros.",
       "El juego (jeu.pixelfe.fr) guarda los datos necesarios para funcionar: la cuenta que creas (identificador, correo si lo vinculas), tus personajes y tu progreso. Estos datos no se venden ni se comparten.",
@@ -190,6 +191,11 @@ const es: typeof fr = {
     ],
   },
   account: {
+    google: "Continuar con Google",
+    or: "o",
+    errorGoogleExists: "Ya existe una cuenta con correo y contraseña para esta dirección: inicia sesión con tu contraseña.",
+    errorGoogle: "El inicio de sesión con Google ha fallado. Inténtalo de nuevo.",
+    openGame: "Abrir el juego con esta cuenta",
     tabLogin: "Iniciar sesión",
     tabSignup: "Crear una cuenta",
     signup: "Crear mi cuenta",

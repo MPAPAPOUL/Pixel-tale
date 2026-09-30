@@ -4648,6 +4648,11 @@ function classementPublic() {
 // session courte (2 h, en mémoire, perdue au redémarrage) après connexion
 // email + mot de passe, et n'accède qu'à une vue en lecture seule du compte.
 const SESSIONS_SITE = new Map(); // token -> { jeton, expire }
+const TICKETS_JEU = new Map(); // ticket à usage unique (60 s) -> jeton du compte
+const DUREE_TICKET_MS = 60 * 1000;
+// Identifiant client OAuth Google (public, pas un secret) — sert à vérifier que
+// le jeton Google présenté a bien été émis pour CE site.
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || "";
 const DUREE_SESSION_SITE_MS = 2 * 60 * 60 * 1000;
 const ECHECS_CONNEXION_SITE = new Map(); // clé (ip ou email) -> { nb, expire }
 const MAX_ECHECS_CONNEXION = 8;
@@ -4680,6 +4685,7 @@ function sessionSiteDepuisRequete(req) {
 setInterval(() => {
   const maintenant = Date.now();
   for (const [t, s] of SESSIONS_SITE) if (maintenant > s.expire) SESSIONS_SITE.delete(t);
+  for (const [t, s] of TICKETS_JEU) if (maintenant > s.expire) TICKETS_JEU.delete(t);
   for (const [k, e] of ECHECS_CONNEXION_SITE) if (maintenant > e.expire) ECHECS_CONNEXION_SITE.delete(k);
 }, 10 * 60 * 1000).unref();
 
@@ -4763,6 +4769,52 @@ const server = http.createServer((req, res) => {
         })
         .catch(() => repondre(400, { erreur: "Requête invalide." }));
       return;
+    }
+    if (req.method === "POST" && req.url === "/api/site/google") {
+      lireCorpsJSON(req)
+        .then(async (corps) => {
+          if (!GOOGLE_CLIENT_ID) return repondre(501, { erreur: "Connexion Google non configurée." });
+          const cleIp = "google:" + ipClient(req);
+          if (connexionBloquee(cleIp, 30)) return repondre(429, { erreur: "Trop de tentatives." });
+          noterEchecConnexion(cleIp);
+          const accessToken = String(corps.accessToken || "");
+          if (!/^[\w.\-~+/]{20,4096}$/.test(accessToken)) return repondre(400, { erreur: "Requête invalide." });
+          let info;
+          try {
+            const r = await fetch("https://oauth2.googleapis.com/tokeninfo?access_token=" + encodeURIComponent(accessToken), { signal: AbortSignal.timeout(8000) });
+            if (!r.ok) return repondre(401, { erreur: "Jeton Google invalide." });
+            info = await r.json();
+          } catch {
+            return repondre(502, { erreur: "Google est injoignable." });
+          }
+          // Le jeton doit avoir été émis pour notre application et porter une adresse vérifiée.
+          if (info.aud !== GOOGLE_CLIENT_ID || !info.sub || String(info.email_verified) !== "true" || !info.email) {
+            return repondre(401, { erreur: "Jeton Google invalide." });
+          }
+          const email = String(info.email).trim().toLowerCase();
+          let jeton = Object.keys(comptes).find((j) => comptes[j] && comptes[j].googleSub === info.sub);
+          if (!jeton) {
+            if (trouverJetonParEmail(email)) return repondre(409, { erreur: "Un compte avec e-mail et mot de passe existe déjà pour cette adresse." });
+            jeton = require("crypto").randomUUID();
+            comptes[jeton] = { personnages: [], googleSub: info.sub, googleEmail: email };
+            sauvegarderComptes();
+          }
+          const token = require("crypto").randomBytes(32).toString("hex");
+          SESSIONS_SITE.set(token, { jeton, expire: Date.now() + DUREE_SESSION_SITE_MS });
+          repondre(200, { ok: true, token, expireDans: DUREE_SESSION_SITE_MS / 1000 });
+        })
+        .catch(() => repondre(400, { erreur: "Requête invalide." }));
+      return;
+    }
+    if (req.method === "GET" && req.url === "/api/site/fournisseurs") {
+      return repondre(200, { google: GOOGLE_CLIENT_ID || null });
+    }
+    if (req.method === "POST" && req.url === "/api/site/ticket") {
+      const session = sessionSiteDepuisRequete(req);
+      if (!session) return repondre(401, { erreur: "Session expirée." });
+      const ticket = require("crypto").randomBytes(24).toString("hex");
+      TICKETS_JEU.set(ticket, { jeton: session.jeton, expire: Date.now() + DUREE_TICKET_MS });
+      return repondre(200, { ticket });
     }
     if (req.method === "GET" && req.url === "/api/site/profil") {
       const session = sessionSiteDepuisRequete(req);
@@ -4878,6 +4930,22 @@ const server = http.createServer((req, res) => {
         comptes[jeton].motDePasseHache = await bcrypt.hash(motDePasse, 10);
         sauvegarderComptes();
         repondreJSON(res, 200, { ok: true });
+      })
+      .catch(() => repondreJSON(res, 400, { erreur: "Requête invalide." }));
+    return;
+  }
+
+  // Échange d'un ticket à usage unique (créé par le site, voir /api/site/ticket)
+  // contre le jeton du compte : permet d'ouvrir le jeu déjà connecté, y
+  // compris pour un compte créé via Google (qui n'a pas de mot de passe).
+  if (req.method === "POST" && req.url === "/api/compte/echange-ticket") {
+    lireCorpsJSON(req)
+      .then((corps) => {
+        const ticket = String(corps.ticket || "");
+        const entree = TICKETS_JEU.get(ticket);
+        TICKETS_JEU.delete(ticket);
+        if (!entree || Date.now() > entree.expire || !comptes[entree.jeton]) return repondreJSON(res, 401, { erreur: "Ticket invalide ou expiré." });
+        repondreJSON(res, 200, { ok: true, jeton: entree.jeton });
       })
       .catch(() => repondreJSON(res, 400, { erreur: "Requête invalide." }));
     return;

@@ -2776,6 +2776,25 @@ function obtenirJetonJoueur() {
 // pilote uniquement la décision d'interroger GET /api/personnages (voir
 // initialiserEcranAccueil) : inutile pour un tout nouveau jeton, qui ne peut
 // avoir aucun personnage.
+// Ouverture depuis le site (pixelfe.fr → « Ouvrir le jeu avec ce compte ») :
+// un ticket à usage unique dans le fragment d'URL est échangé contre le jeton
+// du compte AVANT toute lecture du jeton. Requête synchrone volontaire (une
+// seule fois, avant le démarrage du jeu) pour ne pas décaler le reste du chargement.
+(function echangerTicketSite() {
+  const m = /[#&]ticket=([a-f0-9]{48})/.exec(location.hash);
+  if (!m) return;
+  try { history.replaceState(null, "", location.pathname + location.search); } catch { /* ignore */ }
+  try {
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", "/api/compte/echange-ticket", false);
+    xhr.setRequestHeader("Content-Type", "application/json");
+    xhr.send(JSON.stringify({ ticket: m[1] }));
+    if (xhr.status === 200) {
+      const { jeton } = JSON.parse(xhr.responseText);
+      if (jeton) localStorage.setItem("rb_jeton_v2", jeton);
+    }
+  } catch { /* le jeu démarre avec le jeton local habituel */ }
+})();
 let jetonExistaitAuChargement = false;
 try { jetonExistaitAuChargement = !!localStorage.getItem("rb_jeton_v2"); } catch { /* ignore */ }
 const jetonJoueur = obtenirJetonJoueur();
