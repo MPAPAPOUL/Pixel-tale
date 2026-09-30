@@ -14,6 +14,8 @@ const fs = require("fs");
 const path = require("path");
 const { URL } = require("url");
 const bcrypt = require("bcryptjs");
+// Dégâts de TOUTES les attaques de boss (Sire-Hano, Dragon Noir, Chevalier Noir) : +50 %.
+const MULT_DEGATS_BOSS = 1.5;
 const anticheat = require("./anticheat"); // anti-automatisation, voir server/anticheat.js
 const idle = require("./idle"); // backend séparé pour Pixelfe-Idle (Godot), voir server/idle.js
 const { WebSocketServer } = require("ws");
@@ -722,15 +724,85 @@ for (const [categorie, attribut] of Object.entries(ATTRIBUT_ACCESSOIRE)) {
   }
 }
 
-// Pools de drop par tier (arme + armure + 5 accessoires) utilisés par les
-// zones de biome via essayerDropArmeTiere (le donjon garde son propre
-// essayerDropArme/ORDRE_LOOT_BASE inchangé, pour ne rien casser côté Antre).
-const CLES_LOOT_PAR_TIER = {
-  1: ["epee", "arc", "baton", "armureT1", "casque", "jambieres", "anneau", "bottes", "bracelet"],
-  2: ["epeeT2", "arcT2", "batonT2", "armureT2", "casqueT2", "jambieresT2", "anneauT2", "bottesT2", "braceletT2"],
-  3: ["epeeT3", "arcT3", "batonT3", "armureT3", "casqueT3", "jambieresT3", "anneauT3", "bottesT3", "braceletT3"],
-  4: ["epeeT4", "arcT4", "batonT4", "armureT4", "casqueT4", "jambieresT4", "anneauT4", "bottesT4", "braceletT4"],
+// ---------------------------------------------------------------------------
+// Sets complets par tier ET par attribut : pour chaque palier (T1..T4) il y a
+// un set Force (Dorken), un set Agilité (Quater) et un set Intelligence
+// (Krix), chacun avec armure + casque + jambières + anneau + bottes +
+// bracelet (l'arme existante epee/arc/baton fait la 7e pièce). Chaque pièce
+// porte l'attribut principal du set PLUS une stat annexe : PV max (sets
+// Force/Agilité) ou Mana max (set Intelligence), et/ou % de dégâts.
+// Clés : `${categorie}${F|A|I}T${tier}` (ex. casqueIT3). Les anciennes clés
+// génériques (casqueT2, armureT1...) restent valides pour les inventaires
+// déjà sauvegardés mais ne tombent plus.
+// ---------------------------------------------------------------------------
+const SETS_ATTRIBUT = {
+  force: { suffixe: "F", arme: "epee", ressource: "pvBonus", classe: "dorken" },
+  agilite: { suffixe: "A", arme: "arc", ressource: "pvBonus", classe: "quater" },
+  intelligence: { suffixe: "I", arme: "baton", ressource: "manaBonus", classe: "krix" },
 };
+const ATTRIBUT_PRINCIPAL_CLASSE = { dorken: "force", quater: "agilite", krix: "intelligence" };
+const VALEUR_PRINCIPALE_TIER = { 1: 6, 2: 16, 3: 28, 4: 42 };
+const RESSOURCE_PV_TIER = { 1: 20, 2: 50, 3: 90, 4: 140 };
+const RESSOURCE_MANA_TIER = { 1: 15, 2: 35, 3: 60, 4: 90 };
+const DEGATS_ANNEXE_TIER = { 1: 0.01, 2: 0.03, 3: 0.05, 4: 0.08 };
+const CATEGORIES_SET = ["armure", "casque", "jambieres", "anneau", "bottes", "bracelet"];
+const STATS_SET_PAR_CATEGORIE = { armure: STATS_ARMURE, casque: STATS_CASQUE, jambieres: STATS_JAMBIERES, anneau: STATS_ANNEAU, bottes: STATS_BOTTES, bracelet: STATS_BRACELET };
+
+function cleSet(categorie, attribut, tier) {
+  return `${categorie}${SETS_ATTRIBUT[attribut].suffixe}T${tier}`;
+}
+for (const [attribut, set] of Object.entries(SETS_ATTRIBUT)) {
+  for (const tier of [1, 2, 3, 4]) {
+    const V = VALEUR_PRINCIPALE_TIER[tier];
+    const R = set.ressource === "manaBonus" ? RESSOURCE_MANA_TIER[tier] : RESSOURCE_PV_TIER[tier];
+    const D = DEGATS_ANNEXE_TIER[tier];
+    const recettes = {
+      armure: { [attribut]: Math.round(V * 1.3), vitalite: Math.round(V * 0.6), [set.ressource]: Math.round(R * 1.5) },
+      casque: { [attribut]: V, [set.ressource]: R },
+      jambieres: { [attribut]: V, degatsBonusPct: D },
+      anneau: { [attribut]: V, degatsBonusPct: D * 1.5 },
+      bottes: { [attribut]: V, [set.ressource]: Math.round(R * 0.6) },
+      bracelet: { [attribut]: V, vitalite: Math.round(V * 0.5), [set.ressource]: Math.round(R * 0.5) },
+    };
+    for (const categorie of CATEGORIES_SET) STATS_SET_PAR_CATEGORIE[categorie][cleSet(categorie, attribut, tier)] = recettes[categorie];
+  }
+}
+// Les armes de région (T2..T4) gagnent elles aussi une stat annexe : % dégâts.
+for (const [attribut, set] of Object.entries(SETS_ATTRIBUT)) {
+  for (const tier of [2, 3, 4]) STATS_ARME[`${set.arme}T${tier}`].degatsBonusPct = DEGATS_ANNEXE_TIER[tier] * 2;
+}
+
+// Esquive : chance % d'éviter totalement une attaque, réservée aux pièces
+// légendaires (2 % / pièce) et mythiques (3 % / pièce) — cumul plafonné
+// dans statsEquipement (ESQUIVE_MAX).
+const ESQUIVE_PAR_PIECE = { Legendaire: 0.02, Mythique: 0.03 };
+const ESQUIVE_MAX = 0.3;
+for (const table of Object.values(STATS_PAR_CATEGORIE_INIT())) {
+  for (const cle of Object.keys(table)) {
+    for (const [suffixe, valeur] of Object.entries(ESQUIVE_PAR_PIECE)) if (cle.endsWith(suffixe)) table[cle].esquivePct = valeur;
+  }
+}
+function STATS_PAR_CATEGORIE_INIT() {
+  return { arme: STATS_ARME, armure: STATS_ARMURE, casque: STATS_CASQUE, jambieres: STATS_JAMBIERES, anneau: STATS_ANNEAU, bottes: STATS_BOTTES, bracelet: STATS_BRACELET };
+}
+
+// Pools de drop par tier : arme + 3 sets complets (Force/Agilité/Intelligence)
+// utilisés par les zones de biome via essayerDropArmeTiere (le donjon garde
+// son propre essayerDropArme/ORDRE_LOOT_BASE inchangé, pour ne rien casser
+// côté Antre). `poolPourClasse` ne garde que le set de la classe (coffres).
+function clesLootTier(tier, attributs = Object.keys(SETS_ATTRIBUT)) {
+  const cles = [];
+  for (const attribut of attributs) {
+    const set = SETS_ATTRIBUT[attribut];
+    cles.push(tier === 1 ? set.arme : `${set.arme}T${tier}`);
+    for (const categorie of CATEGORIES_SET) cles.push(cleSet(categorie, attribut, tier));
+  }
+  return cles;
+}
+const CLES_LOOT_PAR_TIER = { 1: clesLootTier(1), 2: clesLootTier(2), 3: clesLootTier(3), 4: clesLootTier(4) };
+function poolPourClasse(tier, classe) {
+  return clesLootTier(CLES_LOOT_PAR_TIER[tier] ? tier : 1, [ATTRIBUT_PRINCIPAL_CLASSE[classe] || "force"]);
+}
 
 // Table centrale catégorie d'équipement → table de stats de ses items.
 // Utilisée pour valider le message "equiper" et pour additionner les
@@ -771,7 +843,7 @@ const CROISSANCE_DEGATS_PAR_NIVEAU = 0.02; // +2% dégâts / niveau
 // (arme + armure) PLUS les points que le joueur a répartis manuellement
 // (voir statsAlouees / le message "assignerPoint", +5 points par niveau).
 function statsEquipement(p) {
-  const total = { force: 0, agilite: 0, intelligence: 0, vitalite: 0, degatsBonusPct: 0, reductionDegatsPct: 0, regenPv: 0 };
+  const total = { force: 0, agilite: 0, intelligence: 0, vitalite: 0, degatsBonusPct: 0, reductionDegatsPct: 0, regenPv: 0, pvBonus: 0, manaBonus: 0, esquivePct: 0 };
   for (const [categorie, statsParItem] of Object.entries(STATS_PAR_CATEGORIE)) {
     const bonus = statsParItem[p.equipement[categorie]];
     if (!bonus) continue;
@@ -781,6 +853,9 @@ function statsEquipement(p) {
     total.vitalite += bonus.vitalite || 0;
     total.degatsBonusPct += bonus.degatsBonusPct || 0;
     total.reductionDegatsPct += bonus.reductionDegatsPct || 0;
+    total.pvBonus += bonus.pvBonus || 0;
+    total.manaBonus += bonus.manaBonus || 0;
+    total.esquivePct += bonus.esquivePct || 0;
     total.regenPv += bonus.regenPv || 0; // PV/s bonus — équipement légendaire/mythique uniquement
   }
   if (p.statsAlouees) {
@@ -821,8 +896,8 @@ function reductionCooldown(p) {
 function recalculerStatsEquipement(p) {
   const infosClasse = CLASSES[p.classe];
   const stats = statsEquipement(p);
-  const nouveauHpMax = Math.round(infosClasse.hpMax + (p.niveau - 1) * CROISSANCE_HP_PAR_NIVEAU + stats.vitalite * VITALITE_VERS_PV);
-  const nouveauManaMax = Math.round(infosClasse.manaMax + (p.niveau - 1) * CROISSANCE_MANA_PAR_NIVEAU + stats.intelligence * INTELLIGENCE_VERS_MANA);
+  const nouveauHpMax = Math.round(infosClasse.hpMax + (p.niveau - 1) * CROISSANCE_HP_PAR_NIVEAU + stats.vitalite * VITALITE_VERS_PV + stats.pvBonus);
+  const nouveauManaMax = Math.round(infosClasse.manaMax + (p.niveau - 1) * CROISSANCE_MANA_PAR_NIVEAU + stats.intelligence * INTELLIGENCE_VERS_MANA + stats.manaBonus);
   const hpMaxPrecedent = p.hpMax ?? infosClasse.hpMax;
   const manaMaxPrecedent = p.manaMax ?? infosClasse.manaMax;
   p.hp = Math.max(p.alive ? 1 : 0, Math.min(nouveauHpMax, p.hp + (nouveauHpMax - hpMaxPrecedent)));
@@ -1425,7 +1500,7 @@ function simulerDragonNoir(dtSecondes) {
       for (const p of players.values()) {
         if (!p.alive || p.zone !== zone.id) continue;
         const distance = Math.hypot(p.x + JOUEUR_LARGEUR / 2 - zoneAoe.x, p.y + JOUEUR_HAUTEUR / 2 - zoneAoe.y);
-        if (distance <= zoneAoe.rayon) infligerDegatsJoueur(p, zoneAoe.degats, zoneAoe.x);
+        if (distance <= zoneAoe.rayon) infligerDegatsJoueur(p, Math.round(zoneAoe.degats * MULT_DEGATS_BOSS), zoneAoe.x);
       }
       zone.effets.push({ id: prochainEffetId++, x: zoneAoe.x, y: zoneAoe.y, rayon: zoneAoe.rayon, couleur: "#ff6a2e", effet: "cri_de_guerre", vie: 0.5, vieMax: 0.5 });
       dragon.aoeEnAttente = null;
@@ -1462,7 +1537,7 @@ function simulerDragonNoir(dtSecondes) {
     const zoneX = dragon.facing >= 0 ? dragon.x + dragon.largeur : dragon.x - attaque.portee;
     const hbCible = hurtboxJoueur(cible);
     if (rectanglesSeChevauchent(zoneX, dragon.y, attaque.portee, dragon.hauteur, cible.x, hbCible.y, JOUEUR_LARGEUR, hbCible.hauteur)) {
-      infligerDegatsJoueur(cible, Math.round(attaque.degats * multiplicateur), centreDragon);
+      infligerDegatsJoueur(cible, Math.round(attaque.degats * multiplicateur * MULT_DEGATS_BOSS), centreDragon);
     }
     dragon.cooldowns.griffe = attaque.cooldown * cadence;
     dragon.attaqueAnimRestant = 0.3;
@@ -2162,7 +2237,7 @@ function ouvrirCoffre(zone, p) {
     p.statsVie.gemmesGagneesTotal += COFFRE_GEMMES;
     annoncer(`🎁 Coffre ouvert : +${COFFRE_GEMMES} gemmes !`);
   } else {
-    const pool = CLES_LOOT_PAR_TIER[zone.tierLoot] || CLES_LOOT_PAR_TIER[1];
+    const pool = poolPourClasse(zone.tierLoot, p.classe);
     const cle = pool[Math.floor(Math.random() * pool.length)];
     p.inventaire[cle] = (p.inventaire[cle] || 0) + 1;
     p.dernierLoot = { id: prochainLootId++, type: cle, bundle: [], legendaire: false, mythique: false, propositions: propositionsEquipement(p, [cle]), expire: Date.now() + 3000 };
@@ -2396,7 +2471,7 @@ function simulerChevalierNoir(dtSecondes) {
         if (!p.alive || p.zone !== zone.id) continue;
         const centreJoueurX = p.x + JOUEUR_LARGEUR / 2;
         if (Math.abs(centreJoueurX - zoneAoe.x) <= zoneAoe.demiLargeur) {
-          infligerDegatsJoueur(p, zoneAoe.degats, zoneAoe.x);
+          infligerDegatsJoueur(p, Math.round(zoneAoe.degats * MULT_DEGATS_BOSS), zoneAoe.x);
         }
       }
       zone.effets.push({ id: prochainEffetId++, x: zoneAoe.x, y: 320, rayon: zoneAoe.demiLargeur, couleur: "#8fd8ff", effet: "eclair_chevalier_impact", vie: 0.35, vieMax: 0.35 });
@@ -2433,7 +2508,7 @@ function simulerChevalierNoir(dtSecondes) {
     const zoneX = cn.facing >= 0 ? cn.x + cn.largeur : cn.x - attaque.portee;
     const hbCible = hurtboxJoueur(cible);
     if (rectanglesSeChevauchent(zoneX, cn.y, attaque.portee, cn.hauteur, cible.x, hbCible.y, JOUEUR_LARGEUR, hbCible.hauteur)) {
-      infligerDegatsJoueur(cible, attaque.degats, centreCn);
+      infligerDegatsJoueur(cible, Math.round(attaque.degats * MULT_DEGATS_BOSS), centreCn);
     }
     cn.cooldowns.tranchant = attaque.cooldown;
     cn.attaqueAnimRestant = 0.28;
@@ -2710,7 +2785,7 @@ function scoreObjet(bonus, classe) {
   if (!bonus) return 0;
   const w = POIDS_ATTRIBUTS_CLASSE[classe] || POIDS_ATTRIBUTS_CLASSE.dorken;
   return (bonus.force || 0) * w.force + (bonus.agilite || 0) * w.agilite + (bonus.intelligence || 0) * w.intelligence + (bonus.vitalite || 0) * w.vitalite
-    + (bonus.degatsBonusPct || 0) * 300 + (bonus.reductionDegatsPct || 0) * 300 + (bonus.regenPv || 0) * 8;
+    + (bonus.degatsBonusPct || 0) * 300 + (bonus.reductionDegatsPct || 0) * 300 + (bonus.regenPv || 0) * 8 + (bonus.pvBonus || 0) * 0.15 + (bonus.manaBonus || 0) * (classe === "krix" ? 0.4 : 0.05) + (bonus.esquivePct || 0) * 400;
 }
 function categorieDeObjet(cle) {
   return Object.keys(STATS_PAR_CATEGORIE).find((cat) => Object.prototype.hasOwnProperty.call(STATS_PAR_CATEGORIE[cat], cle)) || null;
@@ -2878,13 +2953,17 @@ function simulerPhysique(dtSecondes) {
     // la clé de groupe soit complète), puis paiement + entrée dès qu'il la
     // franchit avec assez d'or.
     if (zone.id === "cretes-ambre") {
-      if ((p.or || 0) >= PRIX_ENTREE_TRONE_AMBRE) {
-        if (p.x + JOUEUR_LARGEUR >= PORTE_TRONE_AMBRE_X) {
+      // Mur mou tant que le joueur n'a pas confirmé (modale côté client,
+      // message "confirmerEntreeTrone") ET n'a pas les 500 pièces d'or.
+      if (p.x + JOUEUR_LARGEUR >= PORTE_TRONE_AMBRE_X) {
+        if (p.confirmeEntreeTrone && (p.or || 0) >= PRIX_ENTREE_TRONE_AMBRE) {
+          p.confirmeEntreeTrone = false;
           entrerSalleTroneAmbre(p);
           continue;
         }
-      } else if (p.x > PORTE_TRONE_AMBRE_X - JOUEUR_LARGEUR) {
         p.x = PORTE_TRONE_AMBRE_X - JOUEUR_LARGEUR;
+      } else {
+        p.confirmeEntreeTrone = false;
       }
     }
   }
@@ -3141,6 +3220,12 @@ function infligerDegatsJoueur(p, degats, sourceX) {
   // moment de l'impact, pour couvrir toutes les sources (mobs, boss).
   // Facteur "casual" : tous les dégâts subis (mobs, boss) sont réduits de 20 %
   // pour que le jeu reste jouable sans optimiser son build.
+  const esquive = Math.min(ESQUIVE_MAX, statsEquipement(p).esquivePct);
+  if (esquive > 0 && Math.random() < esquive) {
+    p.invulnerableRestant = 0.4; // évite les coups multiples immédiats
+    p.esquiveA = Date.now(); // affiché "Esquive !" côté client
+    return false;
+  }
   const degatsEffectifs = Math.max(1, Math.round(degats * FACTEUR_DEGATS_SUBIS * (1 - statsEquipement(p).reductionDegatsPct)));
   p.hp = Math.max(0, p.hp - degatsEffectifs);
   p.invulnerableRestant = 1.3;
@@ -3773,7 +3858,7 @@ function simulerUneEntiteSireHano(instance, entite, dtSecondes) {
       for (const p of players.values()) {
         if (!p.alive || p.zone !== instance.id) continue;
         const distance = Math.hypot(p.x + JOUEUR_LARGEUR / 2 - zoneAoe.x, p.y + JOUEUR_HAUTEUR / 2 - zoneAoe.y);
-        if (distance <= zoneAoe.rayon) infligerDegatsJoueur(p, zoneAoe.degats, zoneAoe.x);
+        if (distance <= zoneAoe.rayon) infligerDegatsJoueur(p, Math.round(zoneAoe.degats * MULT_DEGATS_BOSS), zoneAoe.x);
       }
       instance.effets.push({ id: prochainEffetId++, x: zoneAoe.x, y: zoneAoe.y, rayon: zoneAoe.rayon, couleur: "#e05a3a", effet: "explosion_arcanique", vie: 0.5, vieMax: 0.5 });
       entite.aoeEnAttente = null;
@@ -3817,7 +3902,7 @@ function simulerUneEntiteSireHano(instance, entite, dtSecondes) {
     const zoneX = entite.facing >= 0 ? entite.x + entite.largeur : entite.x - attaque.portee;
     const hbCible = hurtboxJoueur(cible);
     if (rectanglesSeChevauchent(zoneX, entite.y, attaque.portee, entite.hauteur, cible.x, hbCible.y, JOUEUR_LARGEUR, hbCible.hauteur)) {
-      infligerDegatsJoueur(cible, attaque.degats, centreBoss);
+      infligerDegatsJoueur(cible, Math.round(attaque.degats * MULT_DEGATS_BOSS), centreBoss);
     }
     entite.cooldowns.melee = attaque.cooldown;
     entite.attaqueAnimRestant = 0.25;
@@ -3986,6 +4071,8 @@ function construireEtatPourJoueur(p, classement) {
       xpRequis: xpRequisPourNiveau(p.niveau),
       niveauMax: NIVEAU_MAX,
       potionExpire: potionActive(p) ? p.potion.expire : null,
+      esquiveA: p.esquiveA || 0,
+      esquivePct: Math.min(ESQUIVE_MAX, statsEquipement(p).esquivePct),
       equipement: p.equipement,
       attributs: statsEquipement(p),
       multiplicateurDegats: multiplicateurDegats(p),
@@ -4468,6 +4555,11 @@ setInterval(() => {
   if (joueursParJeton.size > 0) sauvegarderComptes();
 }, 30000);
 
+// Stats des objets de sets (envoyées au client pour les infobulles).
+const STATS_OBJETS_SETS = {};
+for (const table of Object.values(STATS_PAR_CATEGORIE)) {
+  for (const [cle, bonus] of Object.entries(table)) STATS_OBJETS_SETS[cle] = bonus;
+}
 const suivisAntiTriche = new Set();
 setInterval(() => {
   for (const suivi of suivisAntiTriche) {
@@ -4611,7 +4703,7 @@ wss.on("connection", (ws, req) => {
   // le client s'en sert pour reconnecter automatiquement (perte réseau...)
   // sur CE personnage plutôt que de renvoyer un `nouveauPersonnage=1` qui en
   // recréerait un autre à chaque coupure — voir connecter() côté client.
-  ws.send(JSON.stringify({ type: "welcome", selfId: joueur.id, classes: CLASSES, personnageId: joueur._personnageId || null }));
+  ws.send(JSON.stringify({ type: "welcome", selfId: joueur.id, classes: CLASSES, personnageId: joueur._personnageId || null, statsObjets: STATS_OBJETS_SETS }));
 
   const suiviAntiTriche = anticheat.creerSuivi(ws, joueur, jeton, ipSocket);
   suivisAntiTriche.add(suiviAntiTriche);
@@ -4658,6 +4750,8 @@ wss.on("connection", (ws, req) => {
       // remis à false dès l'entrée effective ou dès que le joueur s'éloigne
       // de la porte (voir simulerPhysique).
       joueur.confirmeEntreeDonjon = true;
+    } else if (message.type === "confirmerEntreeTrone") {
+      joueur.confirmeEntreeTrone = true;
     } else if (message.type === "quitterDonjon") {
       // Icône de porte du HUD (à tout moment) OU bouton rouge "Quitter le
       // donjon" de l'écran de défaite (joueur mort) — dans les deux cas on

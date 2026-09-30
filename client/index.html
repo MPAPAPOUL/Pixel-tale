@@ -258,6 +258,9 @@
   }
   /* Objets mythiques : mêmes sprites que les légendaires, recolorés en
      violet/cyan par filtre plutôt qu'un nouveau visuel — voir htmlIconeObjet. */
+  .icone-img.set-force { filter: hue-rotate(-25deg) saturate(1.6); }
+  .icone-img.set-agilite { filter: hue-rotate(80deg) saturate(1.5); }
+  .icone-img.set-intelligence { filter: hue-rotate(190deg) saturate(1.5); }
   .icone-img.mythique {
     filter: hue-rotate(190deg) saturate(1.7) brightness(1.05);
   }
@@ -2687,6 +2690,17 @@
         </div>
       </div>
 
+      <div class="modale-overlay masque" id="modale-confirmer-trone">
+        <div class="modale-fantasy">
+          <h2>Entrer dans la Salle du Trône ?</h2>
+          <p id="trone-texte">L'entrée coûte 500 pièces d'or.</p>
+          <div class="modale-actions">
+            <button type="button" class="btn-modale btn-succes" id="btn-confirmer-trone">Payer et entrer</button>
+            <button type="button" class="btn-modale btn-neutre" id="btn-annuler-trone">Annuler</button>
+          </div>
+        </div>
+      </div>
+
       <!-- Confirmation avant une sortie volontaire du donjon (icône de
            porte), pour éviter un clic accidentel en plein combat. -->
       <div class="modale-overlay masque" id="modale-confirmer-sortie">
@@ -2881,7 +2895,7 @@ function htmlIconeObjet(info, classeSupp) {
   if (!info) return "";
   // Les objets mythiques réutilisent l'icône légendaire, recolorée via un
   // filtre CSS (voir .icone-img.mythique) plutôt qu'un nouveau sprite.
-  const classe = `icone${info.mythique ? " mythique" : ""}${classeSupp ? " " + classeSupp : ""}`;
+  const classe = `icone${info.mythique ? " mythique" : ""}${info.set ? " set-" + info.set : ""}${classeSupp ? " " + classeSupp : ""}`;
   if (info.icone) {
     return `<img class="${classe} icone-img" src="${info.icone}" alt="" onerror="this.outerHTML='<span class=&quot;${classe}&quot;>${info.emoji}</span>';">`;
   }
@@ -3859,6 +3873,7 @@ function detecterImpacts(nouvelEtat) {
   }
 }
 
+let esquiveAPrecedent = 0;
 // --- Anti-triche : vérification humaine + signal d'environnement ---------
 function afficherSanction(texte) {
   const el = document.getElementById("sanction-ecran");
@@ -3914,12 +3929,20 @@ function gererMessageServeur(event) {
   if (msg.type === "verif") { afficherVerif(msg); return; }
   if (msg.type === "sanction") { afficherSanction(msg.texte); return; }
   if (msg.type === "welcome") {
+    appliquerStatsObjetsServeur(msg.statsObjets);
     selfId = msg.selfId;
     classesInfo = msg.classes;
     if (msg.personnageId) derniersParametresConnexion = { personnageId: msg.personnageId };
   } else if (msg.type === "state") {
     detecterImpacts(msg);
     state = msg;
+    if (msg.perso && msg.perso.esquiveA > esquiveAPrecedent) {
+      if (esquiveAPrecedent) {
+        const moi = msg.players && msg.players.find((j) => j.id === selfId);
+        if (moi) nombresDegatsFlottants.push({ x: moi.x + 15, y: moi.y - 10, debut: performance.now(), texte: "Esquive !", couleur: "#9fe8ff", taille: 16 });
+      }
+      esquiveAPrecedent = msg.perso.esquiveA;
+    }
     const bossVaincuMaintenant = !!(state.boss && state.boss.vaincu);
     if (bossVaincuMaintenant && !bossVaincuPrecedent) declencherVictoire();
     bossVaincuPrecedent = bossVaincuMaintenant;
@@ -4346,6 +4369,7 @@ function render() {
   mettreAJourIconeSortieDonjon();
   mettreAJourIconeSortieTrone();
   mettreAJourModaleEntreeDonjon();
+  mettreAJourModaleTrone();
   mettreAJourModaleDefaite();
   mettreAJourOr();
   mettreAJourZoneNom();
@@ -7271,6 +7295,34 @@ function mettreAJourModaleEntreeDonjon() {
   modale.classList.toggle("masque", !auContact || modaleEntreeDonjonRefusee);
 }
 
+// Salle du Trône (Crêtes d'Ambre) : confirmation + péage de 500 pièces d'or.
+let modaleTroneRefusee = false;
+function mettreAJourModaleTrone() {
+  const modale = document.getElementById("modale-confirmer-trone");
+  const st = state.salleTroneAmbre;
+  const self = state.players.find((p) => p.id === selfId);
+  const auContact = !!(st && !st.dansSalle && self && state.zoneActuelle && state.zoneActuelle.id === "cretes-ambre" && self.x + 36 >= st.porteX);
+  if (!auContact) modaleTroneRefusee = false;
+  if (auContact) {
+    const or = state.or || 0;
+    const assez = or >= st.prix;
+    document.getElementById("trone-texte").textContent = assez
+      ? `L'entrée coûte ${st.prix} pièces d'or.`
+      : `Il te faut ${st.prix} pièces d'or pour entrer (tu en as ${or}).`;
+    document.getElementById("btn-confirmer-trone").disabled = !assez;
+  }
+  modale.classList.toggle("masque", !auContact || modaleTroneRefusee);
+}
+document.getElementById("btn-annuler-trone").addEventListener("click", () => {
+  modaleTroneRefusee = true;
+  document.getElementById("modale-confirmer-trone").classList.add("masque");
+});
+document.getElementById("btn-confirmer-trone").addEventListener("click", () => {
+  envoyer({ type: "confirmerEntreeTrone" });
+  modaleTroneRefusee = true;
+  document.getElementById("modale-confirmer-trone").classList.add("masque");
+});
+
 // Écran de défaite : plus de réapparition automatique dans l'Antre — tant
 // que le joueur n'a pas choisi "Quitter" ou "Réessayer", il reste mort et
 // cette bulle reste affichée.
@@ -7982,6 +8034,45 @@ for (const [categorie, info] of Object.entries(ACCESSOIRES_CLIENT)) {
   }
 }
 
+// Sets complets par tier et par attribut (voir SETS_ATTRIBUT côté serveur) :
+// clés `${categorie}${F|A|I}T${tier}`, stats reçues du serveur dans le
+// message "welcome" (statsObjets) — l'infobulle est construite à partir d'elles.
+const SETS_CLIENT = {
+  force: { suffixe: "F", nom: "de force", attribut: "Force" },
+  agilite: { suffixe: "A", nom: "d'agilité", attribut: "Agilité" },
+  intelligence: { suffixe: "I", nom: "d'intelligence", attribut: "Intelligence" },
+};
+const CATEGORIES_SET_CLIENT = { armure: { emoji: "🛡️", nom: "Armure", cles: CLES_ARMURE }, casque: { emoji: "⛑️", nom: "Casque", cles: CLES_CASQUE }, jambieres: { emoji: "👖", nom: "Jambières", cles: CLES_JAMBIERES }, anneau: { emoji: "💍", nom: "Anneau", cles: CLES_ANNEAU }, bottes: { emoji: "🥾", nom: "Bottes", cles: CLES_BOTTES }, bracelet: { emoji: "📿", nom: "Bracelet", cles: CLES_BRACELET } };
+const NOMS_TIER_SET = { 1: "rustique", 2: "raffiné", 3: "de maître", 4: "d'élite" };
+let statsObjetsServeur = {};
+for (const [attribut, set] of Object.entries(SETS_CLIENT)) {
+  for (const [categorie, info] of Object.entries(CATEGORIES_SET_CLIENT)) {
+    for (const tier of [1, 2, 3, 4]) {
+      const cle = `${categorie}${set.suffixe}T${tier}`;
+      TYPES_ARMES[cle] = {
+        label: `${info.nom} ${set.nom} ${NOMS_TIER_SET[tier]}`,
+        emoji: info.emoji,
+        icone: ICONE_DCSS(`${categorie}-t${tier}`),
+        set: attribut,
+        description: `Set ${set.nom} (tier ${tier}).`,
+      };
+      info.cles.push(cle);
+    }
+  }
+}
+// Complète les descriptions à partir des stats serveur (dès le "welcome").
+function appliquerStatsObjetsServeur(stats) {
+  statsObjetsServeur = stats || {};
+  for (const [cle, bonus] of Object.entries(statsObjetsServeur)) {
+    const info = TYPES_ARMES[cle];
+    if (!info) continue;
+    if (info.set || bonus.esquivePct || bonus.pvBonus || bonus.manaBonus) {
+      const prefixe = info.set ? info.description.split(".")[0] + ". " : "";
+      info.description = prefixe + texteBonusObjet(bonus) + ".";
+    }
+  }
+}
+
 // Table inverse item → catégorie d'équipement : permet d'équiper
 // directement depuis une case d'inventaire (clic, ou glisser-déposer vers
 // le bon emplacement du schéma du personnage) sans jamais préciser la
@@ -8238,7 +8329,7 @@ function verifierNouveauLoot() {
 // score (pondéré selon la classe) dépasse celui de l'équipement actuel ; la
 // décision (équiper / ignorer) reste au joueur, et l'équipement lui-même est
 // validé côté serveur par le message "equiper" habituel.
-const NOMS_STATS_PROPOSITION = { force: "Force", agilite: "Agilité", intelligence: "Intelligence", vitalite: "Vitalité", degatsBonusPct: "% dégâts", reductionDegatsPct: "% réduction des dégâts", regenPv: "PV/s" };
+const NOMS_STATS_PROPOSITION = { force: "Force", agilite: "Agilité", intelligence: "Intelligence", vitalite: "Vitalité", degatsBonusPct: "% dégâts", reductionDegatsPct: "% réduction des dégâts", regenPv: "PV/s", pvBonus: "PV max", manaBonus: "Mana max", esquivePct: "% esquive" };
 function texteBonusObjet(bonus) {
   if (!bonus) return "aucun";
   return Object.entries(bonus).filter(([, v]) => v).map(([k, v]) => {
