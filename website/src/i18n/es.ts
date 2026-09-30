@@ -157,6 +157,8 @@ const es: typeof fr = {
     contactCta: "Escribir en Ko-fi",
   },
   support: {
+    gemsTitle: "💎 150 gemas por euro donado",
+    gemsText: "Como agradecimiento, cada euro donado en Ko-fi te da 150 gemas, añadidas a tu personaje la próxima vez que inicies sesión (o al instante si estás conectado). Usa el mismo correo en tu donación de Ko-fi y en tu cuenta del juego: así te reconocemos. Las gemas sirven para comprar las pociones del Aventurero en el juego.",
     title: "Apoyar el proyecto",
     intro: "Pixelfe es un proyecto independiente, desarrollado en solitario. El juego es gratuito y seguirá siéndolo: las donaciones lo mantienen vivo.",
     whereTitle: "Para qué sirven las donaciones",
@@ -173,6 +175,7 @@ const es: typeof fr = {
   privacy: {
     title: "Privacidad",
     body: [
+      "Las donaciones de Ko-fi se asocian a tu cuenta mediante el correo del donante, solo para acreditar tus gemas.",
       "En la página Cuenta, si se ofrece el inicio de sesión con Google, se carga el script de Google para permitir «Continuar con Google»; Google aplica entonces su propia política de privacidad. Solo recibimos tu correo verificado.",
       "El área de cuenta del sitio abre una sesión temporal (2 horas) guardada solo en la pestaña de tu navegador; el sitio nunca conserva tu contraseña y solo muestra información de solo lectura.",
       "Este sitio no instala cookies de seguimiento ni utiliza herramientas de medición de audiencia de terceros.",

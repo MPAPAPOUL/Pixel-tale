@@ -157,6 +157,8 @@ const en: typeof fr = {
     contactCta: "Write on Ko-fi",
   },
   support: {
+    gemsTitle: "💎 150 gems per euro donated",
+    gemsText: "To thank you, every euro donated on Ko-fi earns you 150 gems, added to your character the next time you log in (or right away if you are online). Use the same e-mail address for your Ko-fi donation and for your game account: that is how we recognize you. Gems buy the Adventurer's potions in the game.",
     title: "Support the project",
     intro: "Pixelfe is an independent project developed solo. The game is free and will stay free: donations keep it alive.",
     whereTitle: "What donations pay for",
@@ -173,6 +175,7 @@ const en: typeof fr = {
   privacy: {
     title: "Privacy",
     body: [
+      "Ko-fi donations are matched to your account using the donor's e-mail address, only to credit your gems.",
       "On the Account page, if Google sign-in is offered, Google's script is loaded to enable “Continue with Google”; Google then applies its own privacy policy. We only receive your verified e-mail address.",
       "The website's account area opens a temporary session (2 hours) stored only in your browser tab; the site never keeps your password and only shows read-only information.",
       "This website sets no tracking cookies and uses no third-party analytics tools.",

@@ -4404,6 +4404,7 @@ wss.on("connection", (ws, req) => {
 
   players.set(joueur.id, joueur);
   clients.set(joueur.id, ws);
+  if (jeton) reclamerGemmesDon(jeton, joueur, ws);
 
   // `personnageId` (null pour un joueur temporaire, sans jeton valable) :
   // le client s'en sert pour reconnecter automatiquement (perte réseau...)
@@ -4627,6 +4628,84 @@ const TYPES_MIME = {
   ".png": "image/png",
 };
 
+// --- Dons Ko-fi -> gemmes ---------------------------------------------------
+// Ko-fi appelle POST /api/kofi (webhook) à chaque don. Le montant est converti à
+// 150 gemmes par euro, crédité sur le COMPTE qui porte l'e-mail du donateur (les
+// gemmes sont réclamées par le personnage qui se connecte ensuite). Sans compte
+// correspondant, le don reste "en attente" jusqu'à ce qu'un compte utilise cet
+// e-mail. Le jeton de vérification Ko-fi (KOFI_VERIFICATION_TOKEN) protège la route.
+const GEMMES_PAR_EURO = 150;
+const KOFI_VERIFICATION_TOKEN = process.env.KOFI_VERIFICATION_TOKEN || "";
+const CHEMIN_KOFI = path.join(__dirname, "data", "kofi.json");
+// Taux approximatifs vers l'euro pour les dons faits dans une autre devise.
+const TAUX_VERS_EUR = { EUR: 1, USD: 0.9, GBP: 1.15, CAD: 0.65, AUD: 0.6, CHF: 1.05 };
+let kofi = { transactions: [], enAttente: {} };
+try { kofi = { ...kofi, ...JSON.parse(fs.readFileSync(CHEMIN_KOFI, "utf8")) }; } catch { /* premier démarrage */ }
+function sauvegarderKofi() {
+  try {
+    fs.mkdirSync(path.dirname(CHEMIN_KOFI), { recursive: true });
+    fs.writeFileSync(CHEMIN_KOFI, JSON.stringify(kofi));
+  } catch (err) {
+    console.error("Échec de sauvegarde Ko-fi :", err.message);
+  }
+}
+function jetonParEmailDon(email) {
+  const e = String(email || "").trim().toLowerCase();
+  if (!e) return null;
+  return Object.keys(comptes).find((j) => comptes[j] && (comptes[j].email === e || comptes[j].googleEmail === e)) || null;
+}
+// Ajoute au personnage connecté les gemmes de dons en attente sur son compte.
+function reclamerGemmesDon(jeton, joueur, ws) {
+  const compte = comptes[jeton];
+  if (!compte) return;
+  for (const e of [compte.email, compte.googleEmail]) {
+    if (e && kofi.enAttente[e]) {
+      compte.gemmesDon = (compte.gemmesDon || 0) + kofi.enAttente[e];
+      delete kofi.enAttente[e];
+      sauvegarderKofi();
+    }
+  }
+  const n = compte.gemmesDon || 0;
+  if (n <= 0) return;
+  joueur.gemmes = (joueur.gemmes || 0) + n;
+  compte.gemmesDon = 0;
+  sauvegarderPersonnage(jeton, joueur);
+  sauvegarderComptes();
+  if (ws && ws.readyState === ws.OPEN) ws.send(JSON.stringify({ type: "annonce", texte: `💎 Merci pour ton don ! +${n} gemmes ajoutées à ton personnage.` }));
+}
+function traiterDonKofi(don) {
+  if (don.type !== "Donation" && don.type !== "Subscription") return;
+  const id = String(don.kofi_transaction_id || "");
+  if (!id || kofi.transactions.includes(id)) return; // déjà crédité
+  const montant = parseFloat(don.amount);
+  if (!(montant > 0)) return;
+  const taux = TAUX_VERS_EUR[String(don.currency || "EUR").toUpperCase()] || 1;
+  const gemmes = Math.floor(montant * taux * GEMMES_PAR_EURO);
+  if (gemmes <= 0) return;
+  kofi.transactions.push(id);
+  if (kofi.transactions.length > 5000) kofi.transactions.shift();
+  const email = String(don.email || "").trim().toLowerCase();
+  const jeton = jetonParEmailDon(email);
+  if (jeton) {
+    comptes[jeton].gemmesDon = (comptes[jeton].gemmesDon || 0) + gemmes;
+    sauvegarderComptes();
+    const joueur = joueursParJeton.get(jeton);
+    if (joueur) reclamerGemmesDon(jeton, joueur, clients.get(joueur.id));
+  } else if (email) {
+    kofi.enAttente[email] = (kofi.enAttente[email] || 0) + gemmes;
+  }
+  sauvegarderKofi();
+  console.log(`Don Ko-fi : +${gemmes} gemmes (${jeton ? "compte trouvé" : "en attente"}).`);
+}
+function lireCorpsBrut(req) {
+  return new Promise((resolve, reject) => {
+    let corps = "";
+    req.on("data", (m) => { corps += m; if (corps.length > TAILLE_MAX_CORPS) { reject(new Error("trop grand")); req.destroy(); } });
+    req.on("end", () => resolve(corps));
+    req.on("error", reject);
+  });
+}
+
 const ORIGINES_SITE_VITRINE = new Set(["https://pixelfe.fr", "https://www.pixelfe.fr"]);
 function entetesCorsPublics(req) {
   const origine = req.headers.origin;
@@ -4732,6 +4811,27 @@ function profilSite(jeton) {
 }
 
 const server = http.createServer((req, res) => {
+  // Webhook Ko-fi (dons -> gemmes, voir traiterDonKofi).
+  if (req.method === "POST" && req.url === "/api/kofi") {
+    lireCorpsBrut(req)
+      .then((corps) => {
+        let don = null;
+        try {
+          const brut = new URLSearchParams(corps).get("data") || corps;
+          don = JSON.parse(brut);
+        } catch { return repondreJSON(res, 400, { erreur: "Requête invalide." }); }
+        const attendu = Buffer.from(KOFI_VERIFICATION_TOKEN);
+        const recu = Buffer.from(String((don && don.verification_token) || ""));
+        if (!KOFI_VERIFICATION_TOKEN || attendu.length !== recu.length || !require("crypto").timingSafeEqual(attendu, recu)) {
+          return repondreJSON(res, 401, { erreur: "Jeton invalide." });
+        }
+        traiterDonKofi(don);
+        repondreJSON(res, 200, { ok: true });
+      })
+      .catch(() => repondreJSON(res, 400, { erreur: "Requête invalide." }));
+    return;
+  }
+
   // Espace compte du site vitrine : connexion (session courte), profil en
   // lecture seule, déconnexion. Voir SESSIONS_SITE ci-dessus.
   if (req.url.startsWith("/api/site/")) {
