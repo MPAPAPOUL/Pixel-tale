@@ -1418,7 +1418,7 @@ function creerDragonNoir(zone) {
 // reçu aucun coup depuis au moins 3 secondes — demande explicite. Laisse un
 // répit à un groupe qui décroche un instant sans permettre de vider un boss
 // à petits coups puis de le laisser reposer indéfiniment entre deux passages.
-const BOSS_REGEN_DELAI_SANS_COUP = 3; // secondes
+const BOSS_REGEN_DELAI_SANS_COUP = 5; // secondes
 const BOSS_REGEN_RATIO_PAR_SECONDE = 0.10; // 10% des PV max par seconde
 function appliquerRegenBoss(entite, dtSecondes) {
   if (entite.hp <= 0 || entite.hp >= entite.hpMax) return;
