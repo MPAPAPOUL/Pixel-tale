@@ -1070,6 +1070,7 @@ const HAUTS_FAITS = [
   { id: "exterminateur", nom: "Exterminateur", titre: "Exterminateur", description: "Vaincre 250 monstres.", cible: 250, stat: "monstresTues" },
   { id: "veteran", nom: "Vétéran des Royaumes", titre: "Vétéran", description: "Atteindre le niveau 5.", cible: 5, stat: "niveau" },
   { id: "heros", nom: "Héros de Berge-Rhak", titre: "Héros", description: "Atteindre le niveau 15.", cible: 15, stat: "niveau" },
+  { id: "maitre", nom: "Maître des Royaumes", titre: "Maître des Royaumes", description: "Atteindre le niveau maximum (50).", cible: 50, stat: "niveau" },
   { id: "legende", nom: "Légende Vivante", titre: "Légende Vivante", description: "Atteindre le niveau 30.", cible: 30, stat: "niveau" },
   { id: "fortune", nom: "Petite Fortune", titre: "Fortuné", description: "Amasser 1000 pièces d'or au total.", cible: 1000, stat: "orGagneTotal" },
   { id: "vainqueur-sire-hano", nom: "Bourreau de l'Antre", titre: "Bourreau de Sire-Hano", description: "Vaincre Sire-Hano.", cible: 1, stat: "sireHanoVaincus" },
@@ -1099,6 +1100,24 @@ const HAUTS_FAITS = [
   { id: "zone-couronne-orage", nom: "Au Sommet du Monde", titre: "Seigneur de la Couronne d'Orage", description: "Débloquer la Couronne d'Orage (niveau 28).", cible: 28, stat: "niveau" },
 ];
 
+// Récompense de chaque haut fait ("succès") : 2 à 5 gemmes selon la difficulté,
+// plus de l'expérience (75 XP par gemme). Versée une seule fois, au déblocage.
+const GEMMES_HAUT_FAIT = {
+  "tutoriel-termine": 2, "premier-sang": 2, "chasseur": 3, "exterminateur": 4,
+  "veteran": 2, "heros": 3, "legende": 4, "maitre": 5, "fortune": 3,
+  "vainqueur-sire-hano": 4, "fleau-antre": 5, "vainqueur-dragon-noir": 5, "vainqueur-chevalier-noir": 5,
+  "devoue": 4, "eclatant": 3, "collectionneur-gemmes": 2,
+  "zone-estenoise": 2, "zone-cretes-ambre": 2, "zone-marais-de-suin": 2, "zone-foret-chuchote": 2,
+  "zone-pics-verglaces": 3, "zone-dunes-cendrees": 3, "zone-abysses-luisantes": 3,
+  "zone-jardins-petrifies": 4, "zone-couronne-orage": 4,
+};
+const XP_PAR_GEMME_HAUT_FAIT = 75;
+for (const hf of HAUTS_FAITS) {
+  hf.gemmes = GEMMES_HAUT_FAIT[hf.id] || 2;
+  hf.xp = hf.gemmes * XP_PAR_GEMME_HAUT_FAIT;
+}
+const GEMMES_BONUS_QUETES_QUOTIDIENNES = 10;
+
 // `statOuNiveau` : la plupart des hauts faits regardent p.statsVie[stat],
 // mais "niveau" regarde directement p.niveau (déjà cumulatif par nature) et
 // "equipementLegendaire" est un booléen dérivé de l'équipement actuel
@@ -1126,7 +1145,10 @@ function verifierHautsFaits(p) {
       // le joueur n'en a encore choisi aucun — sinon on laisse son choix
       // actuel intact (voir message "definirTitre" pour changer plus tard).
       if (!p.titreActif) p.titreActif = hf.titre;
-      p.dernierHautFait = { id: hf.id, nom: hf.nom, titre: hf.titre, expire: Date.now() + 5000 };
+      p.dernierHautFait = { id: hf.id, nom: hf.nom, titre: hf.titre, gemmes: hf.gemmes, xp: hf.xp, expire: Date.now() + 5000 };
+      p.gemmes = (p.gemmes || 0) + hf.gemmes;
+      if (p.statsVie) p.statsVie.gemmesGagneesTotal = (p.statsVie.gemmesGagneesTotal || 0) + hf.gemmes;
+      gainerXp(p, hf.xp);
     }
   }
 }
@@ -3806,7 +3828,7 @@ function construireEtatPourJoueur(p, classement) {
     // Toast "HAUT FAIT DÉBLOQUÉ" (même mécanique que loot/montée de niveau)
     // — voir verifierHautsFaits.
     hautFait: p.dernierHautFait && Date.now() < p.dernierHautFait.expire
-      ? { nom: p.dernierHautFait.nom, titre: p.dernierHautFait.titre }
+      ? { nom: p.dernierHautFait.nom, titre: p.dernierHautFait.titre, gemmes: p.dernierHautFait.gemmes || 0, xp: p.dernierHautFait.xp || 0 }
       : null,
     // Toast "Connexion quotidienne" (même mécanique) — voir
     // verifierRecompenseConnexion. serieConnexion, lui, n'est PAS un toast
@@ -3826,6 +3848,8 @@ function construireEtatPourJoueur(p, classement) {
       titre: hf.titre,
       description: hf.description,
       cible: hf.cible,
+      gemmes: hf.gemmes,
+      xp: hf.xp,
       progression: Math.min(hf.cible, valeurStatHautFait(p, hf.stat)),
       debloque: (p.hautsFaitsDebloques || []).includes(hf.id),
     })),
@@ -3833,6 +3857,7 @@ function construireEtatPourJoueur(p, classement) {
     // pour soi-même, mais envoyé pour tout le monde par simplicité comme le
     // reste de `perso` juste en dessous.
     quetes: p.quetes ? p.quetes.liste : [],
+    quetesBonus: { gemmes: GEMMES_BONUS_QUETES_QUOTIDIENNES, obtenu: !!(p.quetes && p.quetes.bonusToutes) },
     // Zone actuelle (nom/blurb affichés en HUD) + réseau de téléporteurs
     // (toujours la même liste statique, voir DESTINATIONS_TELEPORTEUR) +
     // PNJ de la zone (uniquement peuplé au village pour l'instant, voir
@@ -4622,6 +4647,13 @@ wss.on("connection", (ws, req) => {
         if (quete.xp > 0) gainerXp(joueur, quete.xp);
         joueur.statsVie.questesReclamees++;
         verifierHautsFaits(joueur);
+        if (!joueur.quetes.bonusToutes && joueur.quetes.liste.every((q) => q.reclamee)) {
+          joueur.quetes.bonusToutes = true;
+          joueur.gemmes = (joueur.gemmes || 0) + GEMMES_BONUS_QUETES_QUOTIDIENNES;
+          joueur.statsVie.gemmesGagneesTotal += GEMMES_BONUS_QUETES_QUOTIDIENNES;
+          if (ws.readyState === ws.OPEN) ws.send(JSON.stringify({ type: "annonce", texte: `🎉 Toutes les quêtes du jour accomplies ! +${GEMMES_BONUS_QUETES_QUOTIDIENNES} gemmes.` }));
+          verifierHautsFaits(joueur);
+        }
       }
     }
   });

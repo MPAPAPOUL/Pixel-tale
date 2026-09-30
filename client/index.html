@@ -1897,6 +1897,7 @@
   .quete-barre-remplissage { height: 100%; background: linear-gradient(90deg, #6fd19c, #a8e6c1); }
   .quete-bas { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
   .quete-recompense { font-size: 11.5px; color: #9d8fc7; }
+  .quetes-bonus { text-align: center; font-size: 13px; color: #ffe9a8; margin: 0 0 12px; }
   .quete-bouton-reclamer {
     padding: 5px 12px;
     border-radius: 8px;
@@ -2356,6 +2357,7 @@
         <div class="modale-fantasy modale-quetes">
           <button type="button" class="btn-fermer-modale" id="btn-fermer-quetes" title="Fermer">✕</button>
           <h2>Quêtes du jour</h2>
+          <p class="quetes-bonus" id="quetes-bonus"></p>
           <div id="liste-quetes"></div>
         </div>
       </div>
@@ -8847,6 +8849,7 @@ function mettreAJourPanneauQuetes() {
   const nbAReclamer = quetes.filter((q) => q.progression >= q.cible).length;
   pastille.textContent = String(nbAReclamer);
   pastille.classList.toggle("masque", nbAReclamer === 0);
+  majBonusQuetes();
 
   // Ne redessine la liste que si la modale est ouverte, pour ne pas perdre
   // le focus/scroll pendant qu'on joue avec la modale fermée.
@@ -8857,7 +8860,14 @@ function mettreAJourPanneauQuetes() {
   rendreListeQuetes(quetes);
 }
 
+function majBonusQuetes() {
+  const b = state && state.quetesBonus;
+  const el = document.getElementById("quetes-bonus");
+  if (!b || !el) return;
+  el.textContent = b.obtenu ? `🎁 Bonus du jour obtenu : +${b.gemmes} 💎` : `🎁 Réclame TOUTES les quêtes du jour pour gagner ${b.gemmes} 💎 de bonus.`;
+}
 function rendreListeQuetes(quetes) {
+  majBonusQuetes();
   const conteneur = document.getElementById("liste-quetes");
   conteneur.innerHTML = "";
   if (quetes.length === 0) {
@@ -9069,7 +9079,7 @@ function rendreListeHautsFaits(hautsFaits) {
       <div class="haut-fait-desc">${h.description}</div>
       <div class="haut-fait-barre-fond"><div class="haut-fait-barre-remplissage" style="width:${pct}%"></div></div>
       <div class="haut-fait-bas">
-        <span class="haut-fait-progres">${Math.min(h.progression, h.cible)} / ${h.cible}</span>
+        <span class="haut-fait-progres">${Math.min(h.progression, h.cible)} / ${h.cible} · 💎 ${h.gemmes} · ✨ ${h.xp} XP</span>
         ${h.debloque
           ? `<button type="button" class="haut-fait-bouton-titre${estTitreActif ? " actif" : ""}" data-titre="${h.titre}">
                ${estTitreActif ? "Titre actif ✓" : `Porter « ${h.titre} »`}
@@ -9117,7 +9127,7 @@ function verifierNouveauHautFait() {
   if (!info || info.nom === dernierHautFaitToastAffiche) return;
   dernierHautFaitToastAffiche = info.nom;
   fileToast(() => {
-    toastHautFait = { nom: info.nom, titre: info.titre, debut: performance.now() };
+    toastHautFait = { nom: info.nom, titre: info.titre, gemmes: info.gemmes || 0, xp: info.xp || 0, debut: performance.now() };
     declencherSecousse(5);
   });
 }
@@ -9150,6 +9160,11 @@ function dessinerToastHautFait() {
   ctx.fillText(toastHautFait.nom, canvas.width / 2 + 2, y + 24);
   ctx.fillStyle = "#ffe9a8";
   ctx.fillText(toastHautFait.nom, canvas.width / 2, y + 22);
+  if (toastHautFait.gemmes || toastHautFait.xp) {
+    ctx.font = "700 14px 'Work Sans', sans-serif";
+    ctx.fillStyle = "#c9f5d6";
+    ctx.fillText(`+${toastHautFait.gemmes} 💎   +${toastHautFait.xp} XP`, canvas.width / 2, y + 46);
+  }
   ctx.restore();
 }
 
