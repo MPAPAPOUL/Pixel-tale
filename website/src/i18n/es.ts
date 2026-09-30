@@ -13,6 +13,8 @@ const es: typeof fr = {
     support: "Apoyar el proyecto",
   },
   home: {
+    top5Title: "🏆 Top 5 de aventureros",
+    top5All: "Ver la clasificación completa",
     kicker: "RPG · Multijugador · Mundo persistente",
     title: "Un mundo roto espera a sus héroes.",
     tagline: "Los Reinos Rotos (Berge-Rhak) es un RPG-platformer multijugador en tiempo real que se juega directamente en el navegador. Elige tu clase, explora una isla y sus regiones lejanas, y enfréntate a jefes temibles, solo o con tus amigos.",

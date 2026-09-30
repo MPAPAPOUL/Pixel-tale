@@ -13,6 +13,8 @@ const en: typeof fr = {
     support: "Support the project",
   },
   home: {
+    top5Title: "🏆 Top 5 adventurers",
+    top5All: "See the full ranking",
     kicker: "RPG · Multiplayer · Persistent world",
     title: "A shattered world awaits its heroes.",
     tagline: "The Broken Realms (Berge-Rhak) is a real-time multiplayer RPG-platformer you play right in your browser. Pick your class, explore an island and its distant regions, and take on fearsome bosses — alone or with friends.",

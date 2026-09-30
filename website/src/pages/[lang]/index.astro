@@ -2,6 +2,7 @@
 import Base from "../../layouts/Base.astro";
 import ClassCards from "../../components/ClassCards.astro";
 import SupportBanner from "../../components/SupportBanner.astro";
+import MiniClassement from "../../components/MiniClassement.astro";
 import { getUi, langPaths, localePath, type Lang } from "../../i18n";
 import { posts, formatDate } from "../../data/news";
 export function getStaticPaths() { return langPaths(); }
@@ -46,20 +47,25 @@ const latest = posts.slice(0, 3);
         <span class="kicker-small">{h.newsKicker}</span>
         <h2>{h.newsTitle}</h2>
       </div>
-      <div class="news-grid">
-        {latest.map((p) => (
-          <a class="news-card" href={localePath(lang, `actualites/${p.slug}`)}>
-            <div class="news-thumb"><img src={`/assets/img/${p.image}`} alt="" loading="lazy" /></div>
-            <div class="news-body">
-              <time datetime={p.date}>{formatDate(p.date, lang)}</time>
-              <h3>{p.text[lang].title}</h3>
-              <p>{p.text[lang].excerpt}</p>
-              <span class="more">{h.readMore} →</span>
-            </div>
-          </a>
-        ))}
+      <div class="home-split">
+        <div>
+          <div class="news-grid">
+            {latest.map((p) => (
+              <a class="news-card" href={localePath(lang, `actualites/${p.slug}`)}>
+                <div class="news-thumb"><img src={`/assets/img/${p.image}`} alt="" loading="lazy" /></div>
+                <div class="news-body">
+                  <time datetime={p.date}>{formatDate(p.date, lang)}</time>
+                  <h3>{p.text[lang].title}</h3>
+                  <p>{p.text[lang].excerpt}</p>
+                  <span class="more">{h.readMore} →</span>
+                </div>
+              </a>
+            ))}
+          </div>
+          <p class="center mt"><a class="btn btn-secondary" href={localePath(lang, "actualites")}>{h.newsAll}</a></p>
+        </div>
+        <MiniClassement lang={lang} />
       </div>
-      <p class="center mt"><a class="btn btn-secondary" href={localePath(lang, "actualites")}>{h.newsAll}</a></p>
     </div>
   </section>
 

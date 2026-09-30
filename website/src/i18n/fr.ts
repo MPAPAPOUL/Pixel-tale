@@ -11,6 +11,8 @@ export default {
     support: "Soutenir le projet",
   },
   home: {
+    top5Title: "🏆 Top 5 des aventuriers",
+    top5All: "Voir le classement complet",
     kicker: "RPG · Multijoueur · Univers persistant",
     title: "Un monde brisé attend ses héros.",
     tagline: "Les Royaumes Brisés (Berge-Rhak) est un RPG-platformer multijoueur en temps réel, jouable directement dans le navigateur. Choisis ta classe, explore une île et ses régions lointaines, et affronte des boss redoutables — seul ou avec tes amis.",

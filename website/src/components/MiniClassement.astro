@@ -1,0 +1,41 @@
+---
+import { getUi, localePath, API_URL, type Lang } from "../i18n";
+interface Props { lang: Lang; }
+const { lang } = Astro.props;
+const ui = getUi(lang);
+const r = ui.ranking;
+---
+<aside class="mini-rank" aria-labelledby="mini-rank-title">
+  <h3 id="mini-rank-title">{ui.home.top5Title}</h3>
+  <ol class="mini-rank-list" id="mini-rank-list"></ol>
+  <p class="rank-status" id="mini-rank-status" role="status">{r.loading}</p>
+  <a class="mini-rank-link" href={localePath(lang, "classement")}>{ui.home.top5All} →</a>
+</aside>
+
+<script define:vars={{ api: API_URL, msg: { error: r.error, empty: r.empty }, classNames: r.classNames }}>
+  const list = document.getElementById("mini-rank-list");
+  const status = document.getElementById("mini-rank-status");
+  const medals = ["🥇", "🥈", "🥉"];
+  const cell = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; e.textContent = text; return e; };
+  async function load() {
+    try {
+      const res = await fetch(api + "/api/classement");
+      if (!res.ok) throw new Error("http");
+      const { classement } = await res.json();
+      const top = classement.slice(0, 5);
+      list.replaceChildren();
+      if (!top.length) { status.hidden = false; status.textContent = msg.empty; return; }
+      status.hidden = true;
+      for (const p of top) {
+        const li = document.createElement("li");
+        li.append(cell("span", "mr-pos", medals[p.rang - 1] || "#" + p.rang));
+        const who = document.createElement("span"); who.className = "mr-who";
+        who.append(cell("strong", "", p.pseudo), cell("small", "", (classNames[p.classe] || p.classe) + (p.titre ? " · " + p.titre : "")));
+        li.append(who, cell("span", "mr-lvl", "Nv. " + p.niveau));
+        list.append(li);
+      }
+    } catch { status.hidden = false; status.textContent = msg.error; }
+  }
+  load();
+  setInterval(() => { if (document.visibilityState === "visible") load(); }, 60000);
+</script>
