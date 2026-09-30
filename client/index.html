@@ -811,11 +811,11 @@
   /* --- Icône téléporteur (haut droit, à côté de la sortie de donjon) ----- */
   .icone-teleporteur {
     position: absolute;
-    top: 14px;
-    right: 70px;
+    top: 66px; /* même rangée que classement/quêtes/réglages, à gauche du classement */
+    right: 238px;
     z-index: 7;
-    width: 46px;
-    height: 46px;
+    width: 40px;
+    height: 40px;
     padding: 0;
     display: flex;
     align-items: center;
@@ -829,7 +829,7 @@
   }
   .icone-teleporteur:hover { filter: brightness(1.25); transform: translateY(-1px); }
   .icone-teleporteur:active { transform: translateY(1px); filter: brightness(0.95); }
-  .icone-teleporteur-symbole { font-size: 22px; filter: drop-shadow(0 0 4px rgba(110,220,255,0.6)); }
+  .icone-teleporteur-symbole { font-size: 20px; filter: drop-shadow(0 0 4px rgba(110,220,255,0.6)); }
   /* Invite à utiliser le téléporteur une fois le tutoriel terminé (voir
      mettreAJourTutoriel) : halo doré pulsant plutôt qu'un simple texte, pour
      attirer l'œil sans ajouter de modale supplémentaire. */
@@ -842,11 +842,11 @@
   /* --- Icône boutique à gemmes (juste à côté du téléporteur) ------------- */
   .icone-boutique-gemmes {
     position: absolute;
-    top: 14px;
-    right: 126px;
+    top: 66px;
+    right: 294px;
     z-index: 7;
-    width: 46px;
-    height: 46px;
+    width: 40px;
+    height: 40px;
     padding: 0;
     display: flex;
     align-items: center;
@@ -870,7 +870,7 @@
   .icone-boutique-gemmes.masque { display: none; }
   .icone-boutique-gemmes:hover { filter: brightness(1.25); transform: translateY(-1px); }
   .icone-boutique-gemmes:active { transform: translateY(1px); filter: brightness(0.95); }
-  .icone-boutique-gemmes-symbole { font-size: 22px; filter: drop-shadow(0 0 4px rgba(200,140,255,0.6)); }
+  .icone-boutique-gemmes-symbole { font-size: 20px; filter: drop-shadow(0 0 4px rgba(200,140,255,0.6)); }
   .modale-fantasy.modale-boutique-gemmes { width: min(94%, 720px); max-height: 86%; overflow-y: auto; text-align: left; position: relative; }
   .gemme-grille { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
   .gemme-carte { background: rgba(255,255,255,0.06); border: 1px solid var(--hairline); border-radius: 12px; padding: 14px 12px; text-align: center; color: #e6dcff; display: flex; flex-direction: column; gap: 8px; }
