@@ -2447,6 +2447,10 @@
               </div>
             </div>
             <div class="reglage-ligne">
+              <label for="reglages-volume-musique">Musique de combat de boss</label>
+              <input type="range" id="reglages-volume-musique" min="0" max="100" step="5" value="50">
+            </div>
+            <div class="reglage-ligne">
               <label>Aide</label>
               <button type="button" class="btn-modale btn-neutre" id="btn-reglages-revoir-accueil-jeu">Revoir le message d'accueil</button>
             </div>
@@ -4372,6 +4376,7 @@ function render() {
   mettreAJourIconeSortieTrone();
   mettreAJourModaleEntreeDonjon();
   mettreAJourModaleTrone();
+  mettreAJourMusique();
   mettreAJourModaleDefaite();
   mettreAJourOr();
   mettreAJourZoneNom();
@@ -7324,6 +7329,58 @@ function mettreAJourModaleEntreeDonjon() {
   );
   if (!auContact) modaleEntreeDonjonRefusee = false;
   modale.classList.toggle("masque", !auContact || modaleEntreeDonjonRefusee);
+}
+
+// --- Musique de boss ---------------------------------------------------
+// Jouée dans l'Antre du Sire-Hano, dans la Salle du Trône, et dès le premier
+// coup porté au Dragon Noir (jusqu'à sa défaite, la mort du joueur ou son
+// départ). Fondu entrant/sortant ; volume réglable dans les Réglages.
+const MUSIQUE_BOSS = new Audio("assets/audio/musique-boss.mp3");
+MUSIQUE_BOSS.loop = true;
+MUSIQUE_BOSS.preload = "auto";
+let volumeMusique = 0.5;
+try {
+  const v = parseFloat(localStorage.getItem("rb_volume_musique"));
+  if (!isNaN(v)) volumeMusique = Math.max(0, Math.min(1, v));
+} catch {}
+let volumeMusiqueActuel = 0;
+let musiqueVoulue = false;
+{
+  const curseur = document.getElementById("reglages-volume-musique");
+  if (curseur) {
+    curseur.value = Math.round(volumeMusique * 100);
+    curseur.addEventListener("input", () => {
+      volumeMusique = curseur.value / 100;
+      try { localStorage.setItem("rb_volume_musique", String(volumeMusique)); } catch {}
+    });
+  }
+}
+function musiqueBossDoitJouer() {
+  if (!state || !state.zoneActuelle) return false;
+  if (state.donjon && state.donjon.dansDonjon) return true;
+  if (state.salleTroneAmbre && state.salleTroneAmbre.dansSalle) return true;
+  const d = state.dragon;
+  const moi = state.players && state.players.find((p) => p.id === selfId);
+  return !!(d && !d.vaincu && d.hp < d.hpMax && moi && moi.alive && state.zoneActuelle.type !== "village");
+}
+let dernierTempsMusique = performance.now();
+function mettreAJourMusique() {
+  const maintenant = performance.now();
+  const dt = Math.min(0.25, (maintenant - dernierTempsMusique) / 1000);
+  dernierTempsMusique = maintenant;
+  musiqueVoulue = musiqueBossDoitJouer();
+  const cible = musiqueVoulue ? volumeMusique : 0;
+  const pas = dt / (musiqueVoulue ? 1.5 : 1.0); // fondu ~1,5 s en entrée, ~1 s en sortie
+  if (volumeMusiqueActuel < cible) volumeMusiqueActuel = Math.min(cible, volumeMusiqueActuel + pas);
+  else if (volumeMusiqueActuel > cible) volumeMusiqueActuel = Math.max(cible, volumeMusiqueActuel - pas);
+  MUSIQUE_BOSS.volume = Math.max(0, Math.min(1, volumeMusiqueActuel));
+  if (musiqueVoulue && MUSIQUE_BOSS.paused) {
+    const promesse = MUSIQUE_BOSS.play();
+    if (promesse && promesse.catch) promesse.catch(() => {}); // autoplay refusé : réessaie à la prochaine frame
+  } else if (!musiqueVoulue && volumeMusiqueActuel <= 0 && !MUSIQUE_BOSS.paused) {
+    MUSIQUE_BOSS.pause();
+    MUSIQUE_BOSS.currentTime = 0;
+  }
 }
 
 // Salle du Trône (Crêtes d'Ambre) : confirmation + péage de 500 pièces d'or.
