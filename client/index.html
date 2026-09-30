@@ -1444,7 +1444,7 @@
      plus grandes, bordures discrètes. Placé APRÈS les règles d'origine pour
      les surcharger. */
   .modale-fantasy.modale-personnage {
-    width: min(94%, 500px);
+    width: min(96%, 560px);
     border: 1px solid #5b4d86;
     border-image: none;
     border-radius: 14px;
@@ -1486,19 +1486,19 @@
   /* Infobulle des attributs : élément unique positionné en JS (voir
      #attribut-tooltip), recadré dans la fiche — jamais coupé à gauche/droite. */
   .attribut-tooltip {
-    position: absolute;
-    z-index: 70;
-    width: min(240px, calc(100% - 16px));
+    position: fixed;
+    z-index: 100000;
+    width: min(280px, calc(100vw - 16px));
     padding: 8px 10px;
     background: #0f0c1a;
     border: 1px solid #8c7bd0;
     border-radius: 8px;
     color: #f1ecff;
-    font-size: 12.5px;
+    font-size: 14px;
     font-weight: 400;
-    line-height: 1.4;
+    line-height: 1.45;
     pointer-events: none;
-    box-shadow: 0 6px 18px rgba(0,0,0,0.6);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.7);
     display: none;
   }
   .attribut-tooltip.visible { display: block; }
@@ -1545,10 +1545,22 @@
   .inventaire-case.remplie { border-color: #8c7bd0; }
   .inventaire-case.legendaire { border-color: #f0c85a; background: linear-gradient(160deg, rgba(255,214,110,0.28) 0%, #262038 70%); }
   .inventaire-case.mythique { border-color: #a58bff; background: linear-gradient(160deg, rgba(150,110,255,0.32) 0%, #262038 70%); }
-  .inventaire-case .icone-img { width: 26px; height: 26px; }
-  .inventaire-tooltip { max-width: 240px; background: #0f0c1a; border: 1px solid #8c7bd0; font-size: 13px; padding: 9px 11px; }
-  .inventaire-tooltip .nom { font-size: 13.5px; }
-  .inventaire-tooltip .desc { color: #e4ddf7; line-height: 1.4; }
+  .inventaire-case .icone-img { width: 36px; height: 36px; }
+  .inventaire-grille { gap: 6px; }
+  /* Infobulles rattachées au <body> en position fixe (voir le JS) : jamais
+     coupées par la fiche, lisibles même quand l'objet est au bord. */
+  .inventaire-tooltip {
+    position: fixed;
+    z-index: 100000;
+    max-width: 300px;
+    background: #0f0c1a;
+    border: 1px solid #8c7bd0;
+    font-size: 14px;
+    padding: 10px 13px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.7);
+  }
+  .inventaire-tooltip .nom { font-size: 15px; margin-bottom: 4px; }
+  .inventaire-tooltip .desc { color: #eee8fb; line-height: 1.45; }
 
   .inventaire-barre { display: flex; align-items: flex-start; gap: 10px; }
   .inventaire-barre .perso-inventaire-hint { flex: 1; }
@@ -8264,6 +8276,22 @@ function mettreAJourInventaire() {
   }
 }
 
+// Infobulles en position fixe (rattachées au <body>) : centrées au-dessus de
+// l'élément visé, recadrées dans la fenêtre ; placées EN DESSOUS s'il n'y a
+// pas la place au-dessus.
+function positionnerInfobulle(tip, rect) {
+  if (tip.parentElement !== document.body) document.body.appendChild(tip);
+  const marge = 8;
+  const w = tip.offsetWidth;
+  const h = tip.offsetHeight;
+  const gauche = Math.max(marge, Math.min(rect.left + rect.width / 2 - w / 2, window.innerWidth - w - marge));
+  let haut = rect.top - h - marge;
+  if (haut < marge) haut = Math.min(rect.bottom + marge, window.innerHeight - h - marge);
+  tip.style.left = `${gauche}px`;
+  tip.style.top = `${haut}px`;
+  tip.style.transform = "none";
+}
+
 // Tooltip nom + description au survol d'une case remplie — une seule paire
 // d'écouteurs, posée une fois sur le conteneur stable (délégation), pas
 // recréée à chaque frame comme le contenu de la grille lui-même.
@@ -8281,18 +8309,7 @@ function mettreAJourInventaire() {
     tooltipEl.classList.toggle("mythique", !!info.mythique);
     const rectCase = caseEl.getBoundingClientRect();
     tooltipEl.classList.add("visible"); // visible d'abord, pour pouvoir mesurer ses dimensions
-    // Centrée juste AU-DESSUS de l'objet survolé, recadrée horizontalement dans
-    // son parent positionné (jamais hors de la fenêtre, y compris pour les
-    // dernières colonnes).
-    const parent = tooltipEl.offsetParent || conteneurEl;
-    const rectParent = parent.getBoundingClientRect();
-    const largeurTip = tooltipEl.offsetWidth;
-    const hauteurTip = tooltipEl.offsetHeight;
-    const centreCase = rectCase.left + rectCase.width / 2 - rectParent.left;
-    const gauche = Math.max(0, Math.min(centreCase - largeurTip / 2, rectParent.width - largeurTip));
-    tooltipEl.style.left = `${gauche}px`;
-    tooltipEl.style.top = `${rectCase.top - rectParent.top - hauteurTip - 6}px`;
-    tooltipEl.style.transform = "none";
+    positionnerInfobulle(tooltipEl, rectCase);
   });
   grilleEl.addEventListener("mouseout", (e) => {
     const caseEl = e.target.closest(".inventaire-case[data-type]");
@@ -8512,14 +8529,7 @@ const LABELS_ATTRIBUTS = {
     if (!puce) return;
     tip.textContent = puce.dataset.info;
     tip.classList.add("visible");
-    const rp = puce.getBoundingClientRect();
-    const rm = modale.getBoundingClientRect();
-    const w = tip.offsetWidth;
-    const h = tip.offsetHeight;
-    const centre = rp.left + rp.width / 2 - rm.left + modale.scrollLeft;
-    const gauche = Math.max(8, Math.min(centre - w / 2, modale.clientWidth - w - 8));
-    tip.style.left = `${gauche}px`;
-    tip.style.top = `${rp.top - rm.top + modale.scrollTop - h - 8}px`;
+    positionnerInfobulle(tip, puce.getBoundingClientRect());
   });
   conteneur.addEventListener("mouseout", (e) => {
     const puce = e.target.closest(".attribut[data-info]");
