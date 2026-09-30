@@ -8095,11 +8095,19 @@ function mettreAJourBoutiqueGemmes() {
 document.getElementById("btn-kofi").addEventListener("click", (e) => {
   e.preventDefault();
   const url = e.currentTarget.href;
-  // (pas de "noopener" dans les options : window.open renverrait alors toujours
-  // null, même quand l'onglet s'est bien ouvert, et on quitterait le jeu à tort.)
+  // Mobile / tactile : navigation directe dans la même fenêtre — les nouveaux
+  // onglets (target=_blank, window.open) sont souvent bloqués ou ignorés par
+  // les navigateurs intégrés et les webviews ; la progression est enregistrée
+  // côté serveur et le jeu se reconnecte au retour.
+  if (document.body.classList.contains("mode-tactile")) {
+    window.location.assign(url);
+    return;
+  }
+  // PC : nouvel onglet (sans "noopener" dans les options, sinon window.open
+  // renvoie toujours null même quand l'onglet s'est ouvert).
   const fenetre = window.open(url, "_blank");
   if (fenetre) fenetre.opener = null;
-  else window.location.href = url;
+  else window.location.assign(url);
 });
 
 document.getElementById("icone-boutique-gemmes").addEventListener("click", () => {
