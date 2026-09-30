@@ -1600,6 +1600,7 @@ const zoneVerthige = {
   id: ZONE_VERTHIGE,
   type: "verthige",
   nom: "Berge-Rhak",
+  niveauMob: 10, // niveau de région côté serveur (écarts de niveau), alors que la zone reste accessible dès le niveau 1
   blurb: "L'île de départ : prairies, jungle et la porte de l'Antre.",
   plateformes: PLATEFORMES_VERTHIGE,
   largeur: MONDE_LARGEUR_VERTHIGE,
@@ -3134,10 +3135,13 @@ function facteurDegatsJoueurContreMonstre(niveauMob, niveauJoueur) {
   if (ecart >= 5) return 0.8;
   return 1;
 }
-// Dégâts subis PAR le joueur : +10 % si le monstre a 5 niveaux ou plus de plus que lui.
+// Dégâts subis PAR le joueur : +10 % dès 5 niveaux d'écart, progressif
+// (linéaire) jusqu'à +90 % pour 30 niveaux d'écart ou plus.
 function facteurDegatsMonstreContreJoueur(niveauMob, niveauJoueur) {
   if (!niveauMob) return 1;
-  return niveauMob - niveauJoueur >= 5 ? 1.1 : 1;
+  const ecart = niveauMob - niveauJoueur;
+  if (ecart < 5) return 1;
+  return 1 + Math.min(0.9, 0.1 + (ecart - 5) * (0.8 / 25));
 }
 
 function infligerDegatsMonstre(zone, m, degats, joueurId) {
