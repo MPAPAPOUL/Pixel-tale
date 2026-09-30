@@ -3842,9 +3842,25 @@ function decalageSecousseEcran() {
   return { x: Math.cos(angle) * rayon, y: Math.sin(angle) * rayon };
 }
 
+// Son de coup reçu : joué PAR-DESSUS la musique (élément à part, cloné pour
+// autoriser les coups rapprochés qui se chevauchent).
+const SON_COUP_RECU = new Audio("assets/audio/coup-recu.mp3");
+SON_COUP_RECU.preload = "auto";
+let dernierSonCoup = 0;
+function jouerSonCoupRecu() {
+  const t = performance.now();
+  if (t - dernierSonCoup < 120) return;
+  dernierSonCoup = t;
+  const son = SON_COUP_RECU.cloneNode();
+  son.volume = 0.3;
+  const promesse = son.play();
+  if (promesse && promesse.catch) promesse.catch(() => {});
+}
+
 function detecterImpacts(nouvelEtat) {
   const soiAvant = state && state.players && state.players.find((p) => p.id === selfId);
   const soiApres = nouvelEtat.players.find((p) => p.id === selfId);
+  if (soiAvant && soiApres && soiApres.hp < soiAvant.hp && soiApres.hpMax >= soiAvant.hpMax) jouerSonCoupRecu();
   if (soiAvant && soiApres && soiApres.alive && soiApres.hp < soiAvant.hp) {
     const perte = soiAvant.hp - soiApres.hp;
     declencherSecousse(Math.min(16, 5 + perte / 3));
