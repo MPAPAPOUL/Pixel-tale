@@ -64,7 +64,7 @@ const es: typeof fr = {
     worldText: "Empieza en Berge-Rhak, la isla inicial, y desbloquea una red de teletransportes hacia once regiones cada vez más peligrosas, desde la Cala de los Corsarios hasta la Cala de los Naufragadores. Descansa en Estenoise-les-Brumes, el pueblo neutral, para charlar y prepararte.",
     worldPoints: [
       "Progresión: niveles, XP, puntos de característica para repartir libremente (fuerza, agilidad, inteligencia, vitalidad)",
-      "Equipo: armas y armaduras legendarias (y un conjunto mítico) que conseguir de monstruos y jefes",
+      "Equipo: cuatro niveles de sets completos (Fuerza, Agilidad, Inteligencia), piezas legendarias y míticas con probabilidad de esquivar, que conseguir de monstruos, jefes y cofres",
       "Misiones diarias y logros por desbloquear, con títulos para lucir",
       "Tres jefes con sus propias mecánicas: fases, zonas telegrafiadas, ráfagas de proyectiles",
     ],
@@ -87,7 +87,7 @@ const es: typeof fr = {
       verthige: "La isla inicial, nivel 1 a 9. Cada monstruo derrotado tiene un 10 % de probabilidad de soltar una pieza de equipo básico (espada, arco, bastón, casco, grebas, anillo, botas o brazalete).",
       regions: "Once regiones desbloqueadas por teletransporte desde Berge-Rhak, cada vez más peligrosas hasta el nivel máximo (50). Cuatro niveles de equipo (Tier 1 a 4); cada monstruo conserva un 10 % de probabilidad de botín del conjunto de su tier.",
       donjon: "La Guarida de Sire-Hano, que se abre reuniendo 10 fragmentos de llave. Cada monstruo básico tiene un 50 % de probabilidad de soltar un fragmento (mientras la llave no esté completa), además del 10 % habitual de equipo básico.",
-      boss: "Cada pieza de su conjunto legendario tiene un 15 % de probabilidad de caer con el golpe final, además de una recompensa garantizada de gemas al ganar.",
+      boss: "Cada pieza de su conjunto mítico tiene un 15 % de probabilidad de caer con el golpe final, además de una recompensa garantizada de gemas al ganar.",
     },
     stats: { hp: "PV", dmg: "daño", xp: "XP", gems: "gemas", total: "(total)", perReplica: "/ réplica" },
     tier: "Tier",
@@ -111,7 +111,7 @@ const es: typeof fr = {
       base: () => "10 % de equipo básico.",
       baseKey: () => "10 % de equipo básico + 50 % de fragmento de llave.",
       setLair: () => "15 % por pieza del conjunto legendario de la Guarida.",
-      set: () => "15 % por pieza del conjunto legendario.",
+      set: () => "15 % por pieza del conjunto mítico.",
     },
   },
   media: {

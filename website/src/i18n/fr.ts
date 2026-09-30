@@ -62,7 +62,7 @@ export default {
     worldText: "Pars de Berge-Rhak, l'île de départ, puis débloque un réseau de téléporteurs vers onze régions de plus en plus dangereuses — de la Crique des Corsaires à la Crique des Naufrageurs. Fais une pause à Estenoise-les-Brumes, le village neutre, pour discuter et te préparer.",
     worldPoints: [
       "Progression : niveaux, XP, points de caractéristique à répartir librement (force, agilité, intelligence, vitalité)",
-      "Équipement : armes et armures légendaires (et un set mythique) à looter sur les monstres et les boss",
+      "Équipement : quatre paliers de sets complets (Force, Agilité, Intelligence), pièces légendaires et mythiques avec chance d'esquive, à looter sur les monstres, les boss et dans les coffres",
       "Quêtes journalières et hauts faits à débloquer, avec des titres à afficher fièrement",
       "Trois boss avec leurs propres mécaniques : phases, zones télégraphiées, volées de projectiles",
     ],
@@ -85,7 +85,7 @@ export default {
       verthige: "L'île de départ, niveau 1 à 9. Chaque monstre tué a 10 % de chance de laisser tomber une pièce d'équipement de base (épée, arc, bâton, casque, jambières, anneau, bottes ou bracelet).",
       regions: "Onze régions débloquées par téléporteur depuis Berge-Rhak, de plus en plus dangereuses jusqu'au niveau maximum (50). Quatre paliers d'équipement (Tier 1 à 4) ; chaque monstre garde 10 % de chance de drop sur le pool de son tier.",
       donjon: "L'Antre du Sire-Hano, débloquée en réunissant 10 fragments de clé. Chaque mob de base a 50 % de chance de laisser tomber un fragment (tant que la clé n'est pas complète), en plus des 10 % habituels d'équipement de base.",
-      boss: "Chaque pièce de leur set légendaire a 15 % de chance de tomber au coup de grâce, en plus d'une récompense garantie de gemmes à la victoire.",
+      boss: "Chaque pièce de leur set mythique a 15 % de chance de tomber au coup de grâce, en plus d'une récompense garantie de gemmes à la victoire.",
     },
     stats: { hp: "PV", dmg: "dégâts", xp: "XP", gems: "gemmes", total: "(total)", perReplica: "/ réplique" },
     tier: "Tier",
@@ -109,7 +109,7 @@ export default {
       base: () => "10 % équipement de base.",
       baseKey: () => "10 % équipement de base + 50 % fragment de clé.",
       setLair: () => "15 % par pièce du set légendaire de l'Antre.",
-      set: () => "15 % par pièce du set légendaire.",
+      set: () => "15 % par pièce du set mythique.",
     },
   },
   media: {
