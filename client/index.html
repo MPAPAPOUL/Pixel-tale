@@ -7219,7 +7219,8 @@ function mettreAJourHUDDonjon() {
   // l'Antre lui-même pour le suivi du combat), jamais sur les autres cartes.
   const typeZone = state.zoneActuelle && state.zoneActuelle.type;
   const visible = typeZone === "verthige" || donjonState.dansDonjon;
-  conteneur.classList.toggle("masque", !visible);
+  const cadre = document.getElementById("hud-suivi-donjon");
+  if (cadre) cadre.classList.toggle("masque", !visible);
   if (!visible) return;
 
   const fragmentsHtml = Array.from({ length: donjonState.fragmentsRequis }, (_, i) =>
