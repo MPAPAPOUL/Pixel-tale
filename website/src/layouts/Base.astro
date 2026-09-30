@@ -7,7 +7,7 @@ import "@fontsource/work-sans/500.css";
 import "@fontsource/work-sans/600.css";
 import "../styles/global.css";
 import "../styles/extra.css";
-import { langs, langNames, htmlLang, ogLocale, getUi, localePath, KOFI_URL, GAME_URL, type Lang } from "../i18n";
+import { langs, langNames, htmlLang, ogLocale, getUi, localePath, KOFI_URL, GAME_URL, API_URL, type Lang } from "../i18n";
 
 interface Props {
   lang: Lang;
@@ -82,7 +82,7 @@ const current = page.split("/")[0];
           {langs.map((l) => <a href={localePath(l, page)} hreflang={l} lang={l} aria-current={l === lang ? "true" : undefined} title={langNames[l]}>{l.toUpperCase()}</a>)}
         </div>
         <a class="nav-account" href={localePath(lang, "compte")} aria-label={ui.nav.account} title={ui.nav.account} aria-current={current === "compte" ? "page" : undefined}>👤</a>
-        <a class="nav-cta lien-jouer" href={GAME_URL}>🎮 {ui.nav.play}</a>
+        <a class="nav-cta lien-jouer" href={GAME_URL}>🎮 {ui.nav.play}<span class="online-badge" data-online hidden><i aria-hidden="true"></i><b></b> {ui.nav.online}</span></a>
       </div>
     </nav>
   </header>
@@ -108,6 +108,19 @@ const current = page.split("/")[0];
     <iframe id="jeu-overlay-iframe" title={ui.meta.siteName} allow="fullscreen"></iframe>
   </div>
 
+  <script define:vars={{ apiUrl: API_URL }}>
+    // Nombre de joueurs connectés, à côté des boutons Jouer (masqué si le serveur ne répond pas).
+    async function majEnLigne() {
+      try {
+        const res = await fetch(apiUrl + "/api/statut");
+        if (!res.ok) throw new Error("http");
+        const { enLigne } = await res.json();
+        document.querySelectorAll("[data-online]").forEach((el) => { el.querySelector("b").textContent = enLigne; el.hidden = false; });
+      } catch { document.querySelectorAll("[data-online]").forEach((el) => { el.hidden = true; }); }
+    }
+    majEnLigne();
+    setInterval(() => { if (document.visibilityState === "visible") majEnLigne(); }, 30000);
+  </script>
   <script define:vars={{ gameUrl: GAME_URL }}>
     const overlay = document.getElementById("jeu-overlay");
     const iframe = document.getElementById("jeu-overlay-iframe");

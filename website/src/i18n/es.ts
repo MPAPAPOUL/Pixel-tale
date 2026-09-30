@@ -5,7 +5,7 @@ const es: typeof fr = {
     siteName: "Pixelfe — Los Reinos Rotos",
     description: "Los Reinos Rotos (Berge-Rhak): un RPG-platformer multijugador en tiempo real que se juega en el navegador. 3 clases, 11 regiones, jefes épicos y un bestiario completo.",
   },
-  nav: { game: "Juego", universe: "Universo", media: "Medios", news: "Noticias", ranking: "Clasificación", studio: "Estudio", support: "Apoyar", play: "Jugar", menu: "Menú", language: "Idioma", account: "Cuenta" },
+  nav: { online: "en línea", game: "Juego", universe: "Universo", media: "Medios", news: "Noticias", ranking: "Clasificación", studio: "Estudio", support: "Apoyar", play: "Jugar", menu: "Menú", language: "Idioma", account: "Cuenta" },
   footer: {
     tagline: "Los Reinos Rotos — un proyecto independiente, en desarrollo activo.",
     privacy: "Privacidad",
@@ -85,7 +85,7 @@ const es: typeof fr = {
     tabs: { verthige: "Berge-Rhak", regions: "Regiones", donjon: "Mazmorra", boss: "Jefes" },
     notes: {
       verthige: "La isla inicial, nivel 1 a 9. Cada monstruo derrotado tiene un 10 % de probabilidad de soltar una pieza de equipo básico (espada, arco, bastón, casco, grebas, anillo, botas o brazalete).",
-      regions: "Once regiones desbloqueadas por teletransporte desde Berge-Rhak, cada vez más peligrosas. Un nivel de equipo cada ~20 niveles (Tier 1 a 4); cada monstruo conserva un 10 % de probabilidad de botín del conjunto de su tier.",
+      regions: "Once regiones desbloqueadas por teletransporte desde Berge-Rhak, cada vez más peligrosas hasta el nivel máximo (50). Cuatro niveles de equipo (Tier 1 a 4); cada monstruo conserva un 10 % de probabilidad de botín del conjunto de su tier.",
       donjon: "La Guarida de Sire-Hano, que se abre reuniendo 3 fragmentos de llave. Cada monstruo básico tiene un 50 % de probabilidad de soltar un fragmento (mientras la llave no esté completa), además del 10 % habitual de equipo básico.",
       boss: "Cada pieza de su conjunto legendario tiene un 15 % de probabilidad de caer con el golpe final, además de una recompensa garantizada de gemas al ganar.",
     },

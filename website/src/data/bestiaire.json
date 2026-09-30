@@ -68,7 +68,7 @@
   "groups": [
    {
     "name": "Crique des Corsaires",
-    "level": 15,
+    "level": 10,
     "tier": 1,
     "cards": [
      {
@@ -111,16 +111,16 @@
    },
    {
     "name": "Crêtes d'Ambre",
-    "level": 10,
+    "level": 14,
     "tier": 1,
     "cards": [
      {
       "img": "enemy-epineux.png",
       "name": "Résinard",
       "role": "patrol",
-      "hp": 120,
-      "dmg": 15,
-      "xp": 12,
+      "hp": 154,
+      "dmg": 19,
+      "xp": 15,
       "drop": [
        "tier",
        1
@@ -130,16 +130,16 @@
    },
    {
     "name": "Marais de Suin",
-    "level": 20,
+    "level": 18,
     "tier": 1,
     "cards": [
      {
       "img": "enemy-tentacule-vert.png",
       "name": "Bourbelin",
       "role": "erratic",
-      "hp": 56,
-      "dmg": 10,
-      "xp": 8,
+      "hp": 62,
+      "dmg": 11,
+      "xp": 9,
       "drop": [
        "tier",
        1
@@ -149,14 +149,14 @@
    },
    {
     "name": "Forêt Chuchote",
-    "level": 30,
+    "level": 22,
     "tier": 2,
     "cards": [
      {
       "img": "enemy-faucheur.png",
       "name": "Murmurance",
       "role": "shooter",
-      "hp": 120,
+      "hp": 118,
       "dmg": 15,
       "xp": 15,
       "behavior": [
@@ -173,16 +173,16 @@
    },
    {
     "name": "Pics Verglacés",
-    "level": 40,
+    "level": 26,
     "tier": 2,
     "cards": [
      {
       "img": "enemy-goblin-chief.png",
       "name": "Craquelin",
       "role": "patrol",
-      "hp": 240,
-      "dmg": 30,
-      "xp": 24,
+      "hp": 218,
+      "dmg": 27,
+      "xp": 22,
       "drop": [
        "tier",
        2
@@ -193,38 +193,38 @@
    },
    {
     "name": "Dunes Cendrées",
-    "level": 50,
-    "tier": 3,
+    "level": 30,
+    "tier": 2,
     "cards": [
      {
       "img": "enemy-spectre-emergent.png",
       "name": "Cendrelin",
       "role": "erratic",
-      "hp": 98,
-      "dmg": 18,
-      "xp": 14,
+      "hp": 84,
+      "dmg": 15,
+      "xp": 12,
       "drop": [
        "tier",
-       3
+       2
       ]
      }
     ]
    },
    {
     "name": "Abysses Luisantes",
-    "level": 60,
+    "level": 34,
     "tier": 3,
     "cards": [
      {
       "img": "enemy-bluetentacle.png",
       "name": "Luisereau",
       "role": "shooter",
-      "hp": 192,
-      "dmg": 24,
-      "xp": 24,
+      "hp": 156,
+      "dmg": 20,
+      "xp": 20,
       "behavior": [
        "shoots",
-       32,
+       26,
        500
       ],
       "drop": [
@@ -236,57 +236,57 @@
    },
    {
     "name": "Jardins Pétrifiés",
-    "level": 70,
-    "tier": 4,
+    "level": 38,
+    "tier": 3,
     "cards": [
      {
       "img": "enemy-sorcier-4bras.png",
       "name": "Gravide",
       "role": "patrol",
-      "hp": 360,
-      "dmg": 45,
-      "xp": 36,
+      "hp": 282,
+      "dmg": 35,
+      "xp": 28,
       "drop": [
        "tier",
-       4
+       3
       ]
      }
     ]
    },
    {
     "name": "Couronne d'Orage",
-    "level": 80,
-    "tier": 4,
+    "level": 42,
+    "tier": 3,
     "cards": [
      {
       "img": "enemy-minotaure-rouge.png",
       "name": "Fulgurin",
       "role": "erratic",
-      "hp": 140,
-      "dmg": 25,
-      "xp": 20,
+      "hp": 106,
+      "dmg": 19,
+      "xp": 15,
       "drop": [
        "tier",
-       4
+       3
       ]
      }
     ]
    },
    {
     "name": "Sanctuaire Éclipsé",
-    "level": 90,
+    "level": 46,
     "tier": 4,
     "cards": [
      {
       "img": "enemy-minotaure-brun.png",
       "name": "Voilure",
       "role": "shooter",
-      "hp": 264,
-      "dmg": 33,
-      "xp": 33,
+      "hp": 196,
+      "dmg": 24,
+      "xp": 24,
       "behavior": [
        "shoots",
-       44,
+       33,
        500
       ],
       "drop": [
@@ -298,16 +298,16 @@
    },
    {
     "name": "Crique des Naufrageurs",
-    "level": 100,
+    "level": 50,
     "tier": 4,
     "cards": [
      {
       "img": "enemy-capitaine-sabrenoir.png",
       "name": "Sabrenoir",
       "role": "patrol",
-      "hp": 480,
-      "dmg": 60,
-      "xp": 48,
+      "hp": 346,
+      "dmg": 43,
+      "xp": 35,
       "behavior": [
        "sabrenoir"
       ],

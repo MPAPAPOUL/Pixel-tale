@@ -19,7 +19,7 @@ const latest = posts.slice(0, 3);
       <h1>{h.title}</h1>
       <p class="tagline">{h.tagline}</p>
       <div class="cta-row">
-        <a class="btn btn-primary lien-jouer" href="https://jeu.pixelfe.fr">🎮 {h.ctaPlay}</a>
+        <a class="btn btn-primary lien-jouer" href="https://jeu.pixelfe.fr">🎮 {h.ctaPlay}<span class="online-badge" data-online hidden><i aria-hidden="true"></i><b></b> {ui.nav.online}</span></a>
         <a class="btn btn-secondary" href={localePath(lang, "jeu")}>{h.ctaGame}</a>
       </div>
       <div class="hero-cast">

@@ -5,7 +5,7 @@ const en: typeof fr = {
     siteName: "Pixelfe — The Broken Realms",
     description: "The Broken Realms (Berge-Rhak): a real-time multiplayer RPG-platformer you play in your browser. 3 classes, 11 regions, epic bosses and a complete bestiary.",
   },
-  nav: { game: "Game", universe: "Universe", media: "Media", news: "News", ranking: "Ranking", studio: "Studio", support: "Support", play: "Play", menu: "Menu", language: "Language", account: "Account" },
+  nav: { online: "online", game: "Game", universe: "Universe", media: "Media", news: "News", ranking: "Ranking", studio: "Studio", support: "Support", play: "Play", menu: "Menu", language: "Language", account: "Account" },
   footer: {
     tagline: "The Broken Realms — an independent project, in active development.",
     privacy: "Privacy",
@@ -85,7 +85,7 @@ const en: typeof fr = {
     tabs: { verthige: "Berge-Rhak", regions: "Regions", donjon: "Dungeon", boss: "Bosses" },
     notes: {
       verthige: "The starting island, level 1 to 9. Every monster killed has a 10% chance to drop a piece of basic gear (sword, bow, staff, helmet, leggings, ring, boots or bracelet).",
-      regions: "Eleven regions unlocked by teleporter from Berge-Rhak, increasingly dangerous. One gear tier every ~20 levels (Tier 1 to 4); each monster keeps a 10% drop chance from its tier's pool.",
+      regions: "Eleven regions unlocked by teleporter from Berge-Rhak, increasingly dangerous up to the maximum level (50). Four gear tiers (Tier 1 to 4); each monster keeps a 10% drop chance from its tier's pool.",
       donjon: "Sire-Hano's Lair, unlocked by gathering 3 key fragments. Each basic mob has a 50% chance to drop a fragment (while the key is incomplete), on top of the usual 10% basic gear.",
       boss: "Each piece of their legendary set has a 15% chance to drop on the final blow, on top of a guaranteed gem reward on victory.",
     },

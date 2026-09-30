@@ -7879,9 +7879,10 @@ function mettreAJourFichePersonnage() {
 
   document.getElementById("perso-titre").textContent = `${classesInfo[self.classe].label} — Fiche de personnage`;
   document.getElementById("perso-niveau-texte").textContent = `Niveau ${perso.niveau}`;
-  const ratioXp = perso.xpRequis > 0 ? Math.min(1, perso.xp / perso.xpRequis) : 0;
+  const niveauMax = perso.niveauMax && perso.niveau >= perso.niveauMax;
+  const ratioXp = niveauMax ? 1 : perso.xpRequis > 0 ? Math.min(1, perso.xp / perso.xpRequis) : 0;
   document.getElementById("perso-xp-remplissage").style.width = `${ratioXp * 100}%`;
-  document.getElementById("perso-xp-texte").textContent = `${perso.xp} / ${perso.xpRequis} XP`;
+  document.getElementById("perso-xp-texte").textContent = niveauMax ? "Niveau maximum atteint" : `${perso.xp} / ${perso.xpRequis} XP`;
 
   const degatsPct = Math.round((perso.multiplicateurDegats - 1) * 100);
   const cooldownPct = Math.round(perso.reductionCooldownPct * 100);
@@ -8837,7 +8838,7 @@ function mettreAJourVitalesHUD() {
   const ratioMana = soi.manaMax > 0 ? Math.max(0, soi.mana / soi.manaMax) : 0;
   document.getElementById("hud-vitales-mana").style.width = `${Math.round(ratioMana * 100)}%`;
   const xpRequis = perso.xpRequis || 1;
-  const ratioXp = Math.max(0, Math.min(1, (perso.xp || 0) / xpRequis));
+  const ratioXp = perso.niveauMax && perso.niveau >= perso.niveauMax ? 1 : Math.max(0, Math.min(1, (perso.xp || 0) / xpRequis));
   document.getElementById("hud-vitales-xp").style.width = `${Math.round(ratioXp * 100)}%`;
 }
 

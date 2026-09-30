@@ -3,7 +3,7 @@ export default {
     siteName: "Pixelfe — Les Royaumes Brisés",
     description: "Les Royaumes Brisés (Berge-Rhak) : un RPG-platformer multijoueur en temps réel, jouable dans le navigateur. 3 classes, 11 régions, des boss épiques et un bestiaire complet.",
   },
-  nav: { game: "Jeu", universe: "Univers", media: "Médias", news: "Actualités", ranking: "Classement", studio: "Studio", support: "Soutenir", play: "Jouer", menu: "Menu", language: "Langue", account: "Compte" },
+  nav: { online: "en ligne", game: "Jeu", universe: "Univers", media: "Médias", news: "Actualités", ranking: "Classement", studio: "Studio", support: "Soutenir", play: "Jouer", menu: "Menu", language: "Langue", account: "Compte" },
   footer: {
     tagline: "Les Royaumes Brisés — un projet indépendant, en développement actif.",
     privacy: "Confidentialité",
@@ -83,7 +83,7 @@ export default {
     tabs: { verthige: "Berge-Rhak", regions: "Régions", donjon: "Donjon", boss: "Boss" },
     notes: {
       verthige: "L'île de départ, niveau 1 à 9. Chaque monstre tué a 10 % de chance de laisser tomber une pièce d'équipement de base (épée, arc, bâton, casque, jambières, anneau, bottes ou bracelet).",
-      regions: "Onze régions débloquées par téléporteur depuis Berge-Rhak, de plus en plus dangereuses. Un palier d'équipement tous les ~20 niveaux (Tier 1 à 4) ; chaque monstre garde 10 % de chance de drop sur le pool de son tier.",
+      regions: "Onze régions débloquées par téléporteur depuis Berge-Rhak, de plus en plus dangereuses jusqu'au niveau maximum (50). Quatre paliers d'équipement (Tier 1 à 4) ; chaque monstre garde 10 % de chance de drop sur le pool de son tier.",
       donjon: "L'Antre du Sire-Hano, débloquée en réunissant 3 fragments de clé. Chaque mob de base a 50 % de chance de laisser tomber un fragment (tant que la clé n'est pas complète), en plus des 10 % habituels d'équipement de base.",
       boss: "Chaque pièce de leur set légendaire a 15 % de chance de tomber au coup de grâce, en plus d'une récompense garantie de gemmes à la victoire.",
     },

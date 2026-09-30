@@ -840,6 +840,9 @@ function recalculerStatsEquipement(p) {
 // Courbe adoucie pour les joueurs occasionnels : les premiers niveaux
 // s'enchaînent vite (Berge-Rhak → premières zones en quelques minutes), puis
 // la pente reprend un rythme normal.
+// Niveau maximum du jeu : toutes les zones et monstres sont calibrés pour que la
+// difficulté maximale corresponde à un personnage de niveau 50.
+const NIVEAU_MAX = 50;
 function xpRequisPourNiveau(niveau) {
   const base = Math.round(40 + niveau * 25);
   return niveau <= 10 ? Math.round(base * 0.6) : base;
@@ -902,7 +905,7 @@ function gainerXp(p, montant) {
   let xpRequis = xpRequisPourNiveau(p.niveau);
   let aMonteDeNiveau = false;
   let niveauxGagnes = 0;
-  while (p.xp >= xpRequis) {
+  while (p.niveau < NIVEAU_MAX && p.xp >= xpRequis) {
     p.xp -= xpRequis;
     p.niveau++;
     p.pointsDisponibles = (p.pointsDisponibles || 0) + 5; // 5 points de caractéristique à répartir manuellement par niveau
@@ -910,6 +913,7 @@ function gainerXp(p, montant) {
     niveauxGagnes++;
     xpRequis = xpRequisPourNiveau(p.niveau);
   }
+  if (p.niveau >= NIVEAU_MAX) p.xp = 0; // niveau max : plus d'XP à accumuler
   if (aMonteDeNiveau) {
     recalculerStatsEquipement(p); // applique la croissance de PV/Mana du nouveau niveau
     p.hp = p.hpMax; // petit bonus de confort : plein PV/Mana à la montée de niveau
@@ -928,6 +932,8 @@ function gainerXp(p, montant) {
 // recalculés et remplis, toast, progression de la quête "monter_niveau").
 function ajouterNiveaux(p, n) {
   if (!n || n <= 0) return;
+  n = Math.min(n, NIVEAU_MAX - p.niveau);
+  if (n <= 0) return;
   p.niveau += n;
   p.pointsDisponibles = (p.pointsDisponibles || 0) + 5 * n;
   recalculerStatsEquipement(p);
@@ -1698,18 +1704,18 @@ function genererPlateformes(rng, largeur, nbEtages) {
 // découle (voir CLES_LOOT_PAR_TIER) et le monstre original qui l'habite sont
 // dérivés automatiquement juste après ce tableau.
 const BIOMES_DEFINITION = [
-  { id: "cretes-ambre", nom: "Crêtes d'Ambre", blurb: "Des falaises de résine durcie où la lumière se fige en flaques dorées.", niveau: 10, monstreNom: "Résinard", couleur: "#c98a2b", teinte: "hue-rotate(15deg) saturate(1.35) brightness(1.05)" },
-  { id: "marais-de-suin", nom: "Marais de Suin", blurb: "Un bourbier tenace qui engloutit tout ce qui s'arrête de bouger trop longtemps.", niveau: 20, monstreNom: "Bourbelin", couleur: "#4f6b3a", teinte: "hue-rotate(90deg) saturate(1.4) brightness(0.9)" },
-  { id: "foret-chuchote", nom: "Forêt Chuchote", blurb: "Les arbres y murmurent les secrets qu'on leur confie — et ceux qu'on ne leur confie pas.", niveau: 30, monstreNom: "Murmurance", couleur: "#3a6b5f", teinte: "hue-rotate(150deg) saturate(1.3) brightness(0.95)" },
-  { id: "pics-verglaces", nom: "Pics Verglacés", blurb: "L'air y coupe autant que la glace sous les bottes.", niveau: 40, monstreNom: "Craquelin", couleur: "#a9d6e5", teinte: "hue-rotate(180deg) saturate(1.5) brightness(1.15)" },
-  { id: "dunes-cendrees", nom: "Dunes Cendrées", blurb: "Un désert de cendre froide, vestige d'un feu que plus personne ne se rappelle avoir vu.", niveau: 50, monstreNom: "Cendrelin", couleur: "#8a7a6b", teinte: "grayscale(0.4) saturate(1.1) brightness(0.9)" },
-  { id: "abysses-luisantes", nom: "Abysses Luisantes", blurb: "Une faille où la roche elle-même semble respirer une lumière bleutée.", niveau: 60, monstreNom: "Luisereau", couleur: "#3a5f8a", teinte: "hue-rotate(220deg) saturate(1.6) brightness(1.1)" },
-  { id: "jardins-petrifies", nom: "Jardins Pétrifiés", blurb: "Un ancien verger dont chaque fruit s'est changé en pierre précieuse.", niveau: 70, monstreNom: "Gravide", couleur: "#8a3a5f", teinte: "hue-rotate(300deg) saturate(1.4) brightness(0.95)" },
-  { id: "couronne-orage", nom: "Couronne d'Orage", blurb: "Le sommet du monde connu, où le tonnerre gronde plus bas que les nuages.", niveau: 80, monstreNom: "Fulgurin", couleur: "#d4af37", teinte: "hue-rotate(45deg) saturate(1.6) brightness(1.2)" },
-  { id: "sanctuaire-eclipse", nom: "Sanctuaire Éclipsé", blurb: "Un temple englouti par une nuit permanente, où même les échos ont peur de résonner.", niveau: 90, monstreNom: "Voilure", couleur: "#5a3a7a", teinte: "hue-rotate(260deg) saturate(1.5) brightness(0.85)" },
+  { id: "cretes-ambre", nom: "Crêtes d'Ambre", blurb: "Des falaises de résine durcie où la lumière se fige en flaques dorées.", niveau: 14, monstreNom: "Résinard", couleur: "#c98a2b", teinte: "hue-rotate(15deg) saturate(1.35) brightness(1.05)" },
+  { id: "marais-de-suin", nom: "Marais de Suin", blurb: "Un bourbier tenace qui engloutit tout ce qui s'arrête de bouger trop longtemps.", niveau: 18, monstreNom: "Bourbelin", couleur: "#4f6b3a", teinte: "hue-rotate(90deg) saturate(1.4) brightness(0.9)" },
+  { id: "foret-chuchote", nom: "Forêt Chuchote", blurb: "Les arbres y murmurent les secrets qu'on leur confie — et ceux qu'on ne leur confie pas.", niveau: 22, monstreNom: "Murmurance", couleur: "#3a6b5f", teinte: "hue-rotate(150deg) saturate(1.3) brightness(0.95)" },
+  { id: "pics-verglaces", nom: "Pics Verglacés", blurb: "L'air y coupe autant que la glace sous les bottes.", niveau: 26, monstreNom: "Craquelin", couleur: "#a9d6e5", teinte: "hue-rotate(180deg) saturate(1.5) brightness(1.15)" },
+  { id: "dunes-cendrees", nom: "Dunes Cendrées", blurb: "Un désert de cendre froide, vestige d'un feu que plus personne ne se rappelle avoir vu.", niveau: 30, monstreNom: "Cendrelin", couleur: "#8a7a6b", teinte: "grayscale(0.4) saturate(1.1) brightness(0.9)" },
+  { id: "abysses-luisantes", nom: "Abysses Luisantes", blurb: "Une faille où la roche elle-même semble respirer une lumière bleutée.", niveau: 34, monstreNom: "Luisereau", couleur: "#3a5f8a", teinte: "hue-rotate(220deg) saturate(1.6) brightness(1.1)" },
+  { id: "jardins-petrifies", nom: "Jardins Pétrifiés", blurb: "Un ancien verger dont chaque fruit s'est changé en pierre précieuse.", niveau: 38, monstreNom: "Gravide", couleur: "#8a3a5f", teinte: "hue-rotate(300deg) saturate(1.4) brightness(0.95)" },
+  { id: "couronne-orage", nom: "Couronne d'Orage", blurb: "Le sommet du monde connu, où le tonnerre gronde plus bas que les nuages.", niveau: 42, monstreNom: "Fulgurin", couleur: "#d4af37", teinte: "hue-rotate(45deg) saturate(1.6) brightness(1.2)" },
+  { id: "sanctuaire-eclipse", nom: "Sanctuaire Éclipsé", blurb: "Un temple englouti par une nuit permanente, où même les échos ont peur de résonner.", niveau: 46, monstreNom: "Voilure", couleur: "#5a3a7a", teinte: "hue-rotate(260deg) saturate(1.5) brightness(0.85)" },
   // Art dédié fourni par le joueur (pack "Pirate Boss", voir
   // ART_DEDIE_PAR_BIOME plus bas) plutôt qu'un gabarit reteinté.
-  { id: "crique-naufrageurs", nom: "Crique des Naufrageurs", blurb: "Une baie où les coques éventrées dorment sous le sable, gardées par ceux qui les y ont menées.", niveau: 100, monstreNom: "Sabrenoir", couleur: "#7a2733", teinte: "hue-rotate(340deg) saturate(1.2) brightness(0.95)" },
+  { id: "crique-naufrageurs", nom: "Crique des Naufrageurs", blurb: "Une baie où les coques éventrées dorment sous le sable, gardées par ceux qui les y ont menées.", niveau: 50, monstreNom: "Sabrenoir", couleur: "#7a2733", teinte: "hue-rotate(340deg) saturate(1.2) brightness(0.95)" },
 ];
 
 // Chaque biome reprend l'un des 3 gabarits de comportement déjà éprouvés
@@ -1725,7 +1731,8 @@ for (let i = 0; i < BIOMES_DEFINITION.length; i++) {
   const comportement = CYCLE_COMPORTEMENTS[i % CYCLE_COMPORTEMENTS.length];
   const gabarit = GABARITS_MONSTRES_BIOME[comportement];
   const cfgGabarit = MONSTRES_CONFIG[gabarit];
-  const echelle = 1 + biome.niveau / 20; // +10 niveau/région → mob nettement plus costaud à chaque nouvelle région
+  // Difficulté calibrée pour le niveau max (50) : un mob de la dernière région a ~4,3× les stats du gabarit de base.
+  const echelle = 1 + biome.niveau / 15;
 
   const monstreCfg = {
     label: biome.monstreNom,
@@ -1754,7 +1761,7 @@ for (let i = 0; i < BIOMES_DEFINITION.length; i++) {
   biome.typeMonstre = biome.id;
   // Un palier d'équipement tous les ~20 niveaux de mob (T1 pour 10-20, T2
   // pour 30-40, etc.) — voir CLES_LOOT_PAR_TIER.
-  biome.tier = biome.niveau <= 20 ? 1 : biome.niveau <= 40 ? 2 : biome.niveau <= 60 ? 3 : 4;
+  biome.tier = biome.niveau <= 18 ? 1 : biome.niveau <= 30 ? 2 : biome.niveau <= 42 ? 3 : 4;
 }
 
 // Art dédié pour certaines régions (sprites libres de droit fournis par
@@ -2018,8 +2025,8 @@ function genererZonePlage() {
     type: "biome",
     nom: "Crique des Corsaires",
     blurb: "Une plage oubliée où des pirates depuis longtemps décédés montent encore la garde.",
-    niveauMob: 15,
-    tierLoot: 1, // niveau 15 ≤ 20 → même palier d'équipement que Crêtes d'Ambre/Marais de Suin
+    niveauMob: 10,
+    tierLoot: 1, // première région après l'île de départ (niveau 10)
     plateformes,
     largeur,
     hauteur: MONDE_HAUTEUR,
@@ -3808,6 +3815,7 @@ function construireEtatPourJoueur(p, classement) {
       niveau: p.niveau,
       xp: Math.floor(p.xp),
       xpRequis: xpRequisPourNiveau(p.niveau),
+      niveauMax: NIVEAU_MAX,
       potionExpire: potionActive(p) ? p.potion.expire : null,
       equipement: p.equipement,
       attributs: statsEquipement(p),
@@ -4226,7 +4234,7 @@ function appliquerProgression(p, sauvegarde) {
     p.classe = sauvegarde.classe;
     p.couleur = CLASSES[p.classe].couleur;
   }
-  p.niveau = sauvegarde.niveau || 1;
+  p.niveau = Math.min(NIVEAU_MAX, sauvegarde.niveau || 1);
   p.xp = sauvegarde.xp || 0;
   p.or = sauvegarde.or || 0;
   p.gemmes = sauvegarde.gemmes || 0;
@@ -4950,6 +4958,12 @@ const server = http.createServer((req, res) => {
     return repondre(404, { erreur: "Introuvable." });
   }
 
+  // Nombre de joueurs connectés (site vitrine : pastille à côté du bouton Jouer).
+  if (req.method === "GET" && req.url.startsWith("/api/statut")) {
+    res.writeHead(200, { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "public, max-age=10", ...entetesCorsPublics(req) });
+    res.end(JSON.stringify({ enLigne: players.size }));
+    return;
+  }
   // Classement public (site vitrine pixelfe.fr, page Classement) : tous les
   // personnages sauvegardés, jamais que des champs publics (pseudo, classe,
   // niveau, XP) — ni jeton de compte, ni or, ni inventaire.

@@ -168,3 +168,11 @@ main, footer { position: relative; z-index: 1; }
 .mini-rank-link:hover { text-decoration: underline; }
 @media (max-width: 1000px) { .home-split { grid-template-columns: 1fr; } .mini-rank { position: static; } }
 @media (prefers-reduced-motion: reduce) { .side-decor img { animation: none; } }
+
+/* Pastille "joueurs en ligne" à côté des boutons Jouer */
+.online-badge { display: inline-flex; align-items: center; gap: 6px; margin-left: 10px; padding: 2px 9px; border-radius: 999px; background: rgba(20,60,35,0.35); color: #1d4a2c; font-size: 12px; font-weight: 700; white-space: nowrap; }
+.online-badge[hidden] { display: none !important; }
+.online-badge i { width: 8px; height: 8px; border-radius: 50%; background: #2fbf5b; box-shadow: 0 0 0 0 rgba(47,191,91,0.6); animation: online-pulse 2s infinite; }
+@keyframes online-pulse { 70% { box-shadow: 0 0 0 7px rgba(47,191,91,0); } 100% { box-shadow: 0 0 0 0 rgba(47,191,91,0); } }
+@media (max-width: 600px) { .nav-cta .online-badge { display: none !important; } }
+@media (prefers-reduced-motion: reduce) { .online-badge i { animation: none; } }
