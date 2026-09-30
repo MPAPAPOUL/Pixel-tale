@@ -1081,7 +1081,7 @@
   }
   .hud-boss-barre-fond {
     position: relative;
-    height: 12px;
+    height: 16px;
     border-radius: 3px;
     background: rgba(8,5,5,0.78);
     border: 1px solid #8a6a34;
@@ -1099,6 +1099,19 @@
     height: 100%;
     background: linear-gradient(180deg, #ffe9a0 0%, #e0a030 100%);
     transition: width 0.9s ease 0.15s;
+  }
+  .hud-boss-barre-pct {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    color: #fff;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.95), 0 0 3px rgba(0,0,0,0.8);
+    z-index: 2;
+    pointer-events: none;
   }
   .hud-boss-barre-remplissage {
     position: absolute;
@@ -2508,6 +2521,7 @@
         <div class="hud-boss-barre-fond">
           <div class="hud-boss-barre-chip" id="hud-boss-barre-chip" style="width:100%"></div>
           <div class="hud-boss-barre-remplissage" id="hud-boss-barre-remplissage" style="width:100%"></div>
+          <span class="hud-boss-barre-pct" id="hud-boss-barre-pct">100%</span>
         </div>
       </div>
 
@@ -6436,6 +6450,10 @@ function dessinerProjectilesMonstres() {
       dessinerProjectileSpriteMonstre(proj, SPRITES_CHEVALIER_NOIR_EFFETS.feuProjectile);
       continue;
     }
+    // Volée de Sire-Hano : boule de feu et éclair du Krix (voir dessinerBouleFeu/
+    // dessinerEclairProjectile côté sorts joueur).
+    if (proj.effet === "boule_feu") { dessinerBouleFeu(proj, performance.now()); continue; }
+    if (proj.effet === "eclair") { dessinerEclairProjectile(proj, performance.now()); continue; }
     // Rendu générique en losange (tirs de Tiralark, volées de Sire-Hano/
     // Dragon Noir...) pour distinguer d'un coup d'œil un tir ennemi d'un
     // tir allié.
@@ -8109,7 +8127,7 @@ function mettreAJourInventaire() {
   if (lignes.length === 0) {
     grille.insertAdjacentHTML(
       "afterend",
-      `<div class="vide" id="inventaire-vide">Aucun équipement récolté pour l'instant — les monstres de l'Antre du Sire-Hano en laissent tomber parfois du butin au sol (10% de chance, arme ou accessoire au hasard, à ramasser avec F). Dragon Noir et Chevalier Noir ont chacun 5% de chance par pièce de laisser tomber un équipement légendaire à leur mort, et Sire-Hano un équipement mythique (encore plus fort) — directement distribué à l'inventaire des joueurs ayant participé au combat, plus de ramassage au sol. Ouvre ta fiche de personnage (📜 ou C) pour équiper ce que tu récoltes.</div>`
+      `<div class="vide" id="inventaire-vide">Aucun équipement récolté pour l'instant — les monstres de l'Antre du Sire-Hano en laissent tomber parfois du butin au sol (10% de chance, arme ou accessoire au hasard, à ramasser avec F). Sire-Hano a 5% de chance par pièce de laisser tomber un équipement légendaire à sa mort, et Dragon Noir et Chevalier Noir un équipement mythique (encore plus fort) — directement distribué à l'inventaire des joueurs ayant participé au combat, plus de ramassage au sol. Ouvre ta fiche de personnage (📜 ou C) pour équiper ce que tu récoltes.</div>`
     );
   } else {
     const messageVide = document.getElementById("inventaire-vide");
@@ -9406,6 +9424,7 @@ function mettreAJourBarreBoss() {
   const pct = `${Math.round(Math.max(0, Math.min(1, hp / hpMax)) * 100)}%`;
   document.getElementById("hud-boss-barre-remplissage").style.width = pct;
   document.getElementById("hud-boss-barre-chip").style.width = pct;
+  document.getElementById("hud-boss-barre-pct").textContent = pct;
 
   if (!bossBarreVisible) {
     if (bossBarreMasqueTimeoutId) { clearTimeout(bossBarreMasqueTimeoutId); bossBarreMasqueTimeoutId = null; }

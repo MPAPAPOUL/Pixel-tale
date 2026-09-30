@@ -14,8 +14,8 @@ const fs = require("fs");
 const path = require("path");
 const { URL } = require("url");
 const bcrypt = require("bcryptjs");
-// Dégâts de TOUTES les attaques de boss (Sire-Hano, Dragon Noir, Chevalier Noir) : +50 %.
-const MULT_DEGATS_BOSS = 1.5;
+// Dégâts de TOUTES les attaques de boss (Sire-Hano, Dragon Noir, Chevalier Noir) : ×3 au total (+50 % puis +100 %).
+const MULT_DEGATS_BOSS = 3;
 const anticheat = require("./anticheat"); // anti-automatisation, voir server/anticheat.js
 const idle = require("./idle"); // backend séparé pour Pixelfe-Idle (Godot), voir server/idle.js
 const { WebSocketServer } = require("ws");
@@ -1249,7 +1249,7 @@ const SIRE_HANO_LARGEUR_BASE = 60;
 const SIRE_HANO_HAUTEUR_BASE = 70;
 const SIRE_HANO_Y_SOL = 600; // ligne de sol commune, quelle que soit la taille de l'entité
 const SIRE_HANO_VITESSE = 95;
-const SIRE_HANO_HP_ORIGINAL = 960;
+const SIRE_HANO_HP_ORIGINAL = 1920;
 
 const PHASES_SIRE_HANO = [
   { nom: "Sire-Hano", ratioHp: 1, nombre: 1, echelle: 1 },
@@ -1259,7 +1259,7 @@ const PHASES_SIRE_HANO = [
 
 const SIRE_HANO_ATTAQUES = {
   melee: { degats: 16, cooldown: 1.3, portee: 60 },
-  volee: { degats: 11, cooldown: 3.4, vitesse: 420, rayon: 8, porteeMax: 700, nombre: 3, ecartY: 14 },
+  volee: { degats: 11, cooldown: 3.4, vitesse: 420, rayon: 11, porteeMax: 700, nombre: 2, ecartY: 30 }, // boule de feu (haut) + éclair (bas), façon Krix
   aoe: { degats: 32, cooldown: 6.5, rayon: 95, telegraphe: 0.9 },
 };
 
@@ -1349,7 +1349,7 @@ function demarrerPhaseSireHano(instance, phaseIndex) {
 const DRAGON_NOIR_LARGEUR = 84;
 const DRAGON_NOIR_HAUTEUR = 66;
 const DRAGON_NOIR_VITESSE = 70;
-const DRAGON_NOIR_HP = 7200;
+const DRAGON_NOIR_HP = 14400;
 const DRAGON_NOIR_RATIO_TRANSFORMATION = 0.5; // passage en phase 2 sous ce ratio de PV
 const DRAGON_NOIR_DELAI_RESPAWN = 120; // secondes avant réapparition après défaite
 const DRAGON_NOIR_MULTIPLICATEUR_PHASE2 = 2; // +100% dégâts infligés en phase 2
@@ -1464,7 +1464,7 @@ function infligerDegatsDragonNoir(zone, degats, joueurId) {
     }
     // Même chances de drop légendaire que Sire-Hano, partagées entre tous
     // les participants du combat (voir dragon.attaquants).
-    essayerDropLegendaireBoss(dragon.attaquants);
+    essayerDropLegendaireBoss(dragon.attaquants, "mythique");
   }
 }
 
@@ -1557,7 +1557,7 @@ function simulerDragonNoir(dtSecondes) {
         x: dragon.x + (dragon.facing >= 0 ? dragon.largeur + DRAGON_NOIR_DECALAGE_SOUFFLE : -DRAGON_NOIR_DECALAGE_SOUFFLE),
         y: dragon.y + dragon.hauteur / 2 + (i - (attaque.nombre - 1) / 2) * attaque.ecartY,
         vx: attaque.vitesse * dragon.facing,
-        degats: Math.round(attaque.degats * multiplicateur),
+        degats: Math.round(attaque.degats * multiplicateur * MULT_DEGATS_BOSS),
         rayon: attaque.rayon,
         porteeMax: attaque.porteeMax,
         distanceParcourue: 0,
@@ -2360,7 +2360,7 @@ function sortirSalleTroneAmbre(p) {
 const CHEVALIER_NOIR_LARGEUR = 50;
 const CHEVALIER_NOIR_HAUTEUR = 118;
 const CHEVALIER_NOIR_VITESSE = 85;
-const CHEVALIER_NOIR_HP = 5600;
+const CHEVALIER_NOIR_HP = 11200;
 const CHEVALIER_NOIR_DELAI_RESPAWN = 90; // secondes avant réapparition après défaite
 
 const CHEVALIER_NOIR_ATTAQUES = {
@@ -2434,7 +2434,7 @@ function infligerDegatsChevalierNoir(zone, degats, joueurId) {
       verifierHautsFaits(joueur);
     }
     // Même mécanique de drop légendaire que les deux autres boss.
-    essayerDropLegendaireBoss(cn.attaquants);
+    essayerDropLegendaireBoss(cn.attaquants, "mythique");
   }
 }
 
@@ -2529,7 +2529,7 @@ function simulerChevalierNoir(dtSecondes) {
       x: cn.x + (cn.facing >= 0 ? cn.largeur : 0),
       y: cn.y + cn.hauteur * 0.45,
       vx: attaque.vitesse * cn.facing,
-      degats: attaque.degats,
+      degats: Math.round(attaque.degats * MULT_DEGATS_BOSS),
       rayon: attaque.rayon,
       porteeMax: attaque.porteeMax,
       distanceParcourue: 0,
@@ -2549,7 +2549,7 @@ function simulerChevalierNoir(dtSecondes) {
       x: cn.x + (cn.facing >= 0 ? cn.largeur : 0),
       y: cn.y + cn.hauteur * 0.55,
       vx: attaque.vitesse * cn.facing,
-      degats: attaque.degats,
+      degats: Math.round(attaque.degats * MULT_DEGATS_BOSS),
       rayon: attaque.rayon,
       porteeMax: attaque.porteeMax,
       distanceParcourue: 0,
@@ -3213,7 +3213,7 @@ function infligerDegatsSireHano(zone, entite, degats, joueurId) {
     // Butin MYTHIQUE (un cran au-dessus du légendaire des deux autres boss)
     // — demande explicite du joueur — va directement à l'inventaire d'un/des
     // participant(s) du combat — voir essayerDropLegendaireBoss.
-    essayerDropLegendaireBoss(boss.attaquants, "mythique");
+    essayerDropLegendaireBoss(boss.attaquants, "legendaire");
   }
 }
 
@@ -3920,10 +3920,11 @@ function simulerUneEntiteSireHano(instance, entite, dtSecondes) {
       instance.projectilesMonstres.push({
         id: prochainProjectileMonstreId++,
         couleur: "#7a3f6b",
+        effet: i === 0 ? "boule_feu" : "eclair", // rendus Krix côté client, l'un au-dessus de l'autre
         x: entite.x + (entite.facing >= 0 ? entite.largeur : 0),
         y: entite.y + entite.hauteur / 2 + (i - (attaque.nombre - 1) / 2) * attaque.ecartY,
         vx: attaque.vitesse * entite.facing,
-        degats: attaque.degats,
+        degats: Math.round(attaque.degats * MULT_DEGATS_BOSS),
         rayon: attaque.rayon,
         porteeMax: attaque.porteeMax,
         distanceParcourue: 0,
@@ -4161,6 +4162,7 @@ function construireEtatPourJoueur(p, classement) {
       effet: proj.effet || null,
       x: proj.x,
       y: proj.y,
+      vx: proj.vx,
       rayon: proj.rayon,
     })),
     effets: zone.effets.map((e) => ({
