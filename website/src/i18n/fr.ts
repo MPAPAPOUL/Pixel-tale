@@ -84,7 +84,7 @@ export default {
     notes: {
       verthige: "L'île de départ, niveau 1 à 9. Chaque monstre tué a 10 % de chance de laisser tomber une pièce d'équipement de base (épée, arc, bâton, casque, jambières, anneau, bottes ou bracelet).",
       regions: "Onze régions débloquées par téléporteur depuis Berge-Rhak, de plus en plus dangereuses jusqu'au niveau maximum (50). Quatre paliers d'équipement (Tier 1 à 4) ; chaque monstre garde 10 % de chance de drop sur le pool de son tier.",
-      donjon: "L'Antre du Sire-Hano, débloquée en réunissant 3 fragments de clé. Chaque mob de base a 50 % de chance de laisser tomber un fragment (tant que la clé n'est pas complète), en plus des 10 % habituels d'équipement de base.",
+      donjon: "L'Antre du Sire-Hano, débloquée en réunissant 10 fragments de clé. Chaque mob de base a 50 % de chance de laisser tomber un fragment (tant que la clé n'est pas complète), en plus des 10 % habituels d'équipement de base.",
       boss: "Chaque pièce de leur set légendaire a 15 % de chance de tomber au coup de grâce, en plus d'une récompense garantie de gemmes à la victoire.",
     },
     stats: { hp: "PV", dmg: "dégâts", xp: "XP", gems: "gemmes", total: "(total)", perReplica: "/ réplique" },

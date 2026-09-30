@@ -86,7 +86,7 @@ const es: typeof fr = {
     notes: {
       verthige: "La isla inicial, nivel 1 a 9. Cada monstruo derrotado tiene un 10 % de probabilidad de soltar una pieza de equipo básico (espada, arco, bastón, casco, grebas, anillo, botas o brazalete).",
       regions: "Once regiones desbloqueadas por teletransporte desde Berge-Rhak, cada vez más peligrosas hasta el nivel máximo (50). Cuatro niveles de equipo (Tier 1 a 4); cada monstruo conserva un 10 % de probabilidad de botín del conjunto de su tier.",
-      donjon: "La Guarida de Sire-Hano, que se abre reuniendo 3 fragmentos de llave. Cada monstruo básico tiene un 50 % de probabilidad de soltar un fragmento (mientras la llave no esté completa), además del 10 % habitual de equipo básico.",
+      donjon: "La Guarida de Sire-Hano, que se abre reuniendo 10 fragmentos de llave. Cada monstruo básico tiene un 50 % de probabilidad de soltar un fragmento (mientras la llave no esté completa), además del 10 % habitual de equipo básico.",
       boss: "Cada pieza de su conjunto legendario tiene un 15 % de probabilidad de caer con el golpe final, además de una recompensa garantizada de gemas al ganar.",
     },
     stats: { hp: "PV", dmg: "daño", xp: "XP", gems: "gemas", total: "(total)", perReplica: "/ réplica" },

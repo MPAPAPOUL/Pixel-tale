@@ -472,7 +472,7 @@ const monstres = [
 // pouvoir y entrer à plusieurs), voir entrerDonjon et la section "Zones"
 // plus bas.
 
-const FRAGMENTS_CLE_REQUIS = 3;
+const FRAGMENTS_CLE_REQUIS = 10;
 const CHANCE_DROP_FRAGMENT = 0.5; // par monstre de base tué, tant que la clé n'est pas complète
 
 const donjon = {
