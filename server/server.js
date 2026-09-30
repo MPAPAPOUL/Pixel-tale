@@ -925,9 +925,13 @@ const NIVEAU_MAX = 50;
 // (≈ 90 XP au total, soit une trentaine de gobelins du Chief Goblin), puis une
 // montée progressive sur 10 niveaux vers la courbe normale (40 + 25 × niveau).
 function xpRequisPourNiveau(niveau) {
-  if (niveau <= 9) return Math.round(4 + niveau * 1.2);
-  const normal = 40 + niveau * 25;
-  return Math.round(normal * Math.min(1, (niveau - 9) / 10));
+  // Base : 5 kills du meilleur monstre de départ (3 XP) pour passer 1→2 (15 XP),
+  // 8 pour 2→3 (24 XP), puis +9 XP par niveau jusqu'au niveau 10 ; +23,4 XP
+  // par niveau de 10 à 20 (jusqu'à 330 XP) ; enfin une courbe LINÉAIRE
+  // douce (+14 XP par niveau) au-delà du niveau 20.
+  if (niveau <= 10) return 15 + 9 * (niveau - 1);
+  if (niveau <= 20) return Math.round(96 + (niveau - 10) * 23.4);
+  return 330 + 14 * (niveau - 20);
 }
 
 const XP_SIRE_HANO_ENTITE = 15; // par réplique tuée, quelle que soit la phase
@@ -1963,6 +1967,25 @@ function genererZoneBiome(biome, indexSeed) {
   const rng = mulberry32(1000 + indexSeed * 97);
   const largeur = 1400 + Math.floor(rng() * 260);
   const plateformes = genererPlateformes(rng, largeur, 9);
+  // Marais de Suin : la plateforme la plus basse est remontée un peu et
+  // prolongée jusqu'à la plateforme la plus proche (petit écart de 24 px,
+  // franchissable d'un saut) pour former un vrai chemin.
+  if (biome.id === "marais-de-suin") {
+    const surelevees = plateformes.slice(1);
+    const basse = surelevees.reduce((b, p) => (p.y > b.y ? p : b), surelevees[0]);
+    basse.y -= 8; // reste à portée de saut depuis le sol (apex ≈114 px)
+    let proche = null;
+    let ecartMin = Infinity;
+    for (const p of surelevees) {
+      if (p === basse || Math.abs(p.y - basse.y) > 100) continue; // seulement une plateforme atteignable d'un saut
+      const ecart = p.x >= basse.x + basse.width ? p.x - (basse.x + basse.width) : basse.x >= p.x + p.width ? basse.x - (p.x + p.width) : 0;
+      if (ecart < ecartMin) { ecartMin = ecart; proche = p; }
+    }
+    if (proche && ecartMin > 24) {
+      if (proche.x >= basse.x + basse.width) basse.width = proche.x - 24 - basse.x;
+      else { const finProche = proche.x + proche.width; const nouveauX = finProche + 24; basse.width += basse.x - nouveauX; basse.x = nouveauX; }
+    }
+  }
   const plateformesSurelevees = plateformes.slice(1);
 
   // La plateforme la plus haute (y le plus petit) de tout le relief — c'est
@@ -2016,8 +2039,13 @@ function genererZoneBiome(biome, indexSeed) {
   // Gobelins neutres au sol, déplacement aléatoire — deux par biome (demande
   // explicite), voir MONSTRES_CONFIG.gobelinNeutre (dispatché "entre toutes
   // les maps").
-  zone.monstres.push(creerMonstre("gobelinNeutre", plateformes[0]));
-  zone.monstres.push(creerMonstre("gobelinNeutre", plateformes[0]));
+  // Couleur du gobelin neutre propre à chaque carte (teinte dérivée de l'index).
+  const teinteGobelin = `hue-rotate(${30 + ((indexSeed * 67) % 300)}deg) saturate(1.25)`;
+  for (let g = 0; g < 2; g++) {
+    const gobelin = creerMonstre("gobelinNeutre", plateformes[0]);
+    gobelin.teinte = teinteGobelin;
+    zone.monstres.push(gobelin);
+  }
   return zone;
 }
 
@@ -2172,8 +2200,11 @@ function genererZonePlage() {
     const plateforme = plateformesMelangees[i % plateformesMelangees.length] || plateformes[0];
     zone.monstres.push(creerMonstre(cycleTypesPirates[i % cycleTypesPirates.length], plateforme));
   }
-  zone.monstres.push(creerMonstre("gobelinNeutre", plateformes[0]));
-  zone.monstres.push(creerMonstre("gobelinNeutre", plateformes[0]));
+  for (let g = 0; g < 2; g++) {
+    const gobelin = creerMonstre("gobelinNeutre", plateformes[0]);
+    gobelin.teinte = "hue-rotate(200deg) saturate(1.3)"; // gobelin bleuté propre à la plage
+    zone.monstres.push(gobelin);
+  }
   return zone;
 }
 
@@ -4157,7 +4188,7 @@ function construireEtatPourJoueur(p, classement) {
         label: cfg.label,
         couleur: cfg.couleur,
         base: cfg.base || m.type, // sprite à réutiliser côté client (troubalourd/fisselo/tiralark)
-        teinte: cfg.teinte || null, // filtre CSS de distinction visuelle pour les monstres de région
+        teinte: m.teinte || cfg.teinte || null, // filtre CSS de distinction visuelle pour les monstres de région
         largeur: cfg.largeur,
         hauteur: cfg.hauteur,
         x: m.x,

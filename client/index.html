@@ -1438,6 +1438,118 @@
   }
   .perso-onglet-panneau.masque { display: none; }
 
+  /* --- Refonte lisibilité : fiche personnage / équipement / inventaire ------
+     Fond sombre uni (fini le cadre bois pixelisé et le texte brun sur
+     parchemin qui se confondait avec le décor), texte clair, tailles un peu
+     plus grandes, bordures discrètes. Placé APRÈS les règles d'origine pour
+     les surcharger. */
+  .modale-fantasy.modale-personnage {
+    width: min(94%, 500px);
+    border: 1px solid #5b4d86;
+    border-image: none;
+    border-radius: 14px;
+    background: #1b172b;
+    image-rendering: auto;
+    padding: 20px 22px 18px;
+    box-shadow: 0 14px 40px rgba(0,0,0,0.65);
+    color: #efeafc;
+  }
+  .modale-personnage h2 {
+    margin: 0 36px 14px 0;
+    text-align: left;
+    font-size: 19px;
+    color: #f6e7b8;
+    text-shadow: none;
+  }
+  .modale-personnage h3 { color: #f0cf85; font-size: 15px; margin: 18px 0 8px; }
+  .modale-personnage .btn-fermer-modale { top: 14px; right: 14px; background: #2b2542; border: 1px solid #6f629c; color: #fff; }
+  .modale-personnage .perso-onglet-btn { background: #262038; border: 1px solid #4a3f72; color: #d9d2f0; font-size: 12.5px; padding: 8px 4px; border-radius: 8px; }
+  .modale-personnage .perso-onglet-btn.actif { background: #3b3160; border-color: #e0b95a; color: #fff; }
+  .perso-niveau-bloc > span:first-child { color: #f6e7b8; font-size: 16px; }
+  .barre-xp { height: 12px; background: #0f0c1a; border-color: #4a3f72; }
+  .perso-xp-texte { color: #d3cbea; font-size: 12.5px; }
+  .perso-stats { font-size: 14px; gap: 8px 18px; }
+  .perso-stats .stat-label { color: #c9c1e2; }
+  .perso-stats .stat-valeur { color: #ffffff; }
+  .perso-attributs { gap: 8px; }
+  .perso-attributs .attribut {
+    position: relative;
+    background: #262038;
+    border: 1px solid #4a3f72;
+    color: #f1ecff;
+    font-size: 13.5px;
+    padding: 6px 10px;
+    cursor: help;
+  }
+  .perso-attributs .attribut .valeur { color: #ffd27a; font-size: 14px; }
+  .perso-points-dispo { color: #9be79b; font-size: 12.5px; }
+  .perso-attributs .attribut[data-info]:hover::after {
+    content: attr(data-info);
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 0;
+    width: 230px;
+    padding: 8px 10px;
+    background: #0f0c1a;
+    border: 1px solid #8c7bd0;
+    border-radius: 8px;
+    color: #f1ecff;
+    font-size: 12.5px;
+    font-weight: 400;
+    line-height: 1.4;
+    z-index: 60;
+    pointer-events: none;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.6);
+  }
+  .perso-attributs .attribut[data-info]:nth-child(n+3):hover::after { left: auto; right: 0; }
+  .perso-sorts .sort-ligne { background: #262038; font-size: 13px; padding: 6px 10px; }
+  .perso-sorts .sort-nom { color: #f1ecff; }
+  .perso-sorts .sort-degats { color: #ffb27a; }
+  .perso-sorts .sort-detail { color: #c0b7dc; font-size: 12px; }
+  .perso-inventaire-hint { color: #c9c1e2; font-size: 12.5px; }
+  .perso-silhouette {
+    background: #211b34;
+    border: 1px solid #4a3f72;
+    border-radius: 12px;
+    max-width: 250px;
+    margin: 10px auto 30px;
+  }
+  .perso-slot-corps {
+    width: 40px;
+    height: 40px;
+    border: 1px solid #8c7bd0;
+    border-radius: 8px;
+    background: #1b172b;
+  }
+  .perso-slot-corps .icone-img { width: 32px; height: 32px; }
+  .perso-slot-corps .icone-vide { opacity: 0.5; font-size: 20px; }
+  .perso-slot-corps::after {
+    position: absolute;
+    top: calc(100% + 3px);
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 11px;
+    font-weight: 600;
+    color: #d3cbea;
+    white-space: nowrap;
+    pointer-events: none;
+  }
+  .perso-slot-corps[data-categorie="casque"]::after { content: "Casque"; }
+  .perso-slot-corps[data-categorie="armure"]::after { content: "Armure"; }
+  .perso-slot-corps[data-categorie="bracelet"]::after { content: "Bracelet"; }
+  .perso-slot-corps[data-categorie="anneau"]::after { content: "Anneau"; }
+  .perso-slot-corps[data-categorie="arme"]::after { content: "Arme"; }
+  .perso-slot-corps[data-categorie="jambieres"]::after { content: "Jambières"; }
+  .perso-slot-corps[data-categorie="bottes"]::after { content: "Bottes"; }
+  .inventaire-case { border-radius: 6px; border: 1px solid #4a3f72; background: #262038; }
+  .inventaire-case.remplie { border-color: #8c7bd0; }
+  .inventaire-case.legendaire { border-color: #f0c85a; background: linear-gradient(160deg, rgba(255,214,110,0.28) 0%, #262038 70%); }
+  .inventaire-case.mythique { border-color: #a58bff; background: linear-gradient(160deg, rgba(150,110,255,0.32) 0%, #262038 70%); }
+  .inventaire-case .icone-img { width: 26px; height: 26px; }
+  .inventaire-tooltip { max-width: 240px; background: #0f0c1a; border: 1px solid #8c7bd0; font-size: 13px; padding: 9px 11px; }
+  .inventaire-tooltip .nom { font-size: 13.5px; }
+  .inventaire-tooltip .desc { color: #e4ddf7; line-height: 1.4; }
+
   /* --- Écran d'accueil ----------------------------------------------------
      Plein écran, affiché au lancement (et à "Retour à l'accueil") ; masque
      le jeu proprement dit (header + .layout, voir la règle body ci-dessous)
@@ -2662,13 +2774,13 @@
                  glisser-déposer quand les deux onglets sont visibles en
                  même temps (grand écran). -->
             <div class="perso-silhouette" id="perso-silhouette">
-              <div class="perso-slot-corps" data-categorie="casque" id="perso-casque-actuelle" style="left:50%; top:10%;"></div>
-              <div class="perso-slot-corps" data-categorie="armure" id="perso-armure-actuelle" style="left:50%; top:38%;"></div>
-              <div class="perso-slot-corps" data-categorie="bracelet" id="perso-bracelet-actuelle" style="left:87%; top:44%;"></div>
-              <div class="perso-slot-corps" data-categorie="anneau" id="perso-anneau-actuelle" style="left:92%; top:58%;"></div>
-              <div class="perso-slot-corps" data-categorie="arme" id="perso-arme-actuelle" style="left:8%; top:58%;"></div>
-              <div class="perso-slot-corps" data-categorie="jambieres" id="perso-jambieres-actuelle" style="left:50%; top:75%;"></div>
-              <div class="perso-slot-corps" data-categorie="bottes" id="perso-bottes-actuelle" style="left:50%; top:96%;"></div>
+              <div class="perso-slot-corps" data-categorie="casque" id="perso-casque-actuelle" style="left:50%; top:12%;"></div>
+              <div class="perso-slot-corps" data-categorie="armure" id="perso-armure-actuelle" style="left:50%; top:36%;"></div>
+              <div class="perso-slot-corps" data-categorie="bracelet" id="perso-bracelet-actuelle" style="left:84%; top:30%;"></div>
+              <div class="perso-slot-corps" data-categorie="anneau" id="perso-anneau-actuelle" style="left:84%; top:60%;"></div>
+              <div class="perso-slot-corps" data-categorie="arme" id="perso-arme-actuelle" style="left:16%; top:36%;"></div>
+              <div class="perso-slot-corps" data-categorie="jambieres" id="perso-jambieres-actuelle" style="left:50%; top:60%;"></div>
+              <div class="perso-slot-corps" data-categorie="bottes" id="perso-bottes-actuelle" style="left:50%; top:84%;"></div>
             </div>
           </div>
 
@@ -8152,10 +8264,12 @@ function mettreAJourInventaire() {
     tooltipEl.classList.toggle("mythique", !!info.mythique);
     const rectCase = caseEl.getBoundingClientRect();
     const rectConteneur = conteneurEl.getBoundingClientRect();
-    tooltipEl.style.left = `${rectCase.left - rectConteneur.left}px`;
+    tooltipEl.classList.add("visible"); // visible d'abord, pour pouvoir mesurer sa largeur
+    // Recadré dans le conteneur : les 2 dernières colonnes débordaient à droite.
+    const gauche = Math.max(0, Math.min(rectCase.left - rectConteneur.left, rectConteneur.width - tooltipEl.offsetWidth));
+    tooltipEl.style.left = `${gauche}px`;
     tooltipEl.style.top = `${rectCase.top - rectConteneur.top}px`;
     tooltipEl.style.transform = "translateY(-100%) translateY(-6px)";
-    tooltipEl.classList.add("visible");
   });
   grilleEl.addEventListener("mouseout", (e) => {
     const caseEl = e.target.closest(".inventaire-case[data-type]");
@@ -8329,10 +8443,10 @@ for (const [categorie, cles] of [
 }
 
 const LABELS_ATTRIBUTS = {
-  force: { label: "Force", emoji: "💪" },
-  agilite: { label: "Agilité", emoji: "🏃" },
-  intelligence: { label: "Intelligence", emoji: "🧠" },
-  vitalite: { label: "Vitalité", emoji: "❤️" },
+  force: { label: "Force", emoji: "💪", info: "Chaque point : +0,8 % de dégâts à tous tes sorts. Idéal pour le Dorken." },
+  agilite: { label: "Agilité", emoji: "🏃", info: "Chaque point : +1,5 px/s de vitesse de déplacement et −0,3 % de temps de recharge des sorts (maximum −50 %). Idéal pour le Quater." },
+  intelligence: { label: "Intelligence", emoji: "🧠", info: "Chaque point : +2 Mana max et +0,4 % de dégâts. Idéal pour le Krix." },
+  vitalite: { label: "Vitalité", emoji: "❤️", info: "Chaque point : +4 PV max. Utile à toutes les classes pour survivre plus longtemps." },
 };
 
 function mettreAJourFichePersonnage() {
@@ -8374,7 +8488,7 @@ function mettreAJourFichePersonnage() {
     document.getElementById("perso-attributs").innerHTML = Object.entries(LABELS_ATTRIBUTS)
       .map(
         ([cle, info]) => `
-        <div class="attribut repartissable">
+        <div class="attribut repartissable" data-info="${info.info}">
           <span class="valeur">${attrs[cle] || 0}</span>${info.emoji} ${info.label}
           <button type="button" class="btn-point-plus" data-attribut="${cle}" title="+1 · Shift+clic = +10 · Clic droit = choisir"${pointsDispo > 0 ? "" : " disabled"}>+</button>
         </div>`
