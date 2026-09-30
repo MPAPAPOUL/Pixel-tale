@@ -8263,13 +8263,19 @@ function mettreAJourInventaire() {
     tooltipEl.classList.toggle("legendaire", !!info.legendaire);
     tooltipEl.classList.toggle("mythique", !!info.mythique);
     const rectCase = caseEl.getBoundingClientRect();
-    const rectConteneur = conteneurEl.getBoundingClientRect();
-    tooltipEl.classList.add("visible"); // visible d'abord, pour pouvoir mesurer sa largeur
-    // Recadré dans le conteneur : les 2 dernières colonnes débordaient à droite.
-    const gauche = Math.max(0, Math.min(rectCase.left - rectConteneur.left, rectConteneur.width - tooltipEl.offsetWidth));
+    tooltipEl.classList.add("visible"); // visible d'abord, pour pouvoir mesurer ses dimensions
+    // Centrée juste AU-DESSUS de l'objet survolé, recadrée horizontalement dans
+    // son parent positionné (jamais hors de la fenêtre, y compris pour les
+    // dernières colonnes).
+    const parent = tooltipEl.offsetParent || conteneurEl;
+    const rectParent = parent.getBoundingClientRect();
+    const largeurTip = tooltipEl.offsetWidth;
+    const hauteurTip = tooltipEl.offsetHeight;
+    const centreCase = rectCase.left + rectCase.width / 2 - rectParent.left;
+    const gauche = Math.max(0, Math.min(centreCase - largeurTip / 2, rectParent.width - largeurTip));
     tooltipEl.style.left = `${gauche}px`;
-    tooltipEl.style.top = `${rectCase.top - rectConteneur.top}px`;
-    tooltipEl.style.transform = "translateY(-100%) translateY(-6px)";
+    tooltipEl.style.top = `${rectCase.top - rectParent.top - hauteurTip - 6}px`;
+    tooltipEl.style.transform = "none";
   });
   grilleEl.addEventListener("mouseout", (e) => {
     const caseEl = e.target.closest(".inventaire-case[data-type]");
