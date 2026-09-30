@@ -1483,12 +1483,12 @@
   }
   .perso-attributs .attribut .valeur { color: #ffd27a; font-size: 14px; }
   .perso-points-dispo { color: #9be79b; font-size: 12.5px; }
-  .perso-attributs .attribut[data-info]:hover::after {
-    content: attr(data-info);
+  /* Infobulle des attributs : élément unique positionné en JS (voir
+     #attribut-tooltip), recadré dans la fiche — jamais coupé à gauche/droite. */
+  .attribut-tooltip {
     position: absolute;
-    bottom: calc(100% + 8px);
-    left: 0;
-    width: 230px;
+    z-index: 70;
+    width: min(240px, calc(100% - 16px));
     padding: 8px 10px;
     background: #0f0c1a;
     border: 1px solid #8c7bd0;
@@ -1497,11 +1497,11 @@
     font-size: 12.5px;
     font-weight: 400;
     line-height: 1.4;
-    z-index: 60;
     pointer-events: none;
     box-shadow: 0 6px 18px rgba(0,0,0,0.6);
+    display: none;
   }
-  .perso-attributs .attribut[data-info]:nth-child(n+3):hover::after { left: auto; right: 0; }
+  .attribut-tooltip.visible { display: block; }
   .perso-sorts .sort-ligne { background: #262038; font-size: 13px; padding: 6px 10px; }
   .perso-sorts .sort-nom { color: #f1ecff; }
   .perso-sorts .sort-degats { color: #ffb27a; }
@@ -2734,6 +2734,7 @@
       <div class="modale-overlay masque" id="modale-personnage">
         <div class="modale-fantasy modale-personnage">
           <button type="button" class="btn-fermer-modale" id="btn-fermer-personnage" title="Fermer">✕</button>
+          <div class="attribut-tooltip" id="attribut-tooltip"></div>
           <h2 id="perso-titre">Fiche de personnage</h2>
 
           <!-- Trois onglets : Caractéristiques (C), Équipement et Inventaire
@@ -8454,6 +8455,33 @@ const LABELS_ATTRIBUTS = {
   intelligence: { label: "Intelligence", emoji: "🧠", info: "Chaque point : +2 Mana max et +0,4 % de dégâts. Idéal pour le Krix." },
   vitalite: { label: "Vitalité", emoji: "❤️", info: "Chaque point : +4 PV max. Utile à toutes les classes pour survivre plus longtemps." },
 };
+
+// Infobulle des attributs (Force/Agilité/...) : centrée au-dessus de la puce
+// survolée et recadrée dans la fiche pour rester entièrement visible.
+{
+  const conteneur = document.getElementById("perso-attributs");
+  const tip = document.getElementById("attribut-tooltip");
+  const modale = document.querySelector(".modale-personnage");
+  conteneur.addEventListener("mouseover", (e) => {
+    const puce = e.target.closest(".attribut[data-info]");
+    if (!puce) return;
+    tip.textContent = puce.dataset.info;
+    tip.classList.add("visible");
+    const rp = puce.getBoundingClientRect();
+    const rm = modale.getBoundingClientRect();
+    const w = tip.offsetWidth;
+    const h = tip.offsetHeight;
+    const centre = rp.left + rp.width / 2 - rm.left + modale.scrollLeft;
+    const gauche = Math.max(8, Math.min(centre - w / 2, modale.clientWidth - w - 8));
+    tip.style.left = `${gauche}px`;
+    tip.style.top = `${rp.top - rm.top + modale.scrollTop - h - 8}px`;
+  });
+  conteneur.addEventListener("mouseout", (e) => {
+    const puce = e.target.closest(".attribut[data-info]");
+    if (!puce || puce.contains(e.relatedTarget)) return;
+    tip.classList.remove("visible");
+  });
+}
 
 function mettreAJourFichePersonnage() {
   const self = state.players.find((p) => p.id === selfId);
