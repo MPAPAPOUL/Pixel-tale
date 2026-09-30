@@ -7215,6 +7215,12 @@ function mettreAJourHUDDonjon() {
   const donjonState = state.donjon;
   const boss = state.boss; // null tant qu'on est à Berge-Rhak (pas d'instance)
   if (!donjonState) return;
+  // Le panneau de quête de l'Antre n'apparaît qu'à Berge-Rhak (et dans
+  // l'Antre lui-même pour le suivi du combat), jamais sur les autres cartes.
+  const typeZone = state.zoneActuelle && state.zoneActuelle.type;
+  const visible = typeZone === "verthige" || donjonState.dansDonjon;
+  conteneur.classList.toggle("masque", !visible);
+  if (!visible) return;
 
   const fragmentsHtml = Array.from({ length: donjonState.fragmentsRequis }, (_, i) =>
     `<div class="fragment${i < donjonState.fragments ? " rempli" : ""}"></div>`
