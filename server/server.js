@@ -2060,9 +2060,12 @@ function genererZoneVillage() {
   const largeur = 1500;
   const plateformes = [
     { x: 0, y: 600, width: largeur, height: 40 },
-    { x: 250, y: 470, width: 170, height: 24 },
-    { x: 610, y: 420, width: 170, height: 24 },
-    { x: 980, y: 470, width: 170, height: 24 },
+    // Plateformes un peu plus basses (elles étaient à 470/420/470) et un peu
+    // plus larges/rapprochées : la centrale (qui porte le coffre) reste
+    // atteignable d'un saut depuis les plateformes latérales.
+    { x: 250, y: 495, width: 200, height: 24 },
+    { x: 560, y: 460, width: 200, height: 24 },
+    { x: 870, y: 495, width: 200, height: 24 },
   ];
   // Gobelin neutre du tutoriel (voir avancerTutoriel) : un gobelin normal
   // (plus de mannequin dédié), placé au milieu de la carte plutôt qu'à
@@ -2250,7 +2253,7 @@ function creerCoffre(zone) {
   };
 }
 for (const zoneCoffre of [zoneVerthige, ...ZONES_PERSISTANTES.values()]) {
-  if (zoneCoffre.type === "verthige" || zoneCoffre.type === "biome") creerCoffre(zoneCoffre);
+  if (zoneCoffre.type === "verthige" || zoneCoffre.type === "biome" || zoneCoffre.type === "village") creerCoffre(zoneCoffre);
 }
 
 function ouvrirCoffre(zone, p) {
