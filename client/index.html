@@ -4496,7 +4496,26 @@ function dessinerCiel(camera) {
 // Ciel du cœur du volcan : pas de soleil, pas de nuages, pas d'îles — une
 // cheminée rocheuse plongée dans une lueur rouge-orangée pulsante, avec des
 // braises qui montent doucement.
+// Décor de l'Antre du Sire-Hano (salle du trône rouge, image fournie) : dessiné à
+// la place du dégradé de volcan quand il est chargé ; les plateformes et les
+// effets de lave sont dessinés séparément, par-dessus, et n'ont pas changé.
+const IMG_FOND_ANTRE = chargerImage("assets/backgrounds/antre-sire-hano/fond.webp");
+
+function dessinerFondAntre(camX) {
+  const img = IMG_FOND_ANTRE;
+  // Mise à l'échelle "cover" avec 4 % de marge, pour un léger décalage de
+  // parallaxe horizontal sans jamais laisser apparaître le bord de l'image.
+  const echelle = Math.max(canvas.width / img.naturalWidth, canvas.height / img.naturalHeight) * 1.04;
+  const l = img.naturalWidth * echelle;
+  const h = img.naturalHeight * echelle;
+  const marge = (l - canvas.width) / 2;
+  const decalage = Math.max(-marge, Math.min(marge, -camX * 0.03));
+  // Le trop-plein vertical est rogné surtout côté sol (70 %) pour garder le trône visible en entier.
+  ctx.drawImage(img, (canvas.width - l) / 2 + decalage, -(h - canvas.height) * 0.3, l, h);
+}
+
 function dessinerCielVolcan(camX) {
+  if (imagePrete(IMG_FOND_ANTRE)) { dessinerFondAntre(camX); return; }
   const degrade = ctx.createLinearGradient(0, 0, 0, canvas.height);
   degrade.addColorStop(0, "#1a0806");
   degrade.addColorStop(0.35, "#3a1408");
