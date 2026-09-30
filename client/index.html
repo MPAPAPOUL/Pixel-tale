@@ -853,6 +853,15 @@
     cursor: pointer;
     transition: filter 0.12s ease, transform 0.12s ease;
   }
+  .proposition-equipement { position: absolute; left: 50%; bottom: 118px; transform: translateX(-50%); z-index: 9; width: min(92%, 460px); display: flex; flex-direction: column; gap: 8px; }
+  .proposition-carte { background: rgba(24,14,36,0.94); border: 2px solid #f0c96a; border-radius: 12px; padding: 10px 12px; box-shadow: 0 6px 18px rgba(0,0,0,0.5); color: #e6dcff; font-size: 13px; }
+  .proposition-carte h4 { margin: 0 0 4px; font-size: 14px; color: #ffe9a8; }
+  .proposition-carte .prop-ligne { display: flex; justify-content: space-between; gap: 8px; margin: 2px 0; }
+  .proposition-carte .prop-actuel { color: #b7a9d6; }
+  .proposition-carte .prop-gain { color: #8ff0a8; font-weight: 700; }
+  .proposition-actions { display: flex; gap: 8px; margin-top: 8px; }
+  .proposition-actions button { flex: 1; border-radius: 10px; padding: 7px 10px; font-size: 13px; cursor: pointer; }
+  .proposition-actions .btn-equiper { background: linear-gradient(180deg, #f0c96a 0%, #c9973f 100%); border-color: #ffedb8; color: #241733; font-weight: 700; }
   .icone-boutique-gemmes.masque { display: none; }
   .icone-boutique-gemmes:hover { filter: brightness(1.25); transform: translateY(-1px); }
   .icone-boutique-gemmes:active { transform: translateY(1px); filter: brightness(0.95); }
@@ -2547,6 +2556,7 @@
 
       <!-- Boutique à gemmes : accessible partout (pas besoin d'un PNJ), à
            côté du téléporteur — voir mettreAJourBoutiqueGemmes. -->
+      <div class="proposition-equipement masque" id="proposition-equipement" role="dialog" aria-live="polite"></div>
       <button type="button" class="icone-boutique-gemmes" id="icone-boutique-gemmes" title="Boutique à gemmes">
         <span class="icone-boutique-gemmes-symbole">💎</span>
       </button>
@@ -8041,6 +8051,7 @@ function verifierNouveauLoot() {
   const loot = state.loot;
   if (!loot || loot.id === dernierLootIdVu) return;
   dernierLootIdVu = loot.id;
+  verifierPropositionsEquipement();
   const info = TYPES_ARMES[loot.type];
   if (!info) return;
   // Un drop légendaire arrive en set (arme + armure) : on les annonce dans
@@ -8051,6 +8062,61 @@ function verifierNouveauLoot() {
   const legendaire = !!loot.legendaire;
   const mythique = !!loot.mythique;
   fileToast(() => { toastLoot = { texte, debut: performance.now(), legendaire, mythique }; });
+}
+
+
+// --- Proposition d'équipement quand un objet ramassé est meilleur ---------
+// Le serveur ne renvoie dans `state.loot.propositions` que les objets dont le
+// score (pondéré selon la classe) dépasse celui de l'équipement actuel ; la
+// décision (équiper / ignorer) reste au joueur, et l'équipement lui-même est
+// validé côté serveur par le message "equiper" habituel.
+const NOMS_STATS_PROPOSITION = { force: "Force", agilite: "Agilité", intelligence: "Intelligence", vitalite: "Vitalité", degatsBonusPct: "% dégâts", reductionDegatsPct: "% réduction des dégâts", regenPv: "PV/s" };
+function texteBonusObjet(bonus) {
+  if (!bonus) return "aucun";
+  return Object.entries(bonus).filter(([, v]) => v).map(([k, v]) => {
+    const pct = k.endsWith("Pct");
+    return `+${pct ? Math.round(v * 100) : v}${pct ? "" : " "}${NOMS_STATS_PROPOSITION[k] || k}`;
+  }).join(", ") || "aucun";
+}
+let derniereProposition = { id: null, timer: null };
+function afficherPropositionsEquipement(propositions) {
+  const conteneur = document.getElementById("proposition-equipement");
+  conteneur.replaceChildren();
+  for (const prop of propositions) {
+    const nouvel = TYPES_ARMES[prop.item];
+    const actuel = prop.actuel ? TYPES_ARMES[prop.actuel] : null;
+    const carte = document.createElement("div");
+    carte.className = "proposition-carte";
+    const titre = document.createElement("h4");
+    titre.textContent = `${nouvel ? nouvel.emoji + " " + nouvel.label : prop.item} — meilleur que ton équipement !`;
+    const ligneNouvel = document.createElement("div");
+    ligneNouvel.className = "prop-ligne prop-gain";
+    ligneNouvel.textContent = `Nouveau : ${texteBonusObjet(prop.bonus)}`;
+    const ligneActuel = document.createElement("div");
+    ligneActuel.className = "prop-ligne prop-actuel";
+    ligneActuel.textContent = `Actuel : ${actuel ? actuel.label + " (" + texteBonusObjet(prop.bonusActuel) + ")" : "rien d'équipé"}`;
+    const actions = document.createElement("div");
+    actions.className = "proposition-actions";
+    const bEquiper = document.createElement("button");
+    bEquiper.type = "button"; bEquiper.className = "btn-equiper"; bEquiper.textContent = "Équiper";
+    bEquiper.addEventListener("click", () => { envoyer({ type: "equiper", categorie: prop.categorie, item: prop.item }); carte.remove(); masquerSiVide(); });
+    const bIgnorer = document.createElement("button");
+    bIgnorer.type = "button"; bIgnorer.textContent = "Ignorer";
+    bIgnorer.addEventListener("click", () => { carte.remove(); masquerSiVide(); });
+    actions.append(bEquiper, bIgnorer);
+    carte.append(titre, ligneNouvel, ligneActuel, actions);
+    conteneur.append(carte);
+  }
+  function masquerSiVide() { if (!conteneur.children.length) conteneur.classList.add("masque"); }
+  conteneur.classList.toggle("masque", !propositions.length);
+  clearTimeout(derniereProposition.timer);
+  derniereProposition.timer = setTimeout(() => conteneur.classList.add("masque"), 15000);
+}
+function verifierPropositionsEquipement() {
+  const loot = state && state.loot;
+  if (!loot || loot.id === derniereProposition.id) return;
+  derniereProposition.id = loot.id;
+  if (loot.propositions && loot.propositions.length) afficherPropositionsEquipement(loot.propositions);
 }
 
 function dessinerToastLoot() {

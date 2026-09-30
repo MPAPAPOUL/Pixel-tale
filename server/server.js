@@ -2595,6 +2595,39 @@ function avancerTutoriel(joueur, etapeAttendue) {
 // besoin d'un message dédié "one-shot"). Un seul appui peut ramasser
 // PLUSIEURS objets d'un coup (utile pour le set légendaire du boss, posé
 // en grappe au même endroit) : un seul toast regroupe tout le butin.
+// --- Proposition d'équipement au ramassage ----------------------------------
+// Score d'un objet pour une classe : chaque attribut est pondéré selon son
+// utilité pour la classe (Dorken: Force/Vitalité, Quater: Agilité, Krix:
+// Intelligence), plus les bonus directs des objets légendaires/mythiques.
+const POIDS_ATTRIBUTS_CLASSE = {
+  dorken: { force: 1, vitalite: 0.6, agilite: 0.3, intelligence: 0 },
+  quater: { agilite: 1, force: 0.5, vitalite: 0.6, intelligence: 0 },
+  krix: { intelligence: 1, vitalite: 0.6, agilite: 0.3, force: 0 },
+};
+function scoreObjet(bonus, classe) {
+  if (!bonus) return 0;
+  const w = POIDS_ATTRIBUTS_CLASSE[classe] || POIDS_ATTRIBUTS_CLASSE.dorken;
+  return (bonus.force || 0) * w.force + (bonus.agilite || 0) * w.agilite + (bonus.intelligence || 0) * w.intelligence + (bonus.vitalite || 0) * w.vitalite
+    + (bonus.degatsBonusPct || 0) * 300 + (bonus.reductionDegatsPct || 0) * 300 + (bonus.regenPv || 0) * 8;
+}
+function categorieDeObjet(cle) {
+  return Object.keys(STATS_PAR_CATEGORIE).find((cat) => Object.prototype.hasOwnProperty.call(STATS_PAR_CATEGORIE[cat], cle)) || null;
+}
+// Objets ramassés meilleurs que l'équipement actuel (un seul par catégorie : le meilleur).
+function propositionsEquipement(p, types) {
+  const meilleurs = new Map();
+  for (const cle of types) {
+    const categorie = categorieDeObjet(cle);
+    if (!categorie || p.equipement[categorie] === cle) continue;
+    const score = scoreObjet(STATS_PAR_CATEGORIE[categorie][cle], p.classe);
+    const actuel = p.equipement[categorie];
+    if (score <= scoreObjet(STATS_PAR_CATEGORIE[categorie][actuel], p.classe)) continue;
+    const deja = meilleurs.get(categorie);
+    if (!deja || score > deja.score) meilleurs.set(categorie, { categorie, item: cle, actuel: actuel || null, score, bonus: STATS_PAR_CATEGORIE[categorie][cle], bonusActuel: actuel ? STATS_PAR_CATEGORIE[categorie][actuel] : null });
+  }
+  return Array.from(meilleurs.values()).map(({ score, ...reste }) => reste);
+}
+
 function ramasserObjets(zone, p) {
   if (!zone.objetsAuSol || zone.objetsAuSol.length === 0) return;
   const centreX = p.x + JOUEUR_LARGEUR / 2;
@@ -2623,6 +2656,7 @@ function ramasserObjets(zone, p) {
     bundle: reste.map((o) => o.type),
     legendaire,
     mythique,
+    propositions: propositionsEquipement(p, ramasses.map((o) => o.type)),
     expire: Date.now() + (legendaire || mythique ? 5000 : 3000),
   };
 }
@@ -3763,7 +3797,7 @@ function construireEtatPourJoueur(p, classement) {
     or: p.or || 0,
     gemmes: p.gemmes || 0,
     loot: p.dernierLoot && Date.now() < p.dernierLoot.expire
-      ? { id: p.dernierLoot.id, type: p.dernierLoot.type, bundle: p.dernierLoot.bundle || null, legendaire: !!p.dernierLoot.legendaire }
+      ? { id: p.dernierLoot.id, type: p.dernierLoot.type, bundle: p.dernierLoot.bundle || null, legendaire: !!p.dernierLoot.legendaire, propositions: p.dernierLoot.propositions || [] }
       : null,
     // Toast "NIVEAU X !" (même mécanique que loot ci-dessus) — voir gainerXp.
     monteeDeNiveau: p.derniereMonteeDeNiveau && Date.now() < p.derniereMonteeDeNiveau.expire
