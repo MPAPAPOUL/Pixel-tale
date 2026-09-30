@@ -2433,7 +2433,7 @@
           </div>
           <div class="reglages-onglet-panneau" id="reglages-panneau-options">
             <div class="reglage-ligne">
-              <label for="reglages-pseudo">Renommer ton personnage</label>
+              <label for="reglages-pseudo">Renommer ton personnage (50 💎)</label>
               <div class="rename-row-reglages">
                 <input type="text" id="reglages-pseudo" maxlength="20" placeholder="Nouveau nom...">
                 <button type="button" id="btn-reglages-renommer">OK</button>
@@ -9232,7 +9232,11 @@ document.getElementById("modale-reglages").addEventListener("click", (e) => {
 });
 document.getElementById("btn-reglages-renommer").addEventListener("click", () => {
   const nom = document.getElementById("reglages-pseudo").value.trim();
-  if (nom) envoyer({ type: "rename", name: nom });
+  if (!nom) return;
+  const soi = state && state.players && state.players.find((p) => p.id === selfId);
+  if (soi && nom === soi.pseudo) return;
+  if ((state.gemmes || 0) < 50) { alert("Il faut 50 gemmes pour renommer ton personnage."); return; }
+  if (confirm(`Renommer ton personnage en « ${nom} » pour 50 gemmes ?`)) envoyer({ type: "rename", name: nom });
 });
 document.getElementById("btn-reglages-revoir-accueil-jeu").addEventListener("click", () => {
   // Affichage direct (sans repasser par verifierOnboarding, qui ne se

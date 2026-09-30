@@ -3217,6 +3217,7 @@ function infligerDegatsSireHano(zone, entite, degats, joueurId) {
   }
 }
 
+const PRIX_RENOMMAGE = 50; // gemmes, pour tout renommage après le nom choisi à la création
 const FACTEUR_DEGATS_SUBIS = 0.8;
 function infligerDegatsJoueur(p, degats, sourceX) {
   if (!p.alive || p.invulnerableRestant > 0) return false;
@@ -4496,7 +4497,7 @@ function sauvegarderPersonnage(jeton, joueur) {
 
 function appliquerProgression(p, sauvegarde) {
   if (!sauvegarde) return;
-  if (sauvegarde.pseudo) p.pseudo = String(sauvegarde.pseudo).slice(0, 20);
+  if (sauvegarde.pseudo) { p.pseudo = String(sauvegarde.pseudo).slice(0, 20); p.pseudoDefini = true; }
   if (sauvegarde.classe && CLASSES[sauvegarde.classe]) {
     p.classe = sauvegarde.classe;
     p.couleur = CLASSES[p.classe].couleur;
@@ -4738,7 +4739,22 @@ wss.on("connection", (ws, req) => {
       joueur.input.f = !!message.f; // ramasser le butin au sol à proximité
     } else if (message.type === "rename") {
       const nom = String(message.name || "").trim().slice(0, 20);
-      if (nom) joueur.pseudo = nom;
+      if (nom && nom !== joueur.pseudo) {
+        // Le premier nom (choisi à la création) est gratuit ; tout
+        // renommage ensuite coûte PRIX_RENOMMAGE gemmes.
+        if (!joueur.pseudoDefini) {
+          joueur.pseudo = nom;
+          joueur.pseudoDefini = true;
+        } else if ((joueur.gemmes || 0) >= PRIX_RENOMMAGE) {
+          joueur.gemmes -= PRIX_RENOMMAGE;
+          joueur.pseudo = nom;
+          const wsJoueur = clients.get(joueur.id);
+          if (wsJoueur && wsJoueur.readyState === wsJoueur.OPEN) wsJoueur.send(JSON.stringify({ type: "annonce", texte: `✏️ Personnage renommé en « ${nom} » (−${PRIX_RENOMMAGE} gemmes).` }));
+        } else {
+          const wsJoueur = clients.get(joueur.id);
+          if (wsJoueur && wsJoueur.readyState === wsJoueur.OPEN) wsJoueur.send(JSON.stringify({ type: "annonce", texte: `Il faut ${PRIX_RENOMMAGE} gemmes pour renommer ton personnage.` }));
+        }
+      }
     } else if (message.type === "personnaliser") {
       // Écran de création (et réglages en jeu) : chaque champ n'est
       // appliqué QUE s'il correspond exactement à une valeur des palettes
