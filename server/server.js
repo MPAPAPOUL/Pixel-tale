@@ -876,12 +876,28 @@ const GEMMES_VICTOIRE_CHEVALIER_NOIR = 8; // même palier de récompense que le 
 // ajouterNiveaux) — reste dans "la boutique à gemmes" (même modale/icône)
 // simplement parce qu'aucune autre boutique n'est accessible partout comme
 // celle-ci.
-// Boutique à gemmes vidée (demande explicite : plus de potion de niveau ni
-// d'équipement à l'achat) — le message "acheter_gemme" ne trouve donc plus aucune offre.
-const BOUTIQUE_GEMMES = [];
+// Boutique à gemmes : trois potions de l'Aventurier (même effet, durées et prix
+// différents). L'achat active tout de suite le bonus ; racheter une potion
+// alors qu'une autre est active PROLONGE la durée restante (voir activerPotion).
+const JOUR_MS = 24 * 60 * 60 * 1000;
+const EFFETS_POTION = { bonusXp: 0.5, bonusOr: 0.2, doubleSaut: true };
+const BOUTIQUE_GEMMES = [
+  { item: "potionAventurier1j", prix: 200, potion: { jours: 1 } },
+  { item: "potionAventurier7j", prix: 1000, potion: { jours: 7 } },
+  { item: "potionAventurier30j", prix: 3500, potion: { jours: 30 } },
+];
+
+function potionActive(p) {
+  return !!(p.potion && p.potion.expire > Date.now());
+}
+function activerPotion(p, jours) {
+  const base = potionActive(p) ? p.potion.expire : Date.now();
+  p.potion = { expire: base + jours * JOUR_MS };
+}
 
 function gainerXp(p, montant) {
   if (!montant || montant <= 0) return;
+  if (potionActive(p)) montant = Math.round(montant * (1 + EFFETS_POTION.bonusXp));
   p.xp += montant;
   let xpRequis = xpRequisPourNiveau(p.niveau);
   let aMonteDeNiveau = false;
@@ -2627,9 +2643,17 @@ function simulerPhysique(dtSecondes) {
     p.vy += GRAVITE * dtSecondes;
     if (p.vy > VITESSE_CHUTE_MAX) p.vy = VITESSE_CHUTE_MAX;
 
+    // Double saut (potion de l'Aventurier) : un saut supplémentaire en l'air, sur
+    // un NOUVEL appui (front montant) — maintenir la touche ne le déclenche pas.
+    const nouvelAppuiSaut = !!p.input.jump && !p.sautPrecedent;
+    p.sautPrecedent = !!p.input.jump;
+    if (p.onGround) p.doubleSautDispo = true;
     if (p.input.jump && p.onGround) {
       p.vy = VITESSE_SAUT;
       p.onGround = false;
+    } else if (nouvelAppuiSaut && !p.onGround && p.doubleSautDispo && potionActive(p)) {
+      p.vy = VITESSE_SAUT;
+      p.doubleSautDispo = false;
     }
 
     // Déplacement horizontal, bloqué aux limites de la zone actuelle (bords
@@ -2876,7 +2900,8 @@ function infligerDegatsMonstre(zone, m, degats, joueurId) {
       gainerXp(joueur, MONSTRES_CONFIG[m.type].xp || 0); // tout monstre tué rapporte de l'XP, quelle que soit la zone
       // Pièces d'or : auto-collectées (contrairement à l'équipement, qui
       // reste au sol pour le ramassage à F) — toutes zones confondues.
-      const orGagne = Math.max(1, Math.round((MONSTRES_CONFIG[m.type].xp || 1) * 2.5));
+      const orBase = Math.max(1, Math.round((MONSTRES_CONFIG[m.type].xp || 1) * 2.5));
+      const orGagne = potionActive(joueur) ? Math.round(orBase * (1 + EFFETS_POTION.bonusOr)) : orBase;
       joueur.or = (joueur.or || 0) + orGagne;
       incrementerQuete(joueur, "tuer_monstres", 1);
       incrementerQuete(joueur, "gagner_or", orGagne);
@@ -3783,6 +3808,7 @@ function construireEtatPourJoueur(p, classement) {
       niveau: p.niveau,
       xp: Math.floor(p.xp),
       xpRequis: xpRequisPourNiveau(p.niveau),
+      potionExpire: potionActive(p) ? p.potion.expire : null,
       equipement: p.equipement,
       attributs: statsEquipement(p),
       multiplicateurDegats: multiplicateurDegats(p),
@@ -4172,6 +4198,7 @@ function extraireProgression(p) {
     statsVie: p.statsVie,
     hautsFaitsDebloques: p.hautsFaitsDebloques,
     titreActif: p.titreActif,
+    potion: potionActive(p) ? p.potion : null,
     connexionQuotidienne: p.connexionQuotidienne,
     apparence: p.apparence,
     tutoriel: p.tutoriel,
@@ -4220,6 +4247,7 @@ function appliquerProgression(p, sauvegarde) {
   if (sauvegarde.statsVie) Object.assign(p.statsVie, sauvegarde.statsVie);
   if (Array.isArray(sauvegarde.hautsFaitsDebloques)) p.hautsFaitsDebloques = sauvegarde.hautsFaitsDebloques;
   if (sauvegarde.titreActif) p.titreActif = String(sauvegarde.titreActif).slice(0, 40);
+  if (sauvegarde.potion && Number(sauvegarde.potion.expire) > Date.now()) p.potion = { expire: Number(sauvegarde.potion.expire) };
   // Apparence — absente des sauvegardes antérieures à cette fonctionnalité,
   // d'où les valeurs par défaut déjà posées par creerJoueur conservées
   // champ par champ (jamais de remplacement en bloc) si la sauvegarde ne
@@ -4529,7 +4557,9 @@ wss.on("connection", (ws, req) => {
         const monnaie = offre.monnaie === "or" ? "or" : "gemmes";
         if ((joueur[monnaie] || 0) >= offre.prix) {
           joueur[monnaie] -= offre.prix;
-          if (offre.niveaux) {
+          if (offre.potion) {
+            activerPotion(joueur, offre.potion.jours);
+          } else if (offre.niveaux) {
             ajouterNiveaux(joueur, offre.niveaux);
           } else {
             joueur.inventaire[offre.item] = (joueur.inventaire[offre.item] || 0) + 1;

@@ -857,7 +857,16 @@
   .icone-boutique-gemmes:hover { filter: brightness(1.25); transform: translateY(-1px); }
   .icone-boutique-gemmes:active { transform: translateY(1px); filter: brightness(0.95); }
   .icone-boutique-gemmes-symbole { font-size: 22px; filter: drop-shadow(0 0 4px rgba(200,140,255,0.6)); }
-  .modale-fantasy.modale-boutique-gemmes { width: min(92%, 420px); max-height: 82%; overflow-y: auto; text-align: left; position: relative; }
+  .modale-fantasy.modale-boutique-gemmes { width: min(94%, 720px); max-height: 86%; overflow-y: auto; text-align: left; position: relative; }
+  .gemme-grille { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .gemme-carte { background: rgba(255,255,255,0.06); border: 1px solid var(--hairline); border-radius: 12px; padding: 14px 12px; text-align: center; color: #e6dcff; display: flex; flex-direction: column; gap: 8px; }
+  .gemme-carte h3 { margin: 0; font-size: 14px; color: #f0d9a0; line-height: 1.3; }
+  .gemme-icone { font-size: 34px; filter: drop-shadow(0 0 6px rgba(200,140,255,0.6)); }
+  .gemme-effets { list-style: none; margin: 0; padding: 0; text-align: left; font-size: 12.5px; line-height: 1.6; }
+  .gemme-duree { margin: 0; font-size: 12.5px; color: #b7a9d6; }
+  .gemme-carte .btn-acheter { margin-top: auto; padding: 8px 10px; font-size: 13px; }
+  .boutique-statut { text-align: center; color: #b9f0c9; font-size: 13px; margin: 0 0 12px; }
+  @media (max-width: 620px) { .gemme-grille { grid-template-columns: 1fr; } }
   .modale-boutique-gemmes h2 { text-align: center; }
 
   .modale-fantasy.modale-teleporteur {
@@ -2545,9 +2554,9 @@
         <div class="modale-fantasy modale-boutique-gemmes">
           <button type="button" class="btn-fermer-modale" id="btn-fermer-boutique-gemmes" title="Fermer">✕</button>
           <h2>Boutique à gemmes</h2>
-          <p class="boutique-intro">Équipement légendaire garanti, contre les gemmes récoltées sur les monstres et les boss.</p>
+          <p class="boutique-intro">Des potions à durée limitée, payées avec les gemmes récoltées sur les monstres et les boss.</p>
+          <p class="boutique-statut masque" id="boutique-gemmes-statut"></p>
           <div id="liste-boutique-gemmes"></div>
-          <div class="inventaire-tooltip" id="boutique-gemmes-tooltip"></div>
         </div>
       </div>
 
@@ -7227,9 +7236,8 @@ function mettreAJourIconeTeleporteur() {
   if (masque) document.getElementById("modale-teleporteur").classList.add("masque");
   // Boutique à gemmes : même visibilité que le téléporteur juste à côté (pas
   // de sens en plein combat de donjon/Salle du Trône).
-  // La boutique est vide : son icône reste masquée en permanence.
-  document.getElementById("icone-boutique-gemmes").classList.add("masque");
-  document.getElementById("modale-boutique-gemmes").classList.add("masque");
+  document.getElementById("icone-boutique-gemmes").classList.toggle("masque", masque);
+  if (masque) document.getElementById("modale-boutique-gemmes").classList.add("masque");
   // Invite à quitter le village une fois le tutoriel terminé (voir
   // mettreAJourTutoriel) : halo pulsant tant qu'on reste à Estenoise, se
   // désactive tout seul dès qu'on téléporte ailleurs.
@@ -7439,54 +7447,42 @@ setInterval(() => {
 // Accessible partout via son icône dédiée (pas besoin d'un PNJ, contrairement
 // à la boutique en or) — voir BOUTIQUE_GEMMES côté serveur pour la
 // validation (prix ici uniquement pour l'affichage, jamais fait confiance).
-const BOUTIQUE_GEMMES_CLIENT = []; // boutique vidée (voir BOUTIQUE_GEMMES côté serveur)
+const BOUTIQUE_GEMMES_CLIENT = [
+  { item: "potionAventurier1j", prix: 200, duree: "1 jour", nom: "Potion de l'Aventurier — 1 jour" },
+  { item: "potionAventurier7j", prix: 1000, duree: "7 jours", nom: "Potion de l'Aventurier — 7 jours" },
+  { item: "potionAventurier30j", prix: 3500, duree: "30 jours", nom: "Potion de l'Aventurier — 30 jours" },
+];
 
+function texteTempsRestant(ms) {
+  const minutes = Math.max(0, Math.floor(ms / 60000));
+  const j = Math.floor(minutes / 1440), h = Math.floor((minutes % 1440) / 60), m = minutes % 60;
+  return j > 0 ? `${j} j ${h} h` : h > 0 ? `${h} h ${m} min` : `${m} min`;
+}
+
+// Les trois potions sont affichées en grille de 3 par ligne, avec leur
+// description toujours visible (plus de tooltip au survol).
 function mettreAJourBoutiqueGemmes() {
   const conteneur = document.getElementById("liste-boutique-gemmes");
   const gemmes = state.gemmes || 0;
-  const or = state.or || 0;
-  conteneur.innerHTML = BOUTIQUE_GEMMES_CLIENT
-    .map((offre) => {
-      const enOr = offre.monnaie === "or";
-      const abordable = (enOr ? or : gemmes) >= offre.prix;
-      const info = TYPES_ARMES[offre.item];
-      const icone = info ? htmlIconeObjet(info, "icone-inline") : (offre.emoji || "❔");
-      const label = info ? info.label : offre.label || offre.item;
-      return `
-        <div class="boutique-ligne" data-item="${offre.item}">
-          <span>${icone} ${label} — ${enOr ? "🪙" : "💎"}${offre.prix}</span>
-          <button type="button" class="btn-acheter" data-item="${offre.item}" ${abordable ? "" : "disabled"}>Acheter</button>
-        </div>`;
-    })
-    .join("");
-}
-
-// Tooltip stats au survol — même mécanique que les deux autres (inventaire,
-// boutique en or).
-{
-  const listeEl = document.getElementById("liste-boutique-gemmes");
-  const tooltipEl = document.getElementById("boutique-gemmes-tooltip");
-  const conteneurEl = document.querySelector(".modale-fantasy.modale-boutique-gemmes");
-  listeEl.addEventListener("mouseover", (e) => {
-    const ligneEl = e.target.closest(".boutique-ligne[data-item]");
-    if (!ligneEl) return;
-    const info = TYPES_ARMES[ligneEl.dataset.item] || BOUTIQUE_GEMMES_CLIENT.find((o) => o.item === ligneEl.dataset.item);
-    if (!info) return;
-    tooltipEl.innerHTML = `<span class="nom">${info.label}</span><span class="desc">${info.description || ""}</span>`;
-    tooltipEl.classList.toggle("legendaire", !!info.legendaire);
-    tooltipEl.classList.toggle("mythique", !!info.mythique);
-    const rectLigne = ligneEl.getBoundingClientRect();
-    const rectConteneur = conteneurEl.getBoundingClientRect();
-    tooltipEl.style.left = `${rectLigne.left - rectConteneur.left}px`;
-    tooltipEl.style.top = `${rectLigne.top - rectConteneur.top}px`;
-    tooltipEl.style.transform = "translateY(-100%) translateY(-6px)";
-    tooltipEl.classList.add("visible");
-  });
-  listeEl.addEventListener("mouseout", (e) => {
-    const ligneEl = e.target.closest(".boutique-ligne[data-item]");
-    if (!ligneEl || ligneEl.contains(e.relatedTarget)) return;
-    tooltipEl.classList.remove("visible");
-  });
+  const expire = state.perso && state.perso.potionExpire;
+  const actif = expire && expire > Date.now();
+  const statut = document.getElementById("boutique-gemmes-statut");
+  statut.textContent = actif ? `🧪 Potion active — il reste ${texteTempsRestant(expire - Date.now())} (racheter une potion prolonge la durée).` : "";
+  statut.classList.toggle("masque", !actif);
+  conteneur.innerHTML = `<div class="gemme-grille">${BOUTIQUE_GEMMES_CLIENT
+    .map((offre) => `
+      <div class="gemme-carte" data-item="${offre.item}">
+        <div class="gemme-icone">🧪</div>
+        <h3>${offre.nom}</h3>
+        <ul class="gemme-effets">
+          <li>✨ +50 % d'expérience</li>
+          <li>🪙 +20 % d'or sur les monstres</li>
+          <li>🦘 Double saut</li>
+        </ul>
+        <p class="gemme-duree">Durée : ${offre.duree}</p>
+        <button type="button" class="btn-acheter" data-item="${offre.item}" ${gemmes >= offre.prix ? "" : "disabled"}>💎 ${offre.prix.toLocaleString("fr-FR")}</button>
+      </div>`)
+    .join("")}</div>`;
 }
 
 document.getElementById("icone-boutique-gemmes").addEventListener("click", () => {
