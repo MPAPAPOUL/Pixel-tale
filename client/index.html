@@ -4252,6 +4252,7 @@ function render() {
   dessinerPlateformes();
   dessinerLianes();
   dessinerPnjs();
+  dessinerCoffre();
   dessinerPorteDonjon();
   dessinerPorteTroneAmbre();
   dessinerMonstres();
@@ -5718,6 +5719,88 @@ function dessinerMonstres() {
     ctx.fillStyle = ratio > 0.4 ? "#5fae5a" : "#c1502e";
     ctx.fillRect(centreX - barreLargeur / 2, barreY, barreLargeur * ratio, 5);
   }
+}
+
+// --- Coffre au trésor (un par carte, sur la plateforme la plus haute) -------
+// Fermé : lueur dorée pulsante + étincelles. Ouverture : 3 images du spritesheet
+// (fermé → entrouvert → grand ouvert), gerbe d'étincelles, puis fondu — le
+// serveur retire le coffre juste après (voir simulerCoffres) et le remet 2 h plus tard.
+const IMGS_COFFRE = {
+  ferme: chargerImage("sprites/coffre/ferme.png"),
+  entrouvert: chargerImage("sprites/coffre/entrouvert.png"),
+  ouvert: chargerImage("sprites/coffre/ouvert.png"),
+};
+
+function dessinerCoffre() {
+  const c = state && state.coffre;
+  if (!c) return;
+  const t = performance.now() / 1000;
+  const cx = c.x + c.largeur / 2;
+  const bas = c.y + c.hauteur;
+  const ferme = c.etat === "ferme";
+  let img = IMGS_COFFRE.ferme;
+  let decalageX = 0;
+  let alpha = 1;
+  if (!ferme) {
+    if (c.depuis < 300) { img = IMGS_COFFRE.ferme; decalageX = Math.sin(c.depuis / 18) * 2; }
+    else if (c.depuis < 800) img = IMGS_COFFRE.entrouvert;
+    else img = IMGS_COFFRE.ouvert;
+    if (c.depuis > 1500) alpha = Math.max(0, (1900 - c.depuis) / 400);
+  }
+
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  if (ferme) {
+    // Surbrillance : halo doré qui pulse, plus quelques étoiles qui tournent autour.
+    const pulse = 0.5 + 0.5 * Math.sin(t * 3);
+    const rayon = 62 + pulse * 14;
+    const halo = ctx.createRadialGradient(cx, bas - c.hauteur * 0.45, 4, cx, bas - c.hauteur * 0.45, rayon);
+    halo.addColorStop(0, `rgba(255,224,120,${0.55 + pulse * 0.25})`);
+    halo.addColorStop(0.5, `rgba(255,190,60,${0.22 + pulse * 0.12})`);
+    halo.addColorStop(1, "rgba(255,190,60,0)");
+    ctx.fillStyle = halo;
+    ctx.fillRect(cx - rayon, bas - c.hauteur * 0.45 - rayon, rayon * 2, rayon * 2);
+  }
+  if (imagePrete(img)) {
+    const l = c.largeur;
+    const h = l * (img.naturalHeight / img.naturalWidth);
+    ctx.imageSmoothingEnabled = true;
+    ctx.drawImage(img, cx - l / 2 + decalageX, bas - h + 2, l, h);
+  }
+  if (ferme) {
+    ctx.fillStyle = "#fff3b0";
+    for (let i = 0; i < 4; i++) {
+      const a = t * 1.4 + i * (Math.PI / 2);
+      const r = 30 + 6 * Math.sin(t * 2 + i);
+      const sx = cx + Math.cos(a) * r;
+      const sy = bas - c.hauteur * 0.5 + Math.sin(a) * r * 0.55;
+      const taille = 1.8 + 1.2 * Math.abs(Math.sin(t * 3 + i * 1.7));
+      ctx.globalAlpha = 0.5 + 0.5 * Math.abs(Math.sin(t * 2.2 + i));
+      ctx.fillRect(sx - taille / 2, sy - taille / 2, taille, taille);
+    }
+    // Invitation à l'ouvrir quand on est à portée.
+    const soi = state.players && state.players.find((p) => p.id === selfId);
+    if (soi && Math.abs(soi.x + 24 - cx) < 90 && Math.abs(soi.y + 51 - (bas - c.hauteur / 2)) < 90) {
+      ctx.globalAlpha = 1;
+      ctx.font = "700 13px 'Baloo 2', sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillStyle = "rgba(20,10,30,0.7)";
+      ctx.fillText("F — Ouvrir le coffre", cx + 1, c.y - 9);
+      ctx.fillStyle = "#ffe9a8";
+      ctx.fillText("F — Ouvrir le coffre", cx, c.y - 10);
+    }
+  } else if (c.depuis > 250 && c.depuis < 1400) {
+    // Gerbe d'étincelles dorées à l'ouverture.
+    const k = (c.depuis - 250) / 1150;
+    ctx.fillStyle = "#ffd76a";
+    for (let i = 0; i < 14; i++) {
+      const a = (i / 14) * Math.PI * 2 + i;
+      const d = 14 + k * 46 * (0.6 + 0.4 * ((i * 37) % 10) / 10);
+      ctx.globalAlpha = (1 - k) * alpha;
+      ctx.fillRect(cx + Math.cos(a) * d, bas - c.hauteur * 0.6 + Math.sin(a) * d * 0.7 - k * 24, 3, 3);
+    }
+  }
+  ctx.restore();
 }
 
 // Rendu de secours (silhouette vectorielle) tant que le sprite du monstre

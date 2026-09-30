@@ -2105,6 +2105,80 @@ BIOMES_DEFINITION.forEach((biome, i) => ZONES_PERSISTANTES.set(biome.id, generer
   if (zoneCouronneOrage) zoneCouronneOrage.dragonNoir = creerDragonNoir(zoneCouronneOrage);
 }
 
+// ---------------------------------------------------------------------------
+// Coffres au trésor : un par carte (Berge-Rhak, régions, crique), posé sur la
+// plateforme la plus haute. Contenu tiré au sort : 100 pièces d'or, 10 gemmes ou
+// une pièce d'équipement du palier de la carte. N'importe qui peut l'ouvrir
+// (touche F, à proximité), mais un seul joueur en profite : le premier. Après
+// l'animation d'ouverture il disparaît, puis réapparaît 2 h après son ouverture.
+// L'état vit en mémoire : un redémarrage du serveur remet tous les coffres.
+// ---------------------------------------------------------------------------
+const COFFRE_LARGEUR = 62;
+const COFFRE_HAUTEUR = 56;
+const COFFRE_RAYON_OUVERTURE = 90;
+const COFFRE_DUREE_ANIMATION_MS = 1900; // ouverture visible, puis disparition
+const COFFRE_DELAI_REAPPARITION_MS = 2 * 60 * 60 * 1000;
+const COFFRE_OR = 100;
+const COFFRE_GEMMES = 10;
+
+function creerCoffre(zone) {
+  const candidates = zone.plateformes.filter((pf) => pf.y < 590 && !pf.escalier);
+  if (candidates.length === 0) return;
+  const sommet = candidates.reduce((haut, pf) => (pf.y < haut.y ? pf : haut), candidates[0]);
+  zone.coffre = {
+    x: Math.round(sommet.x + sommet.width / 2 - COFFRE_LARGEUR / 2),
+    y: sommet.y - COFFRE_HAUTEUR,
+    etat: "ferme", // "ferme" | "ouvert" (animation en cours) | "cache" (en attente de réapparition)
+    tOuverture: 0,
+    reapparitionA: 0,
+  };
+}
+for (const zoneCoffre of [zoneVerthige, ...ZONES_PERSISTANTES.values()]) {
+  if (zoneCoffre.type === "verthige" || zoneCoffre.type === "biome") creerCoffre(zoneCoffre);
+}
+
+function ouvrirCoffre(zone, p) {
+  const c = zone.coffre;
+  if (!c || c.etat !== "ferme") return; // déjà ouvert par quelqu'un : premier arrivé, premier servi
+  const dx = Math.abs(p.x + JOUEUR_LARGEUR / 2 - (c.x + COFFRE_LARGEUR / 2));
+  const dy = Math.abs(p.y + JOUEUR_HAUTEUR / 2 - (c.y + COFFRE_HAUTEUR / 2));
+  if (dx > COFFRE_RAYON_OUVERTURE || dy > COFFRE_RAYON_OUVERTURE) return;
+  c.etat = "ouvert";
+  c.tOuverture = Date.now();
+  c.reapparitionA = c.tOuverture + COFFRE_DELAI_REAPPARITION_MS;
+  c.ouvertPar = p.id;
+
+  const ws = clients.get(p.id);
+  const annoncer = (texte) => { if (ws && ws.readyState === ws.OPEN) ws.send(JSON.stringify({ type: "annonce", texte })); };
+  const tirage = Math.random();
+  if (tirage < 1 / 3) {
+    p.or = (p.or || 0) + COFFRE_OR;
+    p.statsVie.orGagneTotal += COFFRE_OR;
+    incrementerQuete(p, "gagner_or", COFFRE_OR);
+    annoncer(`🎁 Coffre ouvert : +${COFFRE_OR} pièces d'or !`);
+  } else if (tirage < 2 / 3) {
+    p.gemmes = (p.gemmes || 0) + COFFRE_GEMMES;
+    p.statsVie.gemmesGagneesTotal += COFFRE_GEMMES;
+    annoncer(`🎁 Coffre ouvert : +${COFFRE_GEMMES} gemmes !`);
+  } else {
+    const pool = CLES_LOOT_PAR_TIER[zone.tierLoot] || CLES_LOOT_PAR_TIER[1];
+    const cle = pool[Math.floor(Math.random() * pool.length)];
+    p.inventaire[cle] = (p.inventaire[cle] || 0) + 1;
+    p.dernierLoot = { id: prochainLootId++, type: cle, bundle: [], legendaire: false, mythique: false, propositions: propositionsEquipement(p, [cle]), expire: Date.now() + 3000 };
+  }
+  verifierHautsFaits(p);
+}
+
+function simulerCoffres() {
+  const maintenant = Date.now();
+  for (const zone of toutesLesZones()) {
+    const c = zone.coffre;
+    if (!c) continue;
+    if (c.etat === "ouvert" && maintenant - c.tOuverture >= COFFRE_DUREE_ANIMATION_MS) c.etat = "cache";
+    else if (c.etat === "cache" && maintenant >= c.reapparitionA) c.etat = "ferme";
+  }
+}
+
 // Liste envoyée telle quelle au client pour peupler l'onglet téléporteur
 // (haut droit de l'écran) — statique après le démarrage du serveur.
 // `niveau` reste le niveau des MONSTRES de la région (voir l'échelle de
@@ -2694,7 +2768,7 @@ function simulerPhysique(dtSecondes) {
     const zone = zoneDeJoueur(p);
 
     if (p.input.left || p.input.right) avancerTutoriel(p, 0); // étape "déplacement"
-    if (p.input.f) ramasserObjets(zone, p);
+    if (p.input.f) { ramasserObjets(zone, p); ouvrirCoffre(zone, p); }
 
     if (p.dashRestant > 0) {
       // Pendant une charge, la vitesse horizontale est imposée par le
@@ -3805,6 +3879,7 @@ setInterval(() => {
   simulerDragonNoir(dt);
   simulerChevalierNoir(dt);
   simulerObjetsAuSol(dt);
+  simulerCoffres();
   diffuserEtat();
 }, TICK_MS);
 
@@ -4015,6 +4090,9 @@ function construireEtatPourJoueur(p, classement) {
     // afficher son nom au survol côté client, pas de logique de ramassage
     // côté client (tout est validé serveur, sur `input.f`).
     objetsAuSol: (zone.objetsAuSol || []).map((o) => ({ id: o.id, type: o.type, x: o.x, y: o.y })),
+    coffre: zone.coffre && zone.coffre.etat !== "cache"
+      ? { x: zone.coffre.x, y: zone.coffre.y, largeur: COFFRE_LARGEUR, hauteur: COFFRE_HAUTEUR, etat: zone.coffre.etat, depuis: zone.coffre.etat === "ouvert" ? Date.now() - zone.coffre.tOuverture : 0 }
+      : null,
     donjon: {
       porteX: PORTE_DONJON_X,
       fragments: donjon.fragments,
