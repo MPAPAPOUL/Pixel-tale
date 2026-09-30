@@ -835,8 +835,11 @@ function recalculerStatsEquipement(p) {
 // fatal ; la victoire finale sur le boss donne un gros bonus additionnel.
 // ---------------------------------------------------------------------------
 
-// Coût en XP pour passer du niveau n à n+1 (croissance douce et linéaire —
-// largement suffisant pour une verticale-slice).
+// Niveau maximum du jeu : toutes les zones et monstres sont calibrés pour que la
+// difficulté maximale corresponde à un personnage de niveau 50.
+const NIVEAU_MAX = 50;
+
+// Coût en XP pour passer du niveau n à n+1.
 // Courbe adoucie pour les joueurs occasionnels : niveaux 1 à 10 quasi immédiats
 // (≈ 90 XP au total, soit une trentaine de gobelins du Chief Goblin), puis une
 // montée progressive sur 10 niveaux vers la courbe normale (40 + 25 × niveau).
