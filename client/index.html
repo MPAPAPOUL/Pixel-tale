@@ -6498,9 +6498,29 @@ function dessinerProjectiles() {
     if (proj.effet === "griffe_arcane") dessinerGriffeArcane(proj);
     else if (proj.effet === "eclair") dessinerEclairProjectile(proj, maintenant);
     else if (proj.effet === "boule_feu") dessinerBouleFeu(proj, maintenant);
+    else if (proj.effet === "tir_rapide") dessinerTirRapide(proj, maintenant);
     else if (proj.effet === "orbe") dessinerFlecheQuater(proj);
     else dessinerOrbeGenerique(proj);
   }
+}
+
+// Tir rapide du Quater (sort A) : flèche enflammée animée sur 5 images
+// (100×100 px, tête à droite, traînée à gauche), retournée selon la direction.
+const IMGS_TIR_RAPIDE = [1, 2, 3, 4, 5].map((n) => chargerImage(`sprites/tir-rapide/${n}.png`));
+function dessinerTirRapide(proj, maintenant) {
+  const img = IMGS_TIR_RAPIDE[(Math.floor(maintenant / 60) + proj.id) % IMGS_TIR_RAPIDE.length];
+  if (!imagePrete(img)) { dessinerFlecheQuater(proj); return; }
+  const dir = proj.vx >= 0 ? 1 : -1;
+  const echelle = 0.9;
+  const taille = 100 * echelle;
+  const tx = 68 * echelle; // x de la "tête" dans l'image : ancrée sur la position du projectile
+  const ty = 52 * echelle;
+  ctx.save();
+  ctx.translate(proj.x, proj.y);
+  ctx.scale(dir, 1);
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(img, -tx, -ty, taille, taille);
+  ctx.restore();
 }
 
 // Flèches de Quater (tir rapide/puissant/perçant/volée — tous les sorts qui
