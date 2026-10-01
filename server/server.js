@@ -3456,6 +3456,7 @@ function declencherAttaque(p, zone, touche) {
       // Volée animée (Quater R) : un SEUL visuel (la paire de croissants) porté
       // par le projectile central ; les autres restent des hitbox invisibles.
       if (attaque.effet === "volee_quater" && i !== Math.floor(attaque.nombre / 2)) proj.effet = "invisible";
+      if (attaque.effet === "volee_quater") proj.explosionNuage = true; // nuage vert au contact (voir simulerProjectilesJoueursZone)
       zone.projectiles.push(proj);
     }
   } else if (attaque.type === "dash") {
@@ -3691,6 +3692,10 @@ function simulerProjectilesJoueursZone(zone, dtSecondes) {
       }
     }
 
+    if (stoppe && proj.explosionNuage) {
+      // Explosion de nuage vert au point de contact de chaque flèche de la volée.
+      zone.effets.push({ id: prochainEffetId++, x: proj.x, y: proj.y, rayon: 42, couleur: "#7fe3a0", effet: "nuage_vert", vie: 0.7, vieMax: 0.7 });
+    }
     if (stoppe || proj.distanceParcourue > proj.porteeMax || proj.x < -50 || proj.x > zone.largeur + 50) {
       projectiles.splice(i, 1);
     }

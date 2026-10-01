@@ -7059,6 +7059,8 @@ function dessinerEffets() {
       dessinerImpactEclairChevalier(e);
     } else if (e.effet === "explosion_toxique") {
       dessinerExplosionToxique(e);
+    } else if (e.effet === "nuage_vert") {
+      dessinerNuageVert(e);
     } else {
       ctx.save();
       ctx.globalAlpha = e.opacite * 0.6;
@@ -7175,6 +7177,23 @@ function dessinerImpactEclairChevalier(e) {
 // de vie de l'effet (opacite va de 1 à 0, voir construireEtatPourJoueur côté
 // serveur) plutôt qu'en boucle — la progression de l'animation suit donc
 // directement l'extinction de l'effet, sans dépendre de performance.now().
+// Nuage vert au contact de la volée du Quater : 5 images (de la petite gerbe au
+// gros nuage), jouées dans l'ordre de leur taille puis estompées. Images de
+// 615×615 px dont le contenu est posé vers le bas : ancrage décalé.
+const IMGS_NUAGE_VERT = [51, 52, 53, 54, 50].map((n) => chargerImage(`sprites/nuage-vert/${n}.png`));
+function dessinerNuageVert(e) {
+  const progression = Math.min(0.999, Math.max(0, 1 - e.opacite));
+  const img = IMGS_NUAGE_VERT[Math.floor(progression * IMGS_NUAGE_VERT.length)];
+  if (!imagePrete(img)) return;
+  const echelle = (e.rayon * 2.6) / 440; // ~440 px = largeur du plus gros nuage dans l'image
+  const taille = 615 * echelle;
+  ctx.save();
+  ctx.globalAlpha = Math.min(1, e.opacite * 3 + 0.1); // s'estompe sur la fin
+  ctx.imageSmoothingEnabled = true;
+  ctx.drawImage(img, e.x - 308 * echelle, e.y - 440 * echelle, taille, taille);
+  ctx.restore();
+}
+
 function dessinerExplosionToxique(e) {
   const progression = Math.min(0.999, Math.max(0, 1 - e.opacite));
   const frames = IMGS_EXPLOSION_TOXIQUE;
