@@ -6512,22 +6512,31 @@ const IMGS_FLECHES_ANIMEES = {
   tir_rapide: [1, 2, 3, 4, 5].map((n) => chargerImage(`sprites/tir-rapide/${n}.png`)),
   tir_puissant: [1, 2, 3, 4, 5].map((n) => chargerImage(`sprites/tir-puissant/${n}.png`)),
   tir_percant: [1, 2, 3, 4, 5].map((n) => chargerImage(`sprites/tir-percant/${n}.png`)),
-  volee_quater: [1, 2, 3, 4, 5].map((n) => chargerImage(`sprites/volee-quater/${n}.png`)),
+  // 14 images : croissants (1-5) → croisement en X (6-10) → refermés (11-14)
+  volee_quater: Array.from({ length: 14 }, (_, i) => chargerImage(`sprites/volee-quater/${i + 1}.png`)),
 };
+const debutsVolees = new Map(); // id de projectile → instant de première apparition
 function dessinerFlecheAnimee(proj, maintenant) {
   const frames = IMGS_FLECHES_ANIMEES[proj.effet];
-  const img = frames[(Math.floor(maintenant / 60) + proj.id) % frames.length];
+  let indice = Math.floor(maintenant / 60) + proj.id;
+  if (proj.effet === "volee_quater") {
+    // La volée démarre toujours à sa première image : temps écoulé depuis la
+    // première apparition de ce projectile.
+    if (!debutsVolees.has(proj.id)) debutsVolees.set(proj.id, maintenant);
+    indice = Math.floor((maintenant - debutsVolees.get(proj.id)) / 60);
+    if (debutsVolees.size > 40) debutsVolees.delete(debutsVolees.keys().next().value);
+  }
+  const img = frames[indice % frames.length];
   if (!imagePrete(img)) { dessinerFlecheQuater(proj); return; }
   let dir = proj.vx >= 0 ? 1 : -1;
   let echelle = 0.9;
   let tx = 68 * echelle; // x de la "tête" dans l'image : ancrée sur la position du projectile
   let ty = 52 * echelle;
   if (proj.effet === "volee_quater") {
-    // Croissants verts (convexes vers la gauche dans l'image) : centrés sur le
-    // projectile, un seul visuel pour toute la volée.
-    dir = -dir;
+    // Paire de croissants verts (pointe vers la droite dans l'image) : un seul
+    // visuel pour toute la volée, ancré sur la pointe.
     echelle = 1.1;
-    tx = 46.5 * echelle;
+    tx = 62 * echelle;
     ty = 48.5 * echelle;
   }
   const taille = 100 * echelle;
