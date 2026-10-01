@@ -2598,7 +2598,7 @@
            dessus (pas de panneau détaillé à ouvrir, contrairement aux
            quêtes) — voir mettreAJourHUDDonjon. -->
       <div class="hud-suivi-donjon" id="hud-suivi-donjon">
-        <div class="hud-suivi-donjon-titre">Antre du Sire-Hano</div>
+        <div class="hud-suivi-donjon-titre" id="hud-suivi-titre">Antre du Sire-Hano</div>
         <div id="donjon-hud" class="donjon-hud"></div>
       </div>
 
@@ -7559,10 +7559,27 @@ function mettreAJourHUDDonjon() {
   // Le panneau de quête de l'Antre n'apparaît qu'à Berge-Rhak (et dans
   // l'Antre lui-même pour le suivi du combat), jamais sur les autres cartes.
   const typeZone = state.zoneActuelle && state.zoneActuelle.type;
-  const visible = typeZone === "verthige" || donjonState.dansDonjon;
+  const dansVillage = typeZone === "village";
+  const visible = typeZone === "verthige" || donjonState.dansDonjon || dansVillage;
   const cadre = document.getElementById("hud-suivi-donjon");
   if (cadre) cadre.classList.toggle("masque", !visible);
   if (!visible) return;
+  const titreCadre = document.getElementById("hud-suivi-titre");
+  if (titreCadre) titreCadre.textContent = dansVillage ? "Objectif de la carte" : "Antre du Sire-Hano";
+  if (dansVillage) {
+    // Estenoise-les-Brumes : objectif "Tutoriel" — relançable à volonté (la
+    // récompense, elle, n'est accordée qu'une seule fois).
+    const tuto = state.perso && state.perso.tutoriel;
+    const enCours = !!tuto && !tuto.termine;
+    const html = enCours
+      ? `<div class="statut combat">Tutoriel en cours</div><div>Étape ${Math.min(5, (tuto.etape || 0) + 1)} / 5 — suis les consignes en bas de l'écran.</div>`
+      : `<div class="statut ouvert">Tutoriel</div><div>Reprends les bases du jeu (déplacement, combat, butin, caractéristiques, sorts).</div><button type="button" class="btn-modale btn-succes" data-action="tuto-relancer" style="margin-top:6px;padding:6px 10px;font-size:12.5px">Relancer le tutoriel</button>`;
+    // Ne réécrit le DOM que si le contenu change : sinon le bouton est recréé à
+    // chaque image et le clic est perdu.
+    if (conteneur.dataset.html !== html) { conteneur.innerHTML = html; conteneur.dataset.html = html; }
+    return;
+  }
+  conteneur.dataset.html = ""; // hors village, le contenu du donjon prend la main
 
   const fragmentsHtml = Array.from({ length: donjonState.fragmentsRequis }, (_, i) =>
     `<div class="fragment${i < donjonState.fragments ? " rempli" : ""}"></div>`
@@ -7942,6 +7959,9 @@ function mettreAJourTutoriel() {
 document.getElementById("tutoriel-bouton-compris").addEventListener("click", () => {
   const tutoriel = state.perso && state.perso.tutoriel;
   if (tutoriel) envoyer({ type: "tutorielEvenement", etape: tutoriel.etape });
+});
+document.getElementById("donjon-hud").addEventListener("click", (e) => {
+  if (e.target.closest("[data-action='tuto-relancer']")) envoyer({ type: "tutorielRelancer" });
 });
 document.getElementById("tutoriel-lien-passer").addEventListener("click", () => {
   envoyer({ type: "tutorielPasser" });

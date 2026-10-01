@@ -2777,11 +2777,13 @@ function creerJoueur() {
 // "tutorielPasser"), sans jamais l'accorder deux fois (`statsVie
 // .tutorielTermine` sert de verrou, en plus de piloter le haut fait
 // lui-même).
-function terminerTutoriel(joueur) {
+function terminerTutoriel(joueur, avecRecompense = true) {
   if (!joueur.tutoriel || joueur.tutoriel.termine) return;
   joueur.tutoriel.etape = 5;
   joueur.tutoriel.termine = true;
-  if (!joueur.statsVie.tutorielTermine) {
+  // Passer le tutoriel ne rapporte ni récompense ni haut fait : seule une
+  // vraie complétion (jusqu'à la dernière étape) les accorde, une seule fois.
+  if (avecRecompense && !joueur.statsVie.tutorielTermine) {
     joueur.statsVie.tutorielTermine = 1;
     joueur.or = (joueur.or || 0) + 30;
     joueur.gemmes = (joueur.gemmes || 0) + 20;
@@ -4947,11 +4949,16 @@ wss.on("connection", (ws, req) => {
       const etape = Number(message.etape);
       if (Number.isInteger(etape)) avancerTutoriel(joueur, etape);
     } else if (message.type === "tutorielPasser") {
-      // "Passer le tutoriel" : termine tout de suite, avec la même
-      // récompense que la complétion normale (voir terminerTutoriel) — pas
-      // question de pénaliser un joueur qui connaît déjà le jeu (compte
-      // secondaire, revient après une pause...).
-      terminerTutoriel(joueur);
+      // "Passer le tutoriel" : termine tout de suite, SANS récompense ni haut
+      // fait (ils se gagnent en le faisant vraiment, voir "tutorielRelancer"
+      // pour le refaire plus tard depuis Estenoise-les-Brumes).
+      terminerTutoriel(joueur, false);
+    } else if (message.type === "tutorielRelancer") {
+      // Objectif de carte du village : repart de la première étape. Uniquement
+      // à Estenoise-les-Brumes, et seulement si le tutoriel n'est pas en cours.
+      if (joueur.zone === "village" && joueur.tutoriel && joueur.tutoriel.termine) {
+        joueur.tutoriel = { etape: 0, termine: false };
+      }
     } else if (message.type === "teleporter") {
       // Onglet téléporteur (haut droit de l'écran) : voyage instantané vers
       // n'importe quelle destination de DESTINATIONS_TELEPORTEUR, depuis
