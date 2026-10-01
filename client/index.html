@@ -6498,18 +6498,19 @@ function dessinerProjectiles() {
     if (proj.effet === "griffe_arcane") dessinerGriffeArcane(proj);
     else if (proj.effet === "eclair") dessinerEclairProjectile(proj, maintenant);
     else if (proj.effet === "boule_feu") dessinerBouleFeu(proj, maintenant);
-    else if (proj.effet === "tir_rapide" || proj.effet === "tir_puissant") dessinerFlecheAnimee(proj, maintenant);
+    else if (proj.effet === "tir_rapide" || proj.effet === "tir_puissant" || proj.effet === "tir_percant") dessinerFlecheAnimee(proj, maintenant);
     else if (proj.effet === "orbe") dessinerFlecheQuater(proj);
     else dessinerOrbeGenerique(proj);
   }
 }
 
 // Flèches animées du Quater : 5 images de 100×100 px (tête à droite, traînée à
-// gauche), retournées selon la direction — Tir rapide (A, rouge/orange) et
-// Tir puissant (Z, bleu). Les autres sorts gardent l'icône de flèche.
+// gauche), retournées selon la direction — Tir rapide (A, rouge/orange),
+// Tir puissant (Z, bleu) et Tir perçant (E, violet). Les autres sorts gardent l'icône de flèche.
 const IMGS_FLECHES_ANIMEES = {
   tir_rapide: [1, 2, 3, 4, 5].map((n) => chargerImage(`sprites/tir-rapide/${n}.png`)),
   tir_puissant: [1, 2, 3, 4, 5].map((n) => chargerImage(`sprites/tir-puissant/${n}.png`)),
+  tir_percant: [1, 2, 3, 4, 5].map((n) => chargerImage(`sprites/tir-percant/${n}.png`)),
 };
 function dessinerFlecheAnimee(proj, maintenant) {
   const frames = IMGS_FLECHES_ANIMEES[proj.effet];
