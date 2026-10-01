@@ -6498,17 +6498,22 @@ function dessinerProjectiles() {
     if (proj.effet === "griffe_arcane") dessinerGriffeArcane(proj);
     else if (proj.effet === "eclair") dessinerEclairProjectile(proj, maintenant);
     else if (proj.effet === "boule_feu") dessinerBouleFeu(proj, maintenant);
-    else if (proj.effet === "tir_rapide") dessinerTirRapide(proj, maintenant);
+    else if (proj.effet === "tir_rapide" || proj.effet === "tir_puissant") dessinerFlecheAnimee(proj, maintenant);
     else if (proj.effet === "orbe") dessinerFlecheQuater(proj);
     else dessinerOrbeGenerique(proj);
   }
 }
 
-// Tir rapide du Quater (sort A) : flèche enflammée animée sur 5 images
-// (100×100 px, tête à droite, traînée à gauche), retournée selon la direction.
-const IMGS_TIR_RAPIDE = [1, 2, 3, 4, 5].map((n) => chargerImage(`sprites/tir-rapide/${n}.png`));
-function dessinerTirRapide(proj, maintenant) {
-  const img = IMGS_TIR_RAPIDE[(Math.floor(maintenant / 60) + proj.id) % IMGS_TIR_RAPIDE.length];
+// Flèches animées du Quater : 5 images de 100×100 px (tête à droite, traînée à
+// gauche), retournées selon la direction — Tir rapide (A, rouge/orange) et
+// Tir puissant (Z, bleu). Les autres sorts gardent l'icône de flèche.
+const IMGS_FLECHES_ANIMEES = {
+  tir_rapide: [1, 2, 3, 4, 5].map((n) => chargerImage(`sprites/tir-rapide/${n}.png`)),
+  tir_puissant: [1, 2, 3, 4, 5].map((n) => chargerImage(`sprites/tir-puissant/${n}.png`)),
+};
+function dessinerFlecheAnimee(proj, maintenant) {
+  const frames = IMGS_FLECHES_ANIMEES[proj.effet];
+  const img = frames[(Math.floor(maintenant / 60) + proj.id) % frames.length];
   if (!imagePrete(img)) { dessinerFlecheQuater(proj); return; }
   const dir = proj.vx >= 0 ? 1 : -1;
   const echelle = 0.9;
