@@ -6512,9 +6512,17 @@ const IMGS_FLECHES_ANIMEES = {
   tir_rapide: [1, 2, 3, 4, 5].map((n) => chargerImage(`sprites/tir-rapide/${n}.png`)),
   tir_puissant: [1, 2, 3, 4, 5].map((n) => chargerImage(`sprites/tir-puissant/${n}.png`)),
   tir_percant: [1, 2, 3, 4, 5].map((n) => chargerImage(`sprites/tir-percant/${n}.png`)),
-  // 14 images : croissants (1-5) → croisement en X (6-10) → refermés (11-14)
-  volee_quater: Array.from({ length: 14 }, (_, i) => chargerImage(`sprites/volee-quater/${i + 1}.png`)),
+  // Suite de longueur libre : sprites/volee-quater/1.png, 2.png, 3.png... chargés
+  // l'un après l'autre jusqu'à la première image manquante (voir ci-dessous).
+  volee_quater: [],
 };
+// Charge la suite d'images de la volée du Quater sans en fixer le nombre :
+// ajouter 15.png, 16.png... dans le dossier suffit à allonger l'animation.
+(function chargerSuiteVolee(n) {
+  if (n > 80) return;
+  const img = chargerImage(`sprites/volee-quater/${n}.png`);
+  img.addEventListener("load", () => { IMGS_FLECHES_ANIMEES.volee_quater.push(img); chargerSuiteVolee(n + 1); });
+})(1);
 const debutsVolees = new Map(); // id de projectile → instant de première apparition
 function dessinerFlecheAnimee(proj, maintenant) {
   const frames = IMGS_FLECHES_ANIMEES[proj.effet];
@@ -6526,6 +6534,7 @@ function dessinerFlecheAnimee(proj, maintenant) {
     indice = Math.floor((maintenant - debutsVolees.get(proj.id)) / 60);
     if (debutsVolees.size > 40) debutsVolees.delete(debutsVolees.keys().next().value);
   }
+  if (frames.length === 0) return; // suite pas encore chargée
   const img = frames[indice % frames.length];
   if (!imagePrete(img)) { dessinerFlecheQuater(proj); return; }
   let dir = proj.vx >= 0 ? 1 : -1;
