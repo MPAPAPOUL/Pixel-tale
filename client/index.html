@@ -6498,7 +6498,8 @@ function dessinerProjectiles() {
     if (proj.effet === "griffe_arcane") dessinerGriffeArcane(proj);
     else if (proj.effet === "eclair") dessinerEclairProjectile(proj, maintenant);
     else if (proj.effet === "boule_feu") dessinerBouleFeu(proj, maintenant);
-    else if (proj.effet === "tir_rapide" || proj.effet === "tir_puissant" || proj.effet === "tir_percant") dessinerFlecheAnimee(proj, maintenant);
+    else if (proj.effet === "tir_rapide" || proj.effet === "tir_puissant" || proj.effet === "tir_percant" || proj.effet === "volee_quater") dessinerFlecheAnimee(proj, maintenant);
+    else if (proj.effet === "invisible") continue; // hitbox seule (voir volée du Quater)
     else if (proj.effet === "orbe") dessinerFlecheQuater(proj);
     else dessinerOrbeGenerique(proj);
   }
@@ -6511,16 +6512,25 @@ const IMGS_FLECHES_ANIMEES = {
   tir_rapide: [1, 2, 3, 4, 5].map((n) => chargerImage(`sprites/tir-rapide/${n}.png`)),
   tir_puissant: [1, 2, 3, 4, 5].map((n) => chargerImage(`sprites/tir-puissant/${n}.png`)),
   tir_percant: [1, 2, 3, 4, 5].map((n) => chargerImage(`sprites/tir-percant/${n}.png`)),
+  volee_quater: [1, 2, 3, 4, 5].map((n) => chargerImage(`sprites/volee-quater/${n}.png`)),
 };
 function dessinerFlecheAnimee(proj, maintenant) {
   const frames = IMGS_FLECHES_ANIMEES[proj.effet];
   const img = frames[(Math.floor(maintenant / 60) + proj.id) % frames.length];
   if (!imagePrete(img)) { dessinerFlecheQuater(proj); return; }
-  const dir = proj.vx >= 0 ? 1 : -1;
-  const echelle = 0.9;
+  let dir = proj.vx >= 0 ? 1 : -1;
+  let echelle = 0.9;
+  let tx = 68 * echelle; // x de la "tête" dans l'image : ancrée sur la position du projectile
+  let ty = 52 * echelle;
+  if (proj.effet === "volee_quater") {
+    // Croissants verts (convexes vers la gauche dans l'image) : centrés sur le
+    // projectile, un seul visuel pour toute la volée.
+    dir = -dir;
+    echelle = 1.1;
+    tx = 46.5 * echelle;
+    ty = 48.5 * echelle;
+  }
   const taille = 100 * echelle;
-  const tx = 68 * echelle; // x de la "tête" dans l'image : ancrée sur la position du projectile
-  const ty = 52 * echelle;
   ctx.save();
   ctx.translate(proj.x, proj.y);
   ctx.scale(dir, 1);

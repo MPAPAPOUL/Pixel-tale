@@ -174,7 +174,7 @@ const CLASSES = {
       a: { nom: "Tir rapide", type: "projectile", degats: 9, cooldown: 0.35, vitesse: 620, rayon: 5, porteeMax: 650, coutMana: 6, decalageY: -2, effet: "tir_rapide" },
       z: { nom: "Tir puissant", type: "projectile", degats: 20, cooldown: 1.0, vitesse: 480, rayon: 7, porteeMax: 700, coutMana: 16, decalageY: -2, effet: "tir_puissant" },
       e: { nom: "Tir perçant", type: "projectile", degats: 14, cooldown: 1.4, vitesse: 550, rayon: 6, porteeMax: 750, transperce: true, coutMana: 20, decalageY: -2, effet: "tir_percant" },
-      r: { nom: "Volée de flèches", type: "volee", degats: 14, cooldown: 8, vitesse: 620, rayon: 6, porteeMax: 700, nombre: 5, ecartY: 12, coutMana: 40, decalageY: -2 },
+      r: { nom: "Volée de flèches", type: "volee", degats: 14, cooldown: 8, vitesse: 620, rayon: 6, porteeMax: 700, nombre: 5, ecartY: 12, coutMana: 40, decalageY: -2, effet: "volee_quater" },
     },
   },
   krix: {
@@ -3453,6 +3453,9 @@ function declencherAttaque(p, zone, touche) {
     for (let i = 0; i < attaque.nombre; i++) {
       const proj = creerProjectile(p, attaque, degats);
       proj.y += (i - (attaque.nombre - 1) / 2) * attaque.ecartY;
+      // Volée animée (Quater R) : un SEUL visuel (la paire de croissants) porté
+      // par le projectile central ; les autres restent des hitbox invisibles.
+      if (attaque.effet === "volee_quater" && i !== Math.floor(attaque.nombre / 2)) proj.effet = "invisible";
       zone.projectiles.push(proj);
     }
   } else if (attaque.type === "dash") {
