@@ -7571,9 +7571,18 @@ function mettreAJourHUDDonjon() {
     // récompense, elle, n'est accordée qu'une seule fois).
     const tuto = state.perso && state.perso.tutoriel;
     const enCours = !!tuto && !tuto.termine;
-    const html = enCours
-      ? `<div class="statut combat">Tutoriel en cours</div><div>Étape ${Math.min(5, (tuto.etape || 0) + 1)} / 5 — suis les consignes en bas de l'écran.</div>`
-      : `<div class="statut ouvert">Tutoriel</div><div>Reprends les bases du jeu (déplacement, combat, butin, caractéristiques, sorts).</div><button type="button" class="btn-modale btn-succes" data-action="tuto-relancer" style="margin-top:6px;padding:6px 10px;font-size:12.5px">Relancer le tutoriel</button>`;
+    let html;
+    if (enCours) {
+      const etape = Math.min(tuto.etape || 0, TEXTES_TUTORIEL.length - 1);
+      const info = TEXTES_TUTORIEL[etape];
+      if (titreCadre) titreCadre.textContent = `Tutoriel — étape ${etape + 1}/${TUTORIEL_ETAPES}`;
+      html = `<div class="statut combat">${escapeHtml(info.titre)}</div><div>${escapeHtml(info.texte)}</div>`
+        + (info.bouton ? `<button type="button" class="btn-modale btn-succes" data-action="tuto-compris" style="margin-top:6px;padding:6px 10px;font-size:12.5px">Compris !</button>` : "")
+        + `<div style="margin-top:6px"><a href="#" class="tutoriel-lien-passer" data-action="tuto-passer" style="font-size:11.5px">Passer le tutoriel</a></div>`;
+    } else {
+      if (titreCadre) titreCadre.textContent = "Objectif de la carte";
+      html = `<div class="statut ouvert">Tutoriel terminé</div><div>Reprends les bases du jeu (déplacement, combat, butin, caractéristiques, sorts, téléporteur).</div><button type="button" class="btn-modale btn-succes" data-action="tuto-relancer" style="margin-top:6px;padding:6px 10px;font-size:12.5px">Relancer le tutoriel</button>`;
+    }
     // Ne réécrit le DOM que si le contenu change : sinon le bouton est recréé à
     // chaque image et le clic est perdu.
     if (conteneur.dataset.html !== html) { conteneur.innerHTML = html; conteneur.dataset.html = html; }
@@ -7925,7 +7934,7 @@ function mettreAJourIconeTeleporteur() {
   // mettreAJourTutoriel) : halo pulsant tant qu'on reste à Estenoise, se
   // désactive tout seul dès qu'on téléporte ailleurs.
   const tutoriel = state.perso && state.perso.tutoriel;
-  const inviteTeleporteur = !masque && !!tutoriel && tutoriel.termine && state.zoneActuelle && state.zoneActuelle.id === "village";
+  const inviteTeleporteur = !masque && !!tutoriel && !tutoriel.termine && tutoriel.etape === TUTORIEL_ETAPES - 1 && state.zoneActuelle && state.zoneActuelle.id === "village";
   icone.classList.toggle("tutoriel-surbrillance", inviteTeleporteur);
 }
 
@@ -7943,18 +7952,15 @@ const TEXTES_TUTORIEL = [
     texte: "Tes PV et ton Mana s'affichent en haut à gauche. Chaque sort (A/Z/E/R) coûte du Mana et a son propre temps de recharge (cooldown) — surveille les deux avant de foncer !",
     bouton: true,
   },
+  { titre: "En route pour Berge-Rhak !", texte: "Ouvre le téléporteur 🌀 (en haut à droite) et voyage jusqu'à Berge-Rhak pour terminer le tutoriel." },
 ];
+const TUTORIEL_ETAPES = 6;
 
+// Le tutoriel s'affiche désormais dans le panneau en haut à gauche
+// (« Objectif de la carte », voir mettreAJourHUDDonjon) : l'ancienne bulle du
+// bas reste masquée en permanence.
 function mettreAJourTutoriel() {
-  const panel = document.getElementById("tutoriel-panel");
-  const tutoriel = state.perso && state.perso.tutoriel;
-  const actif = !!tutoriel && !tutoriel.termine;
-  panel.classList.toggle("masque", !actif);
-  if (!actif) return;
-  const info = TEXTES_TUTORIEL[tutoriel.etape] || TEXTES_TUTORIEL[0];
-  document.getElementById("tutoriel-titre").textContent = info.titre;
-  document.getElementById("tutoriel-texte").textContent = info.texte;
-  document.getElementById("tutoriel-bouton-compris").classList.toggle("masque", !info.bouton);
+  document.getElementById("tutoriel-panel").classList.add("masque");
 }
 document.getElementById("tutoriel-bouton-compris").addEventListener("click", () => {
   const tutoriel = state.perso && state.perso.tutoriel;
@@ -7962,6 +7968,11 @@ document.getElementById("tutoriel-bouton-compris").addEventListener("click", () 
 });
 document.getElementById("donjon-hud").addEventListener("click", (e) => {
   if (e.target.closest("[data-action='tuto-relancer']")) envoyer({ type: "tutorielRelancer" });
+  if (e.target.closest("[data-action='tuto-compris']")) {
+    const t = state.perso && state.perso.tutoriel;
+    if (t) envoyer({ type: "tutorielEvenement", etape: t.etape });
+  }
+  if (e.target.closest("[data-action='tuto-passer']")) { e.preventDefault(); envoyer({ type: "tutorielPasser" }); }
 });
 document.getElementById("tutoriel-lien-passer").addEventListener("click", () => {
   envoyer({ type: "tutorielPasser" });

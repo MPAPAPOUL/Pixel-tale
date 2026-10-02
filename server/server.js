@@ -2777,9 +2777,10 @@ function creerJoueur() {
 // "tutorielPasser"), sans jamais l'accorder deux fois (`statsVie
 // .tutorielTermine` sert de verrou, en plus de piloter le haut fait
 // lui-même).
+const TUTORIEL_ETAPES = 6; // 0 déplacement, 1 combat, 2 butin, 3 caractéristique, 4 sorts, 5 prendre le téléporteur vers Berge-Rhak
 function terminerTutoriel(joueur, avecRecompense = true) {
   if (!joueur.tutoriel || joueur.tutoriel.termine) return;
-  joueur.tutoriel.etape = 5;
+  joueur.tutoriel.etape = TUTORIEL_ETAPES;
   joueur.tutoriel.termine = true;
   // Passer le tutoriel ne rapporte ni récompense ni haut fait : seule une
   // vraie complétion (jusqu'à la dernière étape) les accorde, une seule fois.
@@ -2799,11 +2800,10 @@ function terminerTutoriel(joueur, avecRecompense = true) {
 function avancerTutoriel(joueur, etapeAttendue) {
   const t = joueur.tutoriel;
   if (!t || t.termine || t.etape !== etapeAttendue) return;
-  if (etapeAttendue + 1 >= 5) {
-    terminerTutoriel(joueur);
-  } else {
-    t.etape = etapeAttendue + 1;
-  }
+  // La dernière étape (téléporteur vers Berge-Rhak) ne se valide QUE par le
+  // voyage lui-même (voir le handler "teleporter"), jamais par un événement.
+  if (etapeAttendue >= TUTORIEL_ETAPES - 1) return;
+  t.etape = etapeAttendue + 1;
 }
 
 // ---------------------------------------------------------------------------
@@ -4972,6 +4972,10 @@ wss.on("connection", (ws, req) => {
       const niveauSuffisant = !infosDestination || (joueur.niveau || 1) >= infosDestination.niveauRequis;
       if (estValide && zoneCourante !== "donjon" && zoneCourante !== "salle-trone" && joueur.alive && niveauSuffisant) {
         teleporterVers(joueur, destination);
+        // Dernière étape du tutoriel : prendre le téléporteur pour Berge-Rhak.
+        if (destination === ZONE_VERTHIGE && joueur.tutoriel && !joueur.tutoriel.termine && joueur.tutoriel.etape === TUTORIEL_ETAPES - 1) {
+          terminerTutoriel(joueur, true);
+        }
       }
     } else if (message.type === "acheter") {
       // Boutique du vendeur du village (voir genererZoneVillage) : validé
