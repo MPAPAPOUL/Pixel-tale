@@ -5084,6 +5084,7 @@ const TYPES_MIME = {
   ".svg": "image/svg+xml",
   ".json": "application/json",
   ".mp3": "audio/mpeg",
+  ".webmanifest": "application/manifest+json",
 };
 
 // --- Dons Ko-fi -> gemmes ---------------------------------------------------
@@ -5626,7 +5627,7 @@ const server = http.createServer((req, res) => {
   // sur mobile. Le client n'a rien à changer : même URL, autre contenu.
   let cheminServi = chemin;
   let extServie = null;
-  if (chemin.endsWith(".png") && /image\/webp/.test(req.headers.accept || "")) {
+  if (chemin.endsWith(".png") && !chemin.includes(`${path.sep}icons${path.sep}`) && /image\/webp/.test(req.headers.accept || "")) {
     const variante = chemin.slice(0, -4) + ".webp";
     try {
       if (fs.statSync(variante).isFile()) { cheminServi = variante; extServie = ".webp"; }
@@ -5641,6 +5642,7 @@ const server = http.createServer((req, res) => {
     const ext = extServie || path.extname(chemin);
     const entetes = { "Content-Type": TYPES_MIME[ext] || "application/octet-stream", "Accept-Ranges": "bytes" };
     if (ext === ".mp3" || ext === ".png" || ext === ".webp") entetes["Cache-Control"] = "public, max-age=86400";
+    if (path.basename(chemin) === "sw.js") { entetes["Cache-Control"] = "no-cache"; entetes["Service-Worker-Allowed"] = "/"; }
     if (extServie) entetes["Vary"] = "Accept"; // même URL, contenu différent selon le navigateur
     const plage = /^bytes=(\d*)-(\d*)$/.exec(req.headers.range || "");
     let debut = 0;

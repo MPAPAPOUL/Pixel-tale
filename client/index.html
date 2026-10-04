@@ -4,6 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
 <title>Berge-Rhak — Les Royaumes Brisés</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#1b172b">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
 <!-- Aucune ressource externe chargée : polices système uniquement (voir
      les piles de secours "sans-serif" sur chaque règle font-family
      ci-dessous), pour que le jeu reste un fichier 100% autonome. -->
@@ -1668,7 +1674,7 @@
     position: fixed;
     inset: 0;
     z-index: 100;
-    align-items: center;
+    align-items: flex-start;
     justify-content: center;
     padding: 24px 16px;
     overflow-y: auto;
@@ -1678,6 +1684,8 @@
       linear-gradient(160deg, var(--bg) 0%, var(--bg-2) 100%);
   }
   .accueil-carte {
+    margin: auto; /* centrée SANS couper le haut quand la carte dépasse l'écran (téléphone en paysage) : le défilement atteint tout */
+    flex-shrink: 0;
     width: min(94%, 640px);
     background: linear-gradient(180deg, #2c1c30 0%, #1a1120 100%);
     border: 2px solid #c9a24b;
@@ -2371,6 +2379,7 @@
   <div class="invite-rotation-icone">📱</div>
   <h2>Tourne ton téléphone</h2>
   <p>Ce jeu se joue en mode paysage (à l'horizontale) — tourne ton appareil pour continuer l'aventure.</p>
+  <button type="button" class="btn-jouer" id="btn-plein-ecran-paysage" style="margin-top:14px">Plein écran en paysage</button>
 </div>
 
 <!-- Écran d'accueil : deux cartes, une seule visible à la fois (voir
@@ -2447,6 +2456,7 @@
     <button type="button" class="lien-compte-joueur" id="btn-ouvrir-compte-creation">🔑 Compte joueur</button>
     <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:6px">
       <button type="button" class="lien-compte-joueur" id="btn-partager">📣 Inviter des amis</button>
+      <button type="button" class="lien-compte-joueur masque" id="btn-installer">📲 Installer l'appli</button>
       <a class="lien-compte-joueur masque" id="lien-discord" href="#" target="_blank" rel="noopener noreferrer" style="text-decoration:none">💬 Discord</a>
     </div>
   </div>
@@ -9338,6 +9348,43 @@ function reinitialiserFormulaireCreation() {
 document.getElementById("accueil-pseudo").addEventListener("input", validerFormulaireAccueil);
 
 
+
+// --- Application Android (PWA) -------------------------------------------------
+// Service worker (installation + cache), bouton « Installer l'appli », et
+// plein écran paysage verrouillé au geste de l'utilisateur.
+if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
+  window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
+}
+let invitationInstallation = null;
+window.addEventListener("beforeinstallprompt", (e) => {
+  e.preventDefault();
+  invitationInstallation = e;
+  const b = document.getElementById("btn-installer");
+  if (b) b.classList.remove("masque");
+});
+window.addEventListener("appinstalled", () => {
+  invitationInstallation = null;
+  const b = document.getElementById("btn-installer");
+  if (b) b.classList.add("masque");
+  envoyerStat("installation");
+});
+document.getElementById("btn-installer").addEventListener("click", async () => {
+  if (!invitationInstallation) return;
+  invitationInstallation.prompt();
+  try { await invitationInstallation.userChoice; } catch {}
+  invitationInstallation = null;
+  document.getElementById("btn-installer").classList.add("masque");
+});
+// Plein écran + verrouillage paysage (Android Chrome : exige un geste
+// utilisateur ; ignoré silencieusement ailleurs).
+async function passerEnPleinEcranPaysage() {
+  try {
+    if (!document.fullscreenElement && document.documentElement.requestFullscreen) await document.documentElement.requestFullscreen({ navigationUI: "hide" });
+  } catch {}
+  try { if (screen.orientation && screen.orientation.lock) await screen.orientation.lock("landscape"); } catch {}
+}
+document.getElementById("btn-plein-ecran-paysage").addEventListener("click", passerEnPleinEcranPaysage);
+
 // --- Statistiques anonymes, jeu rapide, partage ------------------------------
 // Compteurs agrégés sans identifiant (voir /api/stat côté serveur) : visite,
 // partie lancée, minutes de jeu — pour comprendre où les joueurs décrochent.
@@ -9397,6 +9444,7 @@ document.getElementById("btn-jouer").addEventListener("click", () => {
 // voir connecter().
 function demarrerPartie(options) {
   envoyerStat("lancement");
+  if (document.body.classList.contains("mode-tactile")) passerEnPleinEcranPaysage();
   document.body.classList.remove("mode-accueil");
   // Le cadre de jeu était masqué (display:none) pendant l'écran d'accueil,
   // donc redimensionnerScene() n'avait alors rien à mesurer (largeur 0) —
@@ -9607,6 +9655,7 @@ const PATCHNOTES = [
       "Marais de Suin et Estenoise-les-Brumes : plateformes ajustées ; gobelins neutres de couleur différente sur chaque carte.",
       "Correction : le bouton ✕ des fenêtres ne se superpose plus à l'icône du téléporteur (mobile).",
       "Nouveau : anti-triche (auto-clic, automatisation, vérification humaine ponctuelle, suspensions progressives).",
+      "Android : le jeu s'installe comme une appli (bouton « Installer l'appli » sur l'accueil), en plein écran paysage. Chargement 2,5× plus léger, bouton « Jouer tout de suite ».",
     ],
   },
   {

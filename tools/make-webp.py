@@ -15,6 +15,8 @@ for dossier, _, fichiers in os.walk(RACINE):
         if not nom.endswith(".png"):
             continue
         chemin = os.path.join(dossier, nom)
+        if os.sep + "icons" + os.sep in chemin:  # icônes d'application : toujours en PNG
+            continue
         cible = chemin[:-4] + ".webp"
         taille_png = os.path.getsize(chemin)
         if taille_png < 4096:  # trop petit pour que ça vaille le coup
