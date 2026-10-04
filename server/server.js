@@ -3949,7 +3949,7 @@ function simulerUneEntiteSireHano(instance, entite, dtSecondes) {
         const distance = Math.hypot(p.x + JOUEUR_LARGEUR / 2 - zoneAoe.x, p.y + JOUEUR_HAUTEUR / 2 - zoneAoe.y);
         if (distance <= zoneAoe.rayon) infligerDegatsJoueur(p, Math.round(zoneAoe.degats * MULT_DEGATS_BOSS), zoneAoe.x);
       }
-      instance.effets.push({ id: prochainEffetId++, x: zoneAoe.x, y: zoneAoe.y, rayon: zoneAoe.rayon, couleur: "#e05a3a", effet: "explosion_arcanique", vie: 0.5, vieMax: 0.5 });
+      instance.effets.push({ id: prochainEffetId++, x: zoneAoe.x, y: zoneAoe.y, rayon: zoneAoe.rayon, couleur: "#aee0ff", effet: "eclair_sire_hano", vie: 0.5, vieMax: 0.5 });
       entite.aoeEnAttente = null;
     }
   }

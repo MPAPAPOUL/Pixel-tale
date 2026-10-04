@@ -6463,7 +6463,7 @@ function dessinerTelegrapheAoe() {
     // Plusieurs entités peuvent télégraphier une zone en même temps depuis la
     // phase 2 (2 répliques) et la phase 3 (4 répliques).
     for (const entite of state.boss.entites) {
-      if (entite.aoeEnAttente) zonesActives.push({ ...entite.aoeEnAttente, frames: IMGS_EXPLOSION_ARCANIQUE[0] });
+      if (entite.aoeEnAttente) zonesActives.push({ ...entite.aoeEnAttente, eclairChute: true });
     }
   }
   // Le Dragon Noir télégraphie son météore (phase 1 et 2) de la même façon.
@@ -6481,8 +6481,54 @@ function dessinerTelegrapheAoe() {
       dessinerTelegrapheColonneEclair(zone);
       continue;
     }
+    if (zone.eclairChute) {
+      dessinerEclairChute(zone, zone.progression || 0, 0.6);
+      continue;
+    }
     dessinerTelegrapheExplosion(zone);
   }
+}
+
+// Éclair de Sire-Hano : un éclair tombe du ciel sur la position du joueur
+// (à la place du rond rouge), de plus en plus visible pendant le télégraphe
+// puis frappant à pleine intensité à l'impact (voir effet "eclair_sire_hano").
+// Réutilise les 3 étapes du sprite d'éclair du Chevalier Noir.
+function dessinerEclairChute(zone, progression, alphaBase) {
+  const p = Math.min(1, Math.max(0, progression));
+  const t = performance.now() / 1000;
+  ctx.save();
+  const pulse = 0.75 + 0.25 * Math.sin(t * 18);
+  const lueur = ctx.createRadialGradient(zone.x, zone.y, 0, zone.x, zone.y, zone.rayon);
+  lueur.addColorStop(0, `rgba(170,220,255,${(0.15 + 0.3 * p) * pulse})`);
+  lueur.addColorStop(1, "rgba(170,220,255,0)");
+  ctx.fillStyle = lueur;
+  ctx.beginPath();
+  ctx.ellipse(zone.x, zone.y, zone.rayon, zone.rayon * 0.5, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  const etape = p < 0.34 ? 0 : p < 0.7 ? 1 : 2;
+  const img = IMGS_ECLAIR_CHEVALIER[etape];
+  if (imagePrete(img)) {
+    const hauteur = Math.max(60, zone.y);
+    const echelle = hauteur / img.naturalHeight;
+    const largeur = Math.min(img.naturalWidth * echelle, zone.rayon * 1.6);
+    ctx.globalAlpha = Math.min(1, alphaBase + p * 0.4) * (0.8 + 0.2 * pulse);
+    ctx.imageSmoothingEnabled = true;
+    ctx.drawImage(img, zone.x - largeur / 2, zone.y - hauteur, largeur, hauteur);
+  }
+  ctx.restore();
+}
+
+function dessinerEclairSireHano(e) {
+  const progression = Math.min(1, Math.max(0, 1 - e.opacite));
+  dessinerEclairChute({ x: e.x, y: e.y, rayon: e.rayon }, 1, 1);
+  ctx.save();
+  ctx.globalAlpha = Math.max(0, e.opacite) * 0.6;
+  ctx.fillStyle = "rgba(220,240,255,0.9)";
+  ctx.beginPath();
+  ctx.ellipse(e.x, e.y, e.rayon * (0.4 + progression * 0.6), e.rayon * 0.3, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
 }
 
 // Colonne d'éclair du Chevalier Noir : grandit progressivement pendant le
@@ -7079,6 +7125,8 @@ function dessinerEffets() {
       dessinerImpactLameChevalier(e);
     } else if (e.effet === "bouleFeuExplosionCN") {
       dessinerExplosionFeuChevalier(e);
+    } else if (e.effet === "eclair_sire_hano") {
+      dessinerEclairSireHano(e);
     } else if (e.effet === "eclair_chevalier_impact") {
       dessinerImpactEclairChevalier(e);
     } else if (e.effet === "explosion_toxique") {
