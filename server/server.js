@@ -5269,7 +5269,57 @@ function profilSite(jeton) {
   };
 }
 
+// --- Statistiques anonymes -----------------------------------------------
+// Compteurs agrégés par jour, SANS identifiant, SANS adresse IP : visites de la
+// page, parties lancées (dont "jouer tout de suite"), minutes de jeu, appareil
+// (mobile/PC) et provenance (nom de domaine du référent uniquement). Servent à
+// voir où les joueurs décrochent (voir tools/stats.js). Écrits dans
+// server/data/stats.json.
+const CHEMIN_STATS = path.join(__dirname, "data", "stats.json");
+let statsJours = {};
+try { statsJours = JSON.parse(fs.readFileSync(CHEMIN_STATS, "utf8")) || {}; } catch { statsJours = {}; }
+let statsAEcrire = false;
+const LIMITE_STATS_IP = new Map(); // ip -> { nb, expire } (anti-spam)
+function noterStat(evenement, mobile, ref) {
+  const jour = new Date().toISOString().slice(0, 10);
+  const j = statsJours[jour] || (statsJours[jour] = { visites: 0, visitesMobile: 0, lancements: 0, lancementsMobile: 0, rapides: 0, minutesJeu: 0, referents: {} });
+  if (evenement === "visite") { j.visites++; if (mobile) j.visitesMobile++; if (ref) j.referents[ref] = (j.referents[ref] || 0) + 1; }
+  else if (evenement === "lancement") { j.lancements++; if (mobile) j.lancementsMobile++; }
+  else if (evenement === "rapide") j.rapides++;
+  else if (evenement === "minute") j.minutesJeu++;
+  else return;
+  statsAEcrire = true;
+}
+setInterval(() => {
+  if (!statsAEcrire) return;
+  statsAEcrire = false;
+  try { fs.mkdirSync(path.dirname(CHEMIN_STATS), { recursive: true }); fs.writeFileSync(CHEMIN_STATS, JSON.stringify(statsJours)); } catch {}
+}, 30000);
+
 const server = http.createServer((req, res) => {
+  // Compteur anonyme : POST /api/stat {e, m, r}
+  if (req.method === "POST" && req.url === "/api/stat") {
+    const ip = ipClient(req);
+    const t = Date.now();
+    const lim = LIMITE_STATS_IP.get(ip) || { nb: 0, expire: t + 60000 };
+    if (t > lim.expire) { lim.nb = 0; lim.expire = t + 60000; }
+    lim.nb++;
+    LIMITE_STATS_IP.set(ip, lim);
+    if (LIMITE_STATS_IP.size > 5000) LIMITE_STATS_IP.clear();
+    lireCorpsBrut(req).then((corps) => {
+      if (lim.nb <= 30) {
+        try {
+          const d = JSON.parse(corps);
+          let ref = "";
+          if (typeof d.r === "string" && d.r) { try { ref = new URL(d.r).hostname.replace(/^www\./, "").slice(0, 60); } catch {} }
+          noterStat(String(d.e || ""), !!d.m, ref);
+        } catch {}
+      }
+      res.writeHead(204);
+      res.end();
+    }).catch(() => { res.writeHead(400); res.end(); });
+    return;
+  }
   // Webhook Ko-fi (dons -> gemmes, voir traiterDonKofi).
   if (req.method === "POST" && req.url === "/api/kofi") {
     lireCorpsBrut(req)
@@ -5571,15 +5621,27 @@ const server = http.createServer((req, res) => {
   // Fichiers servis en flux avec support des requêtes Range (indispensable
   // pour les gros MP3 : lecture en boucle / seek dans <audio>) plutôt que
   // chargés entièrement en mémoire à chaque requête.
-  fs.stat(chemin, (err, stat) => {
+  // Image PNG demandée par un navigateur qui accepte WebP : sert l'équivalent
+  // .webp s'il existe (généré par tools/make-webp.py) — bien plus léger, surtout
+  // sur mobile. Le client n'a rien à changer : même URL, autre contenu.
+  let cheminServi = chemin;
+  let extServie = null;
+  if (chemin.endsWith(".png") && /image\/webp/.test(req.headers.accept || "")) {
+    const variante = chemin.slice(0, -4) + ".webp";
+    try {
+      if (fs.statSync(variante).isFile()) { cheminServi = variante; extServie = ".webp"; }
+    } catch {}
+  }
+  fs.stat(cheminServi, (err, stat) => {
     if (err || !stat.isFile()) {
       res.writeHead(404);
       res.end("Fichier non trouvé");
       return;
     }
-    const ext = path.extname(chemin);
+    const ext = extServie || path.extname(chemin);
     const entetes = { "Content-Type": TYPES_MIME[ext] || "application/octet-stream", "Accept-Ranges": "bytes" };
-    if (ext === ".mp3") entetes["Cache-Control"] = "public, max-age=86400";
+    if (ext === ".mp3" || ext === ".png" || ext === ".webp") entetes["Cache-Control"] = "public, max-age=86400";
+    if (extServie) entetes["Vary"] = "Accept"; // même URL, contenu différent selon le navigateur
     const plage = /^bytes=(\d*)-(\d*)$/.exec(req.headers.range || "");
     let debut = 0;
     let fin = stat.size - 1;
@@ -5602,7 +5664,7 @@ const server = http.createServer((req, res) => {
     entetes["Content-Length"] = fin - debut + 1;
     res.writeHead(statut, entetes);
     if (req.method === "HEAD") { res.end(); return; }
-    const flux = fs.createReadStream(chemin, { start: debut, end: fin });
+    const flux = fs.createReadStream(cheminServi, { start: debut, end: fin });
     flux.on("error", () => res.destroy());
     flux.pipe(res);
   });

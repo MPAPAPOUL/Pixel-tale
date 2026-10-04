@@ -1723,7 +1723,7 @@
     margin: 4px 0 4px;
   }
   .carte-classe .classe-desc { font-size: 11.5px; color: #cfc3ef; line-height: 1.4; }
-  .carte-classe .classe-stats { font-size: 10.5px; color: #9d8fc7; margin-top: 6px; }
+  .carte-classe .classe-stats { font-size: 11.5px; color: #c9bfe8; margin-top: 6px; }
 
   /* --- Écran de sélection de personnage (compte avec au moins un
        personnage) : une carte cliquable par personnage, même famille
@@ -2411,6 +2411,9 @@
     <h1 class="accueil-titre">Les Royaumes Brisés</h1>
     <p class="accueil-soustitre" id="accueil-soustitre">Un prototype de RPG multijoueur — crée ton personnage pour commencer l'aventure à Berge-Rhak.</p>
 
+    <button type="button" class="btn-jouer" id="btn-jouer-rapide" style="width:100%;margin:4px 0 10px">⚡ Jouer tout de suite</button>
+    <p class="accueil-soustitre" style="margin:0 0 8px;font-size:12px;opacity:.8">…ou crée ton personnage ci-dessous (classe, avatar, pseudo).</p>
+
     <div id="accueil-bloc-classes">
       <p class="accueil-section-titre">Choisis ta classe (obligatoire)</p>
       <div class="accueil-classes" id="accueil-classes"></div>
@@ -2441,6 +2444,10 @@
       <button type="button" class="btn-modale btn-neutre" id="btn-accueil-reglages" style="flex:0 0 auto;">⚙️ Réglages</button>
     </div>
     <button type="button" class="lien-compte-joueur" id="btn-ouvrir-compte-creation">🔑 Compte joueur</button>
+    <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:6px">
+      <button type="button" class="lien-compte-joueur" id="btn-partager">📣 Inviter des amis</button>
+      <a class="lien-compte-joueur masque" id="lien-discord" href="#" target="_blank" rel="noopener noreferrer" style="text-decoration:none">💬 Discord</a>
+    </div>
   </div>
 
   <!-- Compte joueur : lier un email + mot de passe au jeton actuel (pour le
@@ -4748,12 +4755,18 @@ const ZONES_AVEC_DECOR = {
 // Index 0 = calque "1.png" (avant-plan, défile vite) → index 6 = calque
 // "7.png" (ciel plat, quasi immobile), pour une sensation de profondeur.
 const VITESSES_PARALLAXE_DECOR = [0.5, 0.4, 0.32, 0.24, 0.17, 0.1, 0.03];
+// Calques chargés À LA DEMANDE (première fois qu'une zone est affichée) : avant,
+// les ~85 images de fond de toutes les zones se téléchargeaient dès l'écran
+// d'accueil (≈10 Mo), même sur mobile.
 const DECORS_ZONES = {};
-for (const idZoneDecor in ZONES_AVEC_DECOR) {
-  const nbCalques = ZONES_AVEC_DECOR[idZoneDecor];
-  DECORS_ZONES[idZoneDecor] = Array.from({ length: nbCalques }, (_, i) =>
-    chargerImage(`assets/backgrounds/${idZoneDecor}/${i + 1}.png`)
-  );
+function calquesDecor(idZoneDecor) {
+  if (!DECORS_ZONES[idZoneDecor]) {
+    const nbCalques = ZONES_AVEC_DECOR[idZoneDecor];
+    DECORS_ZONES[idZoneDecor] = Array.from({ length: nbCalques }, (_, i) =>
+      chargerImage(`assets/backgrounds/${idZoneDecor}/${i + 1}.png`)
+    );
+  }
+  return DECORS_ZONES[idZoneDecor];
 }
 
 // Dessine les calques d'un décor, du plus lointain au plus proche, chacun
@@ -4764,7 +4777,7 @@ for (const idZoneDecor in ZONES_AVEC_DECOR) {
 // nombre réel de calques de la zone, pour rester correct que la zone en ait
 // 5 ou 7.
 function dessinerDecorZone(idZoneDecor, camX) {
-  const calques = DECORS_ZONES[idZoneDecor];
+  const calques = calquesDecor(idZoneDecor);
   const hauteurCible = canvas.height;
   const dernierIndex = calques.length - 1;
   for (let i = dernierIndex; i >= 0; i--) {
@@ -4799,7 +4812,7 @@ function dessinerCiel(camera) {
   }
 
   const idZoneActuelle = state && state.zoneActuelle && state.zoneActuelle.id;
-  if (idZoneActuelle && DECORS_ZONES[idZoneActuelle]) {
+  if (idZoneActuelle && ZONES_AVEC_DECOR[idZoneActuelle]) {
     dessinerDecorZone(idZoneActuelle, camX);
     return;
   }
@@ -7675,7 +7688,7 @@ function mettreAJourModaleEntreeDonjon() {
 // départ). Fondu entrant/sortant ; volume réglable dans les Réglages.
 const MUSIQUE_BOSS = new Audio("assets/audio/musique-boss.mp3");
 MUSIQUE_BOSS.loop = true;
-MUSIQUE_BOSS.preload = "auto";
+MUSIQUE_BOSS.preload = "none"; // ne se télécharge qu'au premier combat de boss
 let volumeMusique = 0.5;
 try {
   const v = parseFloat(localStorage.getItem("rb_volume_musique"));
@@ -9323,6 +9336,48 @@ function reinitialiserFormulaireCreation() {
 }
 document.getElementById("accueil-pseudo").addEventListener("input", validerFormulaireAccueil);
 
+
+// --- Statistiques anonymes, jeu rapide, partage ------------------------------
+// Compteurs agrégés sans identifiant (voir /api/stat côté serveur) : visite,
+// partie lancée, minutes de jeu — pour comprendre où les joueurs décrochent.
+const LIEN_DISCORD = ""; // ← colle ici l'invitation Discord (https://discord.gg/...) pour afficher le bouton
+function envoyerStat(evenement) {
+  try {
+    const mobile = document.body.classList.contains("mode-tactile");
+    const corps = JSON.stringify({ e: evenement, m: mobile, r: document.referrer || "" });
+    if (navigator.sendBeacon) navigator.sendBeacon("/api/stat", new Blob([corps], { type: "application/json" }));
+    else fetch("/api/stat", { method: "POST", body: corps, keepalive: true });
+  } catch {}
+}
+try {
+  if (!sessionStorage.getItem("rb_visite_comptee")) { sessionStorage.setItem("rb_visite_comptee", "1"); envoyerStat("visite"); }
+} catch { envoyerStat("visite"); }
+setInterval(() => { if (document.visibilityState === "visible" && ws && ws.readyState === WebSocket.OPEN) envoyerStat("minute"); }, 60000);
+
+// « Jouer tout de suite » : classe et pseudo tirés au hasard, aucune saisie.
+document.getElementById("btn-jouer-rapide").addEventListener("click", () => {
+  const classe = DESCRIPTIONS_CLASSES[Math.floor(Math.random() * DESCRIPTIONS_CLASSES.length)];
+  classeChoisieAuDepart = classe.id;
+  document.getElementById("accueil-pseudo").value = "Héros" + Math.floor(100 + Math.random() * 900);
+  envoyerStat("rapide");
+  validerFormulaireAccueil();
+  document.getElementById("btn-jouer").click();
+});
+document.getElementById("btn-partager").addEventListener("click", async () => {
+  const url = location.origin;
+  const texte = "Viens jouer à Pixelfe — Les Royaumes Brisés, un RPG multijoueur gratuit dans ton navigateur !";
+  try {
+    if (navigator.share) { await navigator.share({ title: "Pixelfe", text: texte, url }); return; }
+    await navigator.clipboard.writeText(`${texte} ${url}`);
+    alert("Lien copié ! Colle-le à tes amis.");
+  } catch {}
+});
+if (LIEN_DISCORD) {
+  const lien = document.getElementById("lien-discord");
+  lien.href = LIEN_DISCORD;
+  lien.classList.remove("masque");
+}
+
 document.getElementById("btn-jouer").addEventListener("click", () => {
   if (!validerFormulaireAccueil()) return; // filet de sécurité — le bouton est censé déjà être désactivé
   const pseudo = document.getElementById("accueil-pseudo").value.trim();
@@ -9340,6 +9395,7 @@ document.getElementById("btn-jouer").addEventListener("click", () => {
 // `options.nouveauPersonnage` + `options.classe` (nouveau personnage) —
 // voir connecter().
 function demarrerPartie(options) {
+  envoyerStat("lancement");
   document.body.classList.remove("mode-accueil");
   // Le cadre de jeu était masqué (display:none) pendant l'écran d'accueil,
   // donc redimensionnerScene() n'avait alors rien à mesurer (largeur 0) —
